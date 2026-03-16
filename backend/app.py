@@ -10,7 +10,11 @@ from io import BytesIO
 from sqlalchemy import text, inspect, or_, and_
 from sqlalchemy.orm import joinedload
 import re
-from migration_script import DatabaseMigrator
+
+try:
+    from migration_script import DatabaseMigrator
+except ImportError:
+    DatabaseMigrator = None
 
 import socket
 
@@ -2917,6 +2921,9 @@ def import_database():
         if version_change:
             OLD_DB_URL = f"sqlite:///{base_dir / (timestamp_name + timestamp_name)}"
             NEW_DB_URL = f"sqlite:///{base_dir / timestamp_name}"
+
+            if DatabaseMigrator is None:
+                raise RuntimeError('缺少 migration_script.py，无法执行旧数据库升级迁移')
 
             migrator = DatabaseMigrator(OLD_DB_URL, NEW_DB_URL)
             clear_all_tables(migrator.for_clear_new_tables())

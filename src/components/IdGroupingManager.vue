@@ -11,27 +11,27 @@
             已选择 {{ selectedMiceCount }} 只小鼠
           </div>
           <div class="selection-buttons">
-            <button class="btn btn-outline" @click="selectAllMice">
+            <n-button quaternary @click="selectAllMice">
               全选
-            </button>
-            <button class="btn btn-outline" @click="deselectAllMice">
+            </n-button>
+            <n-button quaternary @click="deselectAllMice">
               全不选
-            </button>
+            </n-button>
           </div>
         </div>
         <div class="detail-item">
           <div class="checkbox-group">
-            <input type="checkbox" v-model="isRepeated" id="edit-repeat-checkbox" :disabled="isRepeatedAble">
-            <label for="edit-repeat-checkbox">是否可重复选择小鼠</label>
+            <n-checkbox v-model:checked="isRepeated" :disabled="isRepeatedAble">
+              是否可重复选择小鼠
+            </n-checkbox>
           </div>
         </div>
         <div class="search-container">
-          <input 
-            type="text" 
-            class="search-input" 
+          <n-input
+            class="search-input"
             placeholder="搜索小鼠ID或基因型..."
-            v-model="searchTerm"
-          >
+            v-model:value="searchTerm"
+          />
         </div>
         <div class="mice-list">
           <div 
@@ -43,12 +43,12 @@
             draggable="true"
             @dragstart="onDragStart($event, mouse.tid)"
           >
-            <input 
-              type="checkbox" 
+            <n-checkbox
               class="mouse-checkbox"
               :checked="isMouseSelected(mouse.tid)"
               @click.stop
-            >
+              @update:checked="() => toggleMouseSelection(mouse.tid)"
+            />
             <div class="mouse-info">
               <div class="mouse-id">{{ mouse.id }}</div>
               <div class="mouse-details" v-html="mouse.genotype.symbol? mouse.genotype.symbol : mouse.genotype"></div>
@@ -74,12 +74,11 @@
           >
             <div class="group-header">
               <div class="group-name">
-                <input 
-                  type="text" 
-                  class="group-name-input" 
-                  v-model="group.name"
+                <n-input
+                  class="group-name-input"
+                  v-model:value="group.name"
                   placeholder="分组名称"
-                >
+                />
                 <div class="color-picker">
                   <div 
                     v-for="color in colors" 
@@ -89,18 +88,19 @@
                     :style="{ backgroundColor: color }"
                     @click="group.color = color"
                   >
-                    <i class="material-icons" v-if="group.color === color">check</i>
+                    <AppIcon v-if="group.color === color" name="check" />
                   </div>
                 </div>
               </div>
               <div class="group-actions">
-                <button 
-                  class="action-btn btn-danger"
+                <n-button 
                   @click="removeGroup(groupIndex)"
                   :disabled="editingGroup.rules.length <= 1"
+                  type="error"
+                  quaternary
                 >
-                  <i class="material-icons">delete</i>
-                </button>
+                  <AppIcon  name="delete" />
+                </n-button>
               </div>
             </div>
             <div class="group-mice">
@@ -113,12 +113,12 @@
                 <div class="mouse-details" v-html="mouse.genotype.symbol? mouse.genotype.symbol : mouse.genotype"></div>
                 <div class="mouse-details">{{ mouse.sex }} · {{ mouse.strain }} · {{ mouse.birth_date }}</div>
                 <div class="mouse-actions">
-                  <button 
-                    class="action-btn btn-outline"
+                  <n-button 
                     @click="removeMouseFromGroup(mouse.tid, groupIndex)"
+                    quaternary
                   >
-                    <i class="material-icons">remove_circle</i>
-                  </button>
+                    <AppIcon  name="remove_circle" />
+                  </n-button>
                 </div>
               </div>
               <div v-if="group.mouseId.length === 0" class="empty-group">
@@ -129,15 +129,15 @@
         </div>
         
         <div class="grouping-actions">
-          <button class="btn btn-outline" @click="addGroup">
-            <i class="material-icons">add</i> 添加新分组
-          </button>
-          <button v-if="editingGroup.rules.length > 0" class="btn btn-outline" @click="resetGroup">
-            <i class="material-icons">refresh</i> 重置分组
-          </button>
-          <button class="btn btn-success" @click="saving" :disabled="isSaving">
-            <i class="material-icons">save</i> {{ isSaving? "保存中...": "保存ID分组" }}
-          </button>
+          <n-button quaternary @click="addGroup">
+            <AppIcon  name="add" /> 添加新分组
+          </n-button>
+          <n-button v-if="editingGroup.rules.length > 0" quaternary @click="resetGroup">
+            <AppIcon  name="refresh" /> 重置分组
+          </n-button>
+          <n-button type="success" @click="saving" :disabled="isSaving">
+            <AppIcon  name="save" /> {{ isSaving? "保存中...": "保存ID分组" }}
+          </n-button>
         </div>
       </div>
     </div>
@@ -326,9 +326,9 @@ const resetGroup = () => {
   width: 90%;
 	max-width: 1200px;
   margin: 0 auto;
-  background: white;
+  background: var(--n-color);
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 10%, transparent);
   padding: 20px;
 }
 
@@ -337,8 +337,8 @@ const resetGroup = () => {
   font-weight: 600;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-  color: #2c3e50;
+  border-bottom: 1px solid var(--n-border-color);
+  color: var(--n-text-color-1);
 }
 
 .id-grouping-container {
@@ -349,10 +349,10 @@ const resetGroup = () => {
 }
 
 .candidate-mice, .grouping-section {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--n-border-color);
   border-radius: 8px;
   padding: 15px;
-  background: #fafafa;
+  background: var(--n-color-embedded);
   height: 600px;
   display: flex;
   flex-direction: column;
@@ -360,7 +360,7 @@ const resetGroup = () => {
 
 .candidate-mice h3, .grouping-section h3 {
   margin: 0 0 15px 0;
-  color: #2c3e50;
+  color: var(--n-text-color-1);
   font-size: 1.1rem;
 }
 
@@ -370,14 +370,14 @@ const resetGroup = () => {
   align-items: center;
   margin-bottom: 15px;
   padding: 10px;
-  background: white;
+  background: var(--n-color);
   border-radius: 4px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--n-border-color);
 }
 
 .selection-info {
   font-size: 14px;
-  color: #2c3e50;
+  color: var(--n-text-color-1);
   font-weight: 500;
 }
 
@@ -388,10 +388,6 @@ const resetGroup = () => {
 
 .search-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
 }
 
 .search-container {
@@ -402,9 +398,9 @@ const resetGroup = () => {
 	max-height: 300px;
   flex: 1;
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
-  background: white;
+  background: var(--n-color);
 }
 
 .mouse-item {
@@ -412,27 +408,22 @@ const resetGroup = () => {
   align-items: center;
   padding: 10px;
 	gap: 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--n-border-color);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .mouse-item:hover {
-  background-color: #f0f7ff;
+  background-color: var(--n-info-color-suppl);
 }
 
 .mouse-item.selected {
-  background-color: #e3f2fd;
-}
-
-.mouse-checkbox {
-  margin-right: 10px;
-	margin: 0;
+  background-color: color-mix(in srgb, var(--n-info-color) 22%, var(--n-color));
 }
 
 .mouse-info {
 	font-size: 12px;
-	color: #666;
+  color: var(--n-text-color-3);
 	flex: 1;
 	display: flex;
 	gap: 10px;
@@ -441,30 +432,30 @@ const resetGroup = () => {
 
 .mouse-id {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--n-text-color-1);
 }
 
 .mouse-details {
   font-size: 12px;
-  color: #666;
+  color: var(--n-text-color-3);
   margin-top: 3px;
 }
 
 .groups-container {
   flex: 1;
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
-  background: white;
+  background: var(--n-color);
   padding: 10px;
 }
 
 .group-item {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--n-border-color);
   border-radius: 6px;
   margin-bottom: 15px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  background: var(--n-color);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
 .group-header {
@@ -472,8 +463,8 @@ const resetGroup = () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 15px;
-  background: #e8f4fd;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--n-info-color-suppl);
+  border-bottom: 1px solid var(--n-border-color);
   border-radius: 6px 6px 0 0;
 }
 
@@ -484,17 +475,12 @@ const resetGroup = () => {
 }
 
 .group-name-input {
-  padding: 5px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 600;
-  min-width: 150px;
+  min-width: 180px;
 }
 
 .group-actions {
   display: flex;
-  gap: 5px;
+  gap: 8px;
 }
 
 .group-mice {
@@ -510,9 +496,9 @@ const resetGroup = () => {
   justify-content: space-between;
   padding: 5px 10px;
   margin-bottom: 5px;
-  background: #f9f9f9;
+  background: var(--n-color-embedded);
   border-radius: 4px;
-  border-left: 3px solid #2c6fbb;
+  border-left: 3px solid var(--n-primary-color);
 }
 
 .mouse-actions {
@@ -523,20 +509,22 @@ const resetGroup = () => {
 .empty-group {
   text-align: center;
   padding: 20px;
-  color: #999;
+  color: var(--n-text-color-disabled);
   font-style: italic;
 }
 
 .grouping-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--n-border-color);
 }
 
 .drag-over {
-  background-color: #f0f7ff;
-  border: 2px dashed #2c6fbb;
+  background-color: var(--n-info-color-suppl);
+  border: 2px dashed var(--n-primary-color);
 }
 </style>

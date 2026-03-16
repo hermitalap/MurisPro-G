@@ -1,9 +1,9 @@
 <template>
-  <div class="not-found">
+  <n-space vertical align="center" class="not-found">
     <h2>页面未找到</h2>
     <p>您访问的页面不存在。</p>
     <router-link to="/">返回首页</router-link>
-  </div>
+  </n-space>
 </template>
 
 <script>

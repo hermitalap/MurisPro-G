@@ -1,8 +1,8 @@
 <template>
   <div class="main-content">
-    <div class="content-header">
+    <n-space justify="space-between" align="center" class="content-header">
       <h1 class="page-title">小鼠生存分析</h1>
-    </div>
+    </n-space>
     
     <div class="card">
       <div class="card-header">
@@ -11,34 +11,36 @@
       <div class="card-body">
         <!-- 控制按钮区域 -->
         <div class="d-flex mb-4">
-        <select v-model="showChartType" style="min-width:200px;">
-            <option value="pred">使用预设分组</option>
-            <option value="temp">使用临时分组</option>
-        </select>
+          <n-select
+            v-model:value="showChartType"
+            :options="chartTypeOptions"
+            style="min-width: 200px;"
+          />
         </div>
         <div v-if="showChartType === 'pred'" class="d-flex justify-content-between mb-4">
-          <select v-model="selectedPredefinedGroupId" style="min-width:100px;">
-            <option v-if="predefinedGroups.length === 0" :value='null' :disabled="true">---请在设置中确定预设分组---</option>
-            <option v-for="group in predefinedGroups" :value="group.id" :key="group.id">
-                {{ group.name }}
-            </option>
-          </select>
-          <button class="btn btn-primary" @click="fetchData('pred')">
-            <i class="material-icons">insights</i>
+          <n-select
+            v-model:value="selectedPredefinedGroupId"
+            :options="predefinedGroupOptions"
+            placeholder="请在设置中确定预设分组"
+            :disabled="predefinedGroups.length === 0"
+            style="min-width: 180px;"
+          />
+          <n-button type="primary" @click="fetchData('pred')">
+            <AppIcon  name="insights" />
             以预设分组生成生存曲线
-          </button>
+          </n-button>
         </div>
         <div v-if="showChartType === 'temp'" class="d-flex justify-content-between mb-4">
-            <button class="btn btn-primary" @click="fetchData('temp')">
-              <i class="material-icons">insights</i>
+            <n-button type="primary" @click="fetchData('temp')">
+              <AppIcon  name="insights" />
               以临时分组生成生存曲线
-            </button>
-            <button class="btn btn-sm btn-outline" @click="addGroup">
-              <i class="material-icons">add</i> 添加分组
-            </button>
-            <button id="addGroupBtn" class="btn btn-sm btn-danger" @click="clearGroups">
-            <i class="material-icons">add</i> 清空分组
-            </button>
+            </n-button>
+            <n-button secondary @click="addGroup">
+              <AppIcon  name="add" /> 添加分组
+            </n-button>
+            <n-button id="addGroupBtn" type="error" @click="clearGroups">
+            <AppIcon  name="add" /> 清空分组
+            </n-button>
         </div>
         
         <!-- 分组设置 -->
@@ -53,31 +55,19 @@
               <div class="card">
                 <div class="card-header compact-header d-flex justify-content-between align-items-center">
                   <span>分组 {{ index }}</span>
-                  <button @click="removeGroup(index)" v-if="tempGroups.length > 1">
-                    <i class="material-icons">close</i>
-                  </button>
+                  <n-button quaternary circle @click="removeGroup(index)" v-if="tempGroups.length > 1">
+                    <AppIcon  name="close" />
+                  </n-button>
                 </div>
                   <div class="card-body">
                     <div class="mb-2">
                     <label class="form-label">性别</label>
                     <div class="d-flex flex-wrap">
                         <div class="form-check me-3">
-                        <input 
-                            class="form-check-input" 
-                            type="checkbox" 
-                            v-model="group.sex.M" 
-                            :id="'group'+index+'SexM'"
-                        >
-                        <label class="form-check-label" :for="'group'+index+'SexM'">雄性</label>
+                        <n-checkbox v-model:checked="group.sex.M">雄性</n-checkbox>
                         </div>
                         <div class="form-check">
-                        <input 
-                            class="form-check-input" 
-                            type="checkbox" 
-                            v-model="group.sex.F" 
-                            :id="'group'+index+'SexF'"
-                        >
-                        <label class="form-check-label" :for="'group'+index+'SexF'">雌性</label>
+                        <n-checkbox v-model:checked="group.sex.F">雌性</n-checkbox>
                         </div>
                     </div>
                     </div>
@@ -88,26 +78,22 @@
                             <div v-for="(combinations, locus) in geneStore.allGenotypes" :key="locus" class="locus-item">
                             <div class="locus-header">
                                 <label class="locus-label">
-                                <input 
-                                    type="checkbox" 
-                                    :value="locus" 
-                                    v-model="group.genotype"
-                                    @change="onLocusSelect(index, locus)"
-                                    class="locus-checkbox"
-                                >
+                              <n-checkbox
+                                :checked="group.genotype.includes(locus)"
+                                @update:checked="onLocusSelect(index, locus)"
+                                class="locus-checkbox"
+                              />
                                 <span class="locus-name">{{ locus }}</span>
                                 </label>
                             </div>
                             <div v-if="combinations && combinations.length" class="combinations-list">
                                 <div v-for="combination in combinations" :key="combination" class="combination-item">
                                 <label class="combination-label">
-                                    <input 
-                                    type="checkbox" 
-                                    :value="`${locus}<sup>${combination}</sup>`"
-                                    v-model="group.genotype"
-                                    @change="onCombinationSelect(index, locus, combination)"
-                                    class="combination-checkbox"
-                                    >
+                                  <n-checkbox
+                                  :checked="group.genotype.includes(`${locus}<sup>${combination}</sup>`)"
+                                  @update:checked="onCombinationSelect(index, locus, combination)"
+                                  class="combination-checkbox"
+                                  />
                                     <span class="combination-name" v-html="`${locus}<sup>${combination}</sup>`"></span>
                                 </label>
                                 </div>
@@ -125,7 +111,7 @@
               class="group-card add-card"
               @click="addGroup"
             >
-              <i class="material-icons">add</i>
+              <AppIcon  name="add" />
               <span>添加分组</span>
             </div>
           </div>
@@ -184,61 +170,28 @@
               生存数据详情
             </div>
             <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>小鼠ID</th>
-                      <th>性别</th>
-                      <th>基因型</th>
-                      <th>生存天数</th>
-                      <th>状态</th>
-                      <th>分组</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(mouse, index) in displayedMice" :key="index">
-                      <td>{{ mouse.mouse_id }}</td>
-                      <td>{{ mouse.sex === 'M' ? '雄性' : '雌性' }}</td>
-                      <td v-html="mouse.genotype"></td>
-                      <td>{{ mouse.living_days }} 天</td>
-                      <td>
-                        <span :class="{'text-success': mouse.status === 0, 'text-danger': mouse.status === 1}">
-                          {{ mouse.status === 1 ? '死亡' : '存活' }}
-                        </span>
-                      </td>
-                      <td>
-                        <span class="badge" :style="{backgroundColor: mouse.color}">
-                          {{ mouse.groupName }}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <n-data-table
+                :columns="survivalColumns"
+                :data="displayedMice"
+                :single-line="false"
+                :bordered="false"
+                :row-key="(row) => `${row.groupName}-${row.mouse_id}`"
+              />
+
+              <div v-if="filteredMice.length > pageSize" class="pagination-wrapper">
+                <n-pagination
+                  v-model:page="currentPage"
+                  :page-count="totalPages"
+                  :page-size="pageSize"
+                />
               </div>
-              
-              <!-- 分页控件 -->
-              <nav v-if="filteredMice.length > pageSize">
-                <ul class="pagination justify-content-center">
-                  <li class="page-item" :class="{disabled: currentPage === 1}">
-                    <a class="page-link" href="#" @click.prevent="currentPage > 1 && currentPage--">上一页</a>
-                  </li>
-                  <li class="page-item" v-for="page in totalPages" :key="page" 
-                      :class="{active: currentPage === page}">
-                    <a class="page-link" href="#" @click.prevent="currentPage = page">{{ page }}</a>
-                  </li>
-                  <li class="page-item" :class="{disabled: currentPage === totalPages}">
-                    <a class="page-link" href="#" @click.prevent="currentPage < totalPages && currentPage++">下一页</a>
-                  </li>
-                </ul>
-              </nav>
             </div>
           </div>
         </div>
         <!-- 无数据提示 -->
         <div v-else class="text-center py-5">
           <div class="mb-3">
-            <i class="material-icons" style="font-size: 3rem; color: #6c757d;">bar_chart</i>
+            <AppIcon style="font-size: 3rem; color: var(--n-text-color-3);" name="bar_chart" />
           </div>
           <h5 class="text-muted">请设置分组条件并点击"生成生存曲线"按钮</h5>
         </div>
@@ -249,7 +202,8 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { h, ref, computed, nextTick } from 'vue';
+import { NTag } from 'naive-ui'
 import axios from 'axios';
 import Chart from 'chart.js/auto';
 import { toast } from 'vue3-toastify';
@@ -262,6 +216,14 @@ const { tempGroups } = storeToRefs(geneStore)
 const { addGroup, removeGroup, clearGroups, getTempGroups, onLocusSelect, onCombinationSelect } = geneStore
 const experimentStore = useExperimentStore()
 const { predefinedGroups, selectedPredefinedGroupId, showChartType } = storeToRefs(experimentStore)
+
+const chartTypeOptions = [
+  { label: '使用预设分组', value: 'pred' },
+  { label: '使用临时分组', value: 'temp' }
+]
+const predefinedGroupOptions = computed(() =>
+  predefinedGroups.value.map(group => ({ label: group.name, value: group.id }))
+)
 const { getPredefinedGroups } = experimentStore
 
 // 响应式数据
@@ -271,9 +233,59 @@ const hasData = ref(false);
 const currentPage = ref(1);
 const pageSize = 10;
 
+const survivalColumns = computed(() => [
+  {
+    title: '小鼠ID',
+    key: 'mouse_id'
+  },
+  {
+    title: '性别',
+    key: 'sex',
+    render: (row) => (row.sex === 'M' ? '雄性' : '雌性')
+  },
+  {
+    title: '基因型',
+    key: 'genotype',
+    render: (row) => h('span', { innerHTML: row.genotype || '' })
+  },
+  {
+    title: '生存天数',
+    key: 'living_days',
+    render: (row) => `${row.living_days} 天`
+  },
+  {
+    title: '状态',
+    key: 'status',
+    render: (row) => h(
+      NTag,
+      {
+        bordered: false,
+        type: row.status === 1 ? 'error' : 'success'
+      },
+      { default: () => (row.status === 1 ? '死亡' : '存活') }
+    )
+  },
+  {
+    title: '分组',
+    key: 'groupName',
+    render: (row) => h(
+      NTag,
+      {
+        bordered: false,
+        style: {
+          backgroundColor: row.color,
+          color: '#fff'
+        }
+      },
+      { default: () => row.groupName }
+    )
+  }
+]);
+
 // 获取生存数据
 const fetchData = async (groupType) => {
   try {
+    currentPage.value = 1
     let groupData = []
     if (groupType === 'temp') {
       if (tempGroups.value.length === 0) {
@@ -424,7 +436,7 @@ const renderChart = () => {
           },
           min: 0,
           grid: {
-            color: 'rgba(0, 0, 0, 0.05)'
+            color: 'color-mix(in srgb, var(--n-text-color) 5%, transparent)'
           },
           ticks: {
             stepSize: Math.ceil(maxTime / 10)
@@ -442,7 +454,7 @@ const renderChart = () => {
             callback: (value) => (value * 100).toFixed(0) + '%'
           },
           grid: {
-            color: 'rgba(0, 0, 0, 0.05)'
+            color: 'color-mix(in srgb, var(--n-text-color) 5%, transparent)'
           }
         }
       },
@@ -515,15 +527,15 @@ const displayedMice = computed(() => {
 .card {
   margin-bottom: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
   background-color: white;
   overflow: hidden;
 }
 
 .card-header {
   padding: 1rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
+  background-color: var(--n-color-embedded);
+  border-bottom: 1px solid var(--n-border-color);
   font-weight: 600;
 }
 
@@ -564,9 +576,9 @@ const displayedMice = computed(() => {
   padding: 0.5rem;
   font-size: 1rem;
   line-height: 1.5;
-  color: #495057;
-  background-color: #fff;
-  border: 1px solid #ced4da;
+  color: var(--n-text-color-2);
+  background-color: var(--n-color);
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
   transition: border-color 0.15s;
 }
@@ -576,8 +588,8 @@ const displayedMice = computed(() => {
   width: 100%;
   padding: 0.5rem;
   font-size: 1rem;
-  background-color: #fff;
-  border: 1px solid #ced4da;
+  background-color: var(--n-color);
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
   height: auto;
 }
@@ -604,13 +616,13 @@ const displayedMice = computed(() => {
   height: 210px;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   transition: all 0.3s ease;
 }
 
 .group-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 10px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
 /* 添加分组卡片样式 */
@@ -619,25 +631,25 @@ const displayedMice = computed(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #f8f9fa;
-  border: 1px dashed #ced4da;
+  background-color: var(--n-color-embedded);
+  border: 1px dashed var(--n-border-color);
   cursor: pointer;
 }
 
 .add-card:hover {
-  background-color: #e9ecef;
-  border-color: #adb5bd;
+  background-color: var(--n-color-embedded);
+  border-color: var(--n-text-color-3);
 }
 
 .add-card i {
   font-size: 2rem;
   margin-bottom: 8px;
-  color: #6c757d;
+  color: var(--n-text-color-3);
 }
 
 .add-card span {
   font-weight: 500;
-  color: #495057;
+  color: var(--n-text-color-2);
 }
 
 /* 卡片内部调整 */
@@ -694,8 +706,8 @@ const displayedMice = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 0.3rem 0.5rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background-color: var(--n-color-embedded);
+  border-bottom: 1px solid var(--n-color-embedded);
   font-size: 0.85rem;
   font-weight: 600;
 }
@@ -704,13 +716,13 @@ const displayedMice = computed(() => {
   background: none;
   border: none;
   padding: 0;
-  color: #6c757d;
+  color: var(--n-text-color-3);
   cursor: pointer;
   font-size: 0.9rem;
 }
 
 .compact-header button:hover {
-  color: #dc3545;
+  color: var(--n-error-color);
 }
 
 /* 图表容器 */
@@ -743,12 +755,12 @@ const displayedMice = computed(() => {
 .stat-value {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #1a2a6c;
+  color: var(--n-text-color-1);
 }
 
 .stat-label {
   font-size: 0.9rem;
-  color: #6c757d;
+  color: var(--n-text-color-3);
 }
 
 .table-responsive {
@@ -762,8 +774,8 @@ const displayedMice = computed(() => {
 }
 
 .table th {
-  background-color: #f8fafc;
-  color: #64748b;
+  background-color: var(--n-color-embedded);
+  color: var(--n-text-color-3);
   font-weight: 600;
   padding: 15px 12px;
   text-align: left;
@@ -773,15 +785,15 @@ const displayedMice = computed(() => {
 
 .table td {
   padding: 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--n-border-color);
 }
 
 .table tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: var(--n-color-embedded);
 }
 
 .table-hover tbody tr:hover {
-  background-color: #f1f5ff;
+  background-color: var(--n-info-color-suppl);
 }
 
 .badge {
@@ -792,15 +804,15 @@ const displayedMice = computed(() => {
 }
 
 .text-success {
-  color: #52c41a;
+  color: var(--n-success-color);
 }
 
 .text-danger {
-  color: #f5222d;
+  color: var(--n-error-color);
 }
 
 .text-muted {
-  color: #6c757d;
+  color: var(--n-text-color-3);
 }
 
 .mx-2 {
@@ -827,19 +839,19 @@ const displayedMice = computed(() => {
 
 /* 斑马纹效果 - 行间色差 */
 .option-item:nth-child(odd) {
-    background-color: #ffffff;
+    background-color: var(--n-color);
 }
 
 .option-item:nth-child(even) {
-    background-color: #f8f9fa;
+    background-color: var(--n-color-embedded);
 }
 
 .option-item:hover {
-    background-color: #e3f2fd;
+  background-color: var(--n-info-color-suppl);
 }
 
 .option-item.selected {
-    background-color: #3498db;
+    background-color: var(--n-primary-color);
     color: white;
 }
 
@@ -855,12 +867,12 @@ const displayedMice = computed(() => {
     margin: 0 4px;
     border-radius: 6px;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
 .page-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 8px color-mix(in srgb, var(--n-text-color) 15%, transparent);
 }
 
 /* 分页链接样式 */
@@ -874,37 +886,37 @@ const displayedMice = computed(() => {
     text-decoration: none;
     font-weight: 500;
     font-size: 1rem;
-    color: #4a5568;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 1px solid #dee2e6;
+    color: var(--n-text-color-2);
+    background: linear-gradient(135deg, var(--n-color-embedded) 0%, var(--n-color-embedded) 100%);
+    border: 1px solid var(--n-border-color);
     border-radius: 6px;
     transition: all 0.25s ease;
     cursor: pointer;
 }
 
 .page-link:hover {
-    color: #2d3748;
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-    border-color: #c4c9d0;
+    color: var(--n-text-color-1);
+    background: linear-gradient(135deg, var(--n-color-embedded) 0%, var(--n-border-color) 100%);
+  border-color: var(--n-border-color);
 }
 
 /* 活动状态分页项 */
 .page-item.active .page-link {
     color: white;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: #667eea;
-    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+    background: linear-gradient(135deg, var(--n-primary-color) 0%, var(--n-info-color) 100%);
+    border-color: var(--n-primary-color);
+    box-shadow: 0 4px 10px color-mix(in srgb, var(--n-primary-color) 30%, transparent);
 }
 
 .page-item.active .page-link:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--n-primary-color-hover) 0%, var(--n-info-color-hover) 100%);
 }
 
 /* 禁用状态分页项 */
 .page-item.disabled .page-link {
-    color: #a0aec0;
-    background: linear-gradient(135deg, #f8f9fa 0%, #edf2f7 100%);
-    border-color: #e2e8f0;
+    color: var(--n-text-color-disabled);
+  background: linear-gradient(135deg, var(--n-color-embedded) 0%, var(--n-color-embedded) 100%);
+    border-color: var(--n-border-color);
     cursor: not-allowed;
     opacity: 0.7;
     pointer-events: none;
@@ -912,7 +924,7 @@ const displayedMice = computed(() => {
 
 .page-item.disabled:hover {
     transform: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
 /* 响应式设计 */
@@ -933,19 +945,19 @@ const displayedMice = computed(() => {
 /* 焦点状态（可访问性） */
 .page-link:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--n-primary-color) 25%, transparent);
 }
 
 .genotype-tree {
-  border: 1px solid #ced4da;
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
   max-height: 200px;
   overflow-y: auto;
-  background-color: #fff;
+  background-color: var(--n-color);
 }
 
 .locus-item {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--n-color-embedded);
 }
 
 .locus-item:last-child {
@@ -954,8 +966,8 @@ const displayedMice = computed(() => {
 
 .locus-header {
   padding: 8px 12px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background-color: var(--n-color-embedded);
+  border-bottom: 1px solid var(--n-color-embedded);
 }
 
 .locus-label {
@@ -972,7 +984,7 @@ const displayedMice = computed(() => {
 
 .locus-name {
     font-size: 0.8rem;
-  color: #495057;
+  color: var(--n-text-color-2);
 }
 
 .combinations-list {
@@ -981,7 +993,7 @@ const displayedMice = computed(() => {
 
 .combination-item {
   padding: 6px 12px;
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid var(--n-color-embedded);
 }
 
 .combination-item:last-child {
@@ -1000,23 +1012,23 @@ const displayedMice = computed(() => {
 }
 
 .combination-name {
-  color: #6c757d;
+  color: var(--n-text-color-3);
   font-size: 0.7em;
 }
 
 /* 悬停效果 */
 .locus-label:hover,
 .combination-label:hover {
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
 }
 
 /* 选中状态 */
 .locus-checkbox:checked + .locus-name {
-  color: #007bff;
+  color: var(--n-info-color);
 }
 
 .combination-checkbox:checked + .combination-name {
-  color: #28a745;
+  color: var(--n-success-color);
   font-weight: 500;
 }
 </style>

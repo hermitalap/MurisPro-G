@@ -2,12 +2,16 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
+import naive from 'naive-ui'
+import AppIcon from '@/components/AppIcon.vue'
 import { StoreUtils } from './stores'
+import './views/styles/main.css'
 
 const app = createApp(App)
 const pinia = createPinia()
 
-app.use(pinia).use(router)
+app.use(pinia).use(router).use(naive)
+app.component('AppIcon', AppIcon)
 
 // 在应用启动时检查是否在pywebview环境中
 const startApp = async () => {

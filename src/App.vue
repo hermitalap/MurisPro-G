@@ -1,418 +1,350 @@
 <template>
-    <div class="app-container">
-      <!-- 顶部导航栏 -->
-      <header>
-            <!-- 添加汉堡菜单按钮 移动端专用-->
-          <button class="sidebar-toggle" @click="toggleSidebar">
-            <i class="material-icons">{{ sidebarCollapsed ? 'menu' : 'close'  }}</i>
-          </button>
-          <div class="logo">
-              <img src="@/assets/logo.png" alt="鼠管家Logo" class="logo-icon">
-              <span class="app-title">MurisPro - 鼠管家</span>
-          </div>
-
-      </header>
-  
-      <!-- 侧边导航栏 -->
-      <div class="sidebar" :class="{ 'collapsed': sidebarCollapsed }">
-        <div class="nav-section">
-          <div class="nav-title" v-if="!sidebarCollapsed">核心功能</div>
-        <router-link 
-          :to="{ name: 'home' }" 
-          custom v-slot="{ navigate, isActive }"
-        >
-          <div 
-            class="nav-item" 
-            :class="{ 'active': isActive }"
-            @click="navigate"
-          >
-            <i class="material-icons">grid_view</i>
-            <span v-if="!sidebarCollapsed">笼位视图</span>
-            <div class="tooltip" v-if="sidebarCollapsed">笼位视图</div>
-          </div>
-        </router-link>
-      <router-link 
-        :to="{ name: 'mice' }" 
-        custom
-        v-slot="{ navigate, isActive }"
-      >
-        <div 
-          class="nav-item" 
-          :class="{ 'active': isActive }"
-          @click="navigate"
-        >
-          <i class="material-icons">format_list_bulleted</i>
-          <span v-if="!sidebarCollapsed">小鼠列表</span>
-          <div class="tooltip" v-if="sidebarCollapsed">小鼠列表</div>
-        </div>
-      </router-link>
-      <router-link 
-        :to="{ name: 'WeightList' }" 
-        custom
-        v-slot="{ navigate, isActive }"
-      >
-        <div 
-          class="nav-item" 
-          :class="{ 'active': isActive }"
-          @click="navigate"
-        >
-          <i class="material-icons">scale</i>
-          <span v-if="!sidebarCollapsed">体重列表</span>
-          <div class="tooltip" v-if="sidebarCollapsed">体重列表</div>
-        </div>
-      </router-link>
-        </div>
-        
-        <div class="nav-section" v-if="experimentStore.showedExperiments.length>0">
-          <div class="nav-title" v-if="!sidebarCollapsed">实验记录</div>
-          <div v-for="(expr, index) in experimentStore.showedExperiments" :key="index">
-            <router-link 
-              :to="{ name: 'Experiments', params: { experimentId: expr.id } }" 
-              custom v-slot="{ navigate, isActive }"
-            >
-              <div 
-                class="nav-item" 
-                :class="{ 'active': isActive }"
-                @click="navigate"
-              >
-                <div class="number-badge">{{ expr.id }}</div>
-                <span v-if="!sidebarCollapsed">{{ expr.name }}</span>
-                <div class="tooltip" v-if="sidebarCollapsed">{{ expr.name }}</div>
+  <n-config-provider :theme="naiveTheme">
+    <n-message-provider>
+      <n-dialog-provider>
+        <n-notification-provider>
+          <n-layout class="app-shell">
+            <n-layout-header class="app-header">
+              <div class="app-header-content">
+                <n-button class="sidebar-toggle" quaternary circle @click="toggleSidebar">
+                  <AppIcon :name="sidebarCollapsed ? 'menu' : 'close'" />
+                </n-button>
+                <div class="logo">
+                  <img src="@/assets/logo.png" alt="鼠管家Logo" class="logo-icon">
+                  <span class="app-title">MurisPro - 鼠管家</span>
+                </div>
+                <div class="app-header-spacer"></div>
+                <n-tooltip>
+                  <template #trigger>
+                    <n-button class="theme-toggle" quaternary circle @click="toggleTheme">
+                      <AppIcon :name="themeMode === 'dark' ? 'light_mode' : 'dark_mode'" />
+                    </n-button>
+                  </template>
+                  {{ themeMode === 'dark' ? '切换到亮色模式' : '切换到暗色模式' }}
+                </n-tooltip>
               </div>
-            </router-link>
-          </div>
-        </div>
+            </n-layout-header>
 
-        <div class="nav-section">
-          <div class="nav-title" v-if="!sidebarCollapsed">数据分析</div>
-          <router-link 
-            :to="{ name: 'BodyWeight' }" 
-            custom v-slot="{ navigate, isActive }"
-          >
-            <div 
-              class="nav-item" 
-              :class="{ 'active': isActive }"
-              @click="navigate"
-            >
-              <i class="material-icons">insights</i>
-              <span v-if="!sidebarCollapsed">体重曲线</span>
-              <div class="tooltip" v-if="sidebarCollapsed">体重曲线</div>
-            </div>
-          </router-link>
-          <router-link 
-            :to="{ name: 'Survivalplot' }" 
-            custom
-            v-slot="{ navigate, isActive }"
-          >
-            <div 
-              class="nav-item" 
-              :class="{ 'active': isActive }"
-              @click="navigate"
-            >
-              <i class="material-icons">trending_down</i>
-              <span v-if="!sidebarCollapsed">生存曲线</span>
-              <div class="tooltip" v-if="sidebarCollapsed">生存曲线</div>
-            </div>
-          </router-link>
-        </div>
-        <div class="nav-section">
-          <div class="nav-title" v-if="!sidebarCollapsed">系统设置</div>
-          <router-link 
-            :to="{ name: 'SystemSettings' }" 
-            custom
-            v-slot="{ navigate, isActive }"
-          >
-            <div 
-              class="nav-item" 
-              :class="{ 'active': isActive }"
-              @click="navigate"
-            >
-              <i class="material-icons">settings</i>
-              <span v-if="!sidebarCollapsed">设置</span>
-              <div class="tooltip" v-if="sidebarCollapsed">设置</div>
-            </div>
-          </router-link>
-          <router-link 
-            :to="{ name: 'InfoPage' }" 
-            custom
-            v-slot="{ navigate, isActive }"
-          >
-            <div 
-              class="nav-item" 
-              :class="{ 'active': isActive }"
-              @click="navigate"
-            >
-              <i class="material-icons">info</i>
-              <span v-if="!sidebarCollapsed">宣传页</span>
-              <div class="tooltip" v-if="sidebarCollapsed">宣传页</div>
-            </div>
-          </router-link>
-        </div>
-        
-        <!-- 折叠按钮（在侧边栏底部） -->
-        <div class="collapse-btn" @click="toggleSidebar">
-          <i class="material-icons">
-            {{ sidebarCollapsed ? 'chevron_right' : 'chevron_left' }}
-          </i>
-          <span v-if="!sidebarCollapsed">折叠侧边栏</span>
-        </div>
-      </div>
-      <main @click="sidebarCollapsed=true">
-        <router-view></router-view>
-      </main>
-  <!-- 页脚 -->
-  <footer>
-      <div class="status-indicators">
-          <div class="status-item">
-              <i class="material-icons status-icon online">cloud_done</i>
-              <span>当前数据库正常</span>
-          </div>
-          <div class="status-item">
-              <i class="material-icons status-icon">save</i>
-              <span>自动保存</span>
-          </div>
-      </div>
-      <div class="version-info">
-          版本号: 3.1 | 2025-12-13
-      </div>
-  </footer>
-      </div>
+            <n-layout has-sider class="app-body">
+              <n-layout-sider
+                bordered
+                collapse-mode="width"
+                :collapsed="sidebarCollapsed"
+                :collapsed-width="64"
+                :width="240"
+                show-trigger
+                :native-scrollbar="false"
+                @collapse="setSidebarCollapsed(true)"
+                @expand="setSidebarCollapsed(false)"
+                class="app-sider"
+              >
+                <n-menu
+                  class="app-nav-menu"
+                  :collapsed="sidebarCollapsed"
+                  :collapsed-width="64"
+                  :collapsed-icon-size="22"
+                  :options="menuOptions"
+                  :value="activeMenuKey"
+                  @update:value="handleMenuSelect"
+                />
+              </n-layout-sider>
+
+              <n-layout-content class="app-content" @click="handleContentClick">
+                <router-view></router-view>
+              </n-layout-content>
+            </n-layout>
+
+            <n-layout-footer class="app-footer">
+              <div class="status-indicators">
+                <div class="status-item">
+                  <AppIcon class="status-icon online" name="cloud_done" />
+                  <span>当前数据库正常</span>
+                </div>
+                <div class="status-item">
+                  <AppIcon class="status-icon" name="save" />
+                  <span>自动保存</span>
+                </div>
+              </div>
+              <div class="version-info">
+                版本号: 3.1 | 2025-12-13
+              </div>
+            </n-layout-footer>
+          </n-layout>
+        </n-notification-provider>
+      </n-dialog-provider>
+    </n-message-provider>
+  </n-config-provider>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed, h } from 'vue'
+import {
+  NIcon,
+  darkTheme
+} from 'naive-ui'
+import {
+  AnalyticsOutline,
+  FlaskOutline,
+  GridOutline,
+  InformationCircleOutline,
+  ListOutline,
+  PlayCircleOutline,
+  ScaleOutline,
+  SettingsOutline,
+  TrendingDownOutline
+} from '@vicons/ionicons5'
 import { useExperimentStore } from '@/stores'
+import { useRoute, useRouter } from 'vue-router'
+import AppIcon from '@/components/AppIcon.vue'
 
 const experimentStore = useExperimentStore()
+const route = useRoute()
+const router = useRouter()
 
-// 响应式数据
-const sidebarCollapsed = ref(true)
+const sidebarCollapsed = ref(false)
+const themeMode = ref('light')
 
-// 方法
-const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
-  // 保存状态到localStorage
-  localStorage.setItem('sidebarCollapsed', sidebarCollapsed.value)
+const naiveTheme = computed(() => (themeMode.value === 'dark' ? darkTheme : null))
+
+const isMobileViewport = () => window.matchMedia('(max-width: 992px)').matches
+
+const renderIcon = (icon) => () => h(NIcon, null, { default: () => h(icon) })
+
+const menuOptions = computed(() => {
+  const experimentChildren = experimentStore.showedExperiments.map((expr) => ({
+    key: `exp-${expr.id}`,
+    label: `${expr.id} ${expr.name}`,
+    icon: renderIcon(PlayCircleOutline)
+  }))
+
+  return [
+    {
+      key: 'group-core',
+      label: '核心功能',
+      icon: renderIcon(GridOutline),
+      children: [
+        { key: 'home', label: '笼位视图', icon: renderIcon(GridOutline) },
+        { key: 'mice', label: '小鼠列表', icon: renderIcon(ListOutline) },
+        { key: 'WeightList', label: '体重列表', icon: renderIcon(ScaleOutline) }
+      ]
+    },
+    ...(experimentChildren.length
+      ? [
+          {
+            key: 'group-exp',
+            label: '实验记录',
+            icon: renderIcon(FlaskOutline),
+            children: experimentChildren
+          }
+        ]
+      : []),
+    {
+      key: 'group-analysis',
+      label: '数据分析',
+      icon: renderIcon(AnalyticsOutline),
+      children: [
+        { key: 'BodyWeight', label: '体重曲线', icon: renderIcon(AnalyticsOutline) },
+        { key: 'Survivalplot', label: '生存曲线', icon: renderIcon(TrendingDownOutline) }
+      ]
+    },
+    {
+      key: 'group-system',
+      label: '系统设置',
+      icon: renderIcon(SettingsOutline),
+      children: [
+        { key: 'SystemSettings', label: '设置', icon: renderIcon(SettingsOutline) },
+        { key: 'InfoPage', label: '宣传页', icon: renderIcon(InformationCircleOutline) }
+      ]
+    }
+  ]
+})
+
+const activeMenuKey = computed(() => {
+  if (route.name === 'Experiments' && route.params.experimentId) {
+    return `exp-${route.params.experimentId}`
+  }
+  return route.name || 'home'
+})
+
+const handleMenuSelect = (key) => {
+  if (String(key).startsWith('exp-')) {
+    const experimentId = String(key).replace('exp-', '')
+    router.push({ name: 'Experiments', params: { experimentId } })
+    return
+  }
+  router.push({ name: key })
 }
 
-// 生命周期
+const setSidebarCollapsed = (collapsed) => {
+  sidebarCollapsed.value = collapsed
+  localStorage.setItem('sidebarCollapsed', collapsed)
+}
+
+const toggleSidebar = () => {
+  setSidebarCollapsed(!sidebarCollapsed.value)
+}
+
+const toggleTheme = () => {
+  themeMode.value = themeMode.value === 'dark' ? 'light' : 'dark'
+  localStorage.setItem('themeMode', themeMode.value)
+}
+
 onMounted(() => {
-  // 从localStorage加载侧边栏状态
   const savedState = localStorage.getItem('sidebarCollapsed')
   if (savedState !== null) {
     sidebarCollapsed.value = savedState === 'true'
+  } else {
+    sidebarCollapsed.value = isMobileViewport()
   }
+
+  const savedTheme = localStorage.getItem('themeMode')
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    themeMode.value = savedTheme
+  } else {
+    themeMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+
   if (!window.pywebview || !window.pywebview.api) {
-    // 定期心跳
-    const heartbeatInterval = setInterval(() => {
-        fetch('/heartbeat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            // 低优先级，不阻塞用户交互
-            priority: 'low',
-            // 允许在页面卸载时发送
-            keepalive: true
-        }).catch(() => {});  // 静默失败
-    }, 10000);
+    setInterval(() => {
+      fetch('/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        priority: 'low',
+        keepalive: true
+      }).catch(() => {})
+    }, 10000)
   }
 })
 
-import { useRoute } from 'vue-router'
-const route = useRoute()
+const handleContentClick = () => {
+  if (isMobileViewport()) {
+    setSidebarCollapsed(true)
+  }
+}
 
 watch(() => route.path, () => {
-  sidebarCollapsed.value = true
+  if (isMobileViewport()) {
+    setSidebarCollapsed(true)
+  }
 })
 </script>
 
 <style>
-@import '@material-design-icons/font/index.css';
-@import url('./views/styles/main.css');
-
-.material-icons {
-  font-family: 'Material Icons';
+.app-shell {
+  height: 100vh;
 }
 
-/* 侧边栏可折叠样式 */
-.sidebar {
-  width: 240px;
-  transition: width 0.3s ease;
+.app-header {
+  height: var(--header-height, 64px);
+  padding: 0 18px;
+  border-bottom: 1px solid var(--n-border-color);
 }
 
-.sidebar.collapsed {
-  width: 60px;
-}
-
-/* 导航项在折叠状态下的样式 */
-.sidebar.collapsed .nav-title,
-.sidebar.collapsed .nav-item span,
-.sidebar.collapsed .collapse-btn span {
-  display: none;
-}
-/* 折叠按钮样式 */
-
-.collapse-btn {
+.app-header-content {
+  height: 100%;
   display: flex;
   align-items: center;
-  padding: 10px 16px;
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: auto;
-  max-width: 90%;
-  border: 1px solid #e0e0e0;
-}
-.collapse-btn:hover {
-  background-color: #f1f8e9;
-  color: #43a047;
+  gap: 12px;
 }
 
-.collapse-btn i {
-  margin-right: 16px;
+.app-header-spacer {
+  flex: 1;
 }
 
-/* 响应式设计 */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.app-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.app-body {
+  min-height: 0;
+  height: calc(100vh - var(--header-height, 64px) - var(--footer-height, 52px));
+}
+
+.app-sider {
+  border-right: 1px solid var(--n-border-color);
+}
+
+.app-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-content .main-content {
+  height: 100%;
+}
+
+.app-footer {
+  height: var(--footer-height, 52px);
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--n-border-color);
+}
+
+.status-indicators {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-nav-menu {
+  background: transparent;
+  height: 100%;
+}
+
+.sidebar-toggle {
+  display: none;
+}
+
+.theme-toggle {
+  flex: 0 0 auto;
+}
+
 @media (max-width: 992px) {
-  /* 在平板设备上默认折叠侧边栏 */
-  .sidebar {
-    width: 60px;
+  .app-sider {
+    position: absolute;
+    z-index: 30;
+    height: 100%;
   }
-  
-  .sidebar:not(.collapsed) {
-    width: 240px;
-    z-index: 1000;
-    box-shadow: 5px 0 15px rgba(0,0,0,0.1);
-  }
-  
-  .main-content {
-    margin-left: 60px;
-  }
-  
-  .sidebar:not(.collapsed) + .main-content {
-    margin-left: 240px;
-  }
-  
+
   .sidebar-toggle {
-    display: block !important;
-    color: gray !important;
+    display: inline-flex;
   }
 }
 
 @media (max-width: 768px) {
-  /* 在手机上完全隐藏侧边栏 */
-  .sidebar.collapsed {
-    transform: translateX(-100%);
-    width: 240px;
+  .app-footer {
+    height: auto;
+    min-height: var(--footer-height, 52px);
+    flex-wrap: wrap;
+    gap: 8px 16px;
   }
-  
-  .sidebar:not(.collapsed) {
-    transform: translateX(0);
+
+  .status-indicators {
+    gap: 10px;
   }
-  
-  .main-content {
-    margin-left: 0 !important;
-    padding-left: 0% !important;
-  }
-  
-  .sidebar-toggle {
-    display: block !important;
-    color: gray !important;
-  }
-}
-
-/* 主内容区扩展样式 */
-.main-content.expanded {
-  margin-left: 60px; /* 与折叠后的侧边栏宽度一致 */
-}
-
-/* 导航项工具提示 */
-.nav-item {
-  position: relative;
-}
-
-.tooltip {
-  position: absolute;
-  left: 60px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  white-space: nowrap;
-  z-index: 100;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
-}
-
-.nav-item:hover .tooltip {
-  opacity: 1;
-}
-
-/* 汉堡菜单按钮 */
-.sidebar-toggle {
-  display: none; /* 默认在桌面端隐藏 */
-  background: none;
-  border: none;
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-  margin-right: 15px;
-}
-
-/* 添加全局双击提示 */
-[data-dblclick-hint] {
-  position: relative;
-}
-
-[data-dblclick-hint]:after {
-  content: "双击查看详情";
-  position: absolute;
-  bottom: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #4285f4;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  opacity: 0;
-  transition: opacity 0.3s;
-  white-space: nowrap;
-}
-
-[data-dblclick-hint]:hover:after {
-  opacity: 1;
-}
-
-.number-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2c6fbb, #3a8ee0);
-  color: white;
-  font-weight: 600;
-  margin-right: 12px;
-  box-shadow: 0 4px 6px rgba(44, 111, 187, 0.2);
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.nav-item:hover .number-badge {
-  transform: scale(1.1);
-  box-shadow: 0 6px 10px rgba(44, 111, 187, 0.3);
-}
-
-.sidebar.collapsed .number-badge {
-  margin-right: 0;
-  margin-left: auto;
-  margin-right: auto;
 }
 </style>

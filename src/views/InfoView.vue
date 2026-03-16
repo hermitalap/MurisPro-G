@@ -9,14 +9,14 @@
           target="_blank" 
           class="promo-button primary"
         >
-          <i class="material-icons">play_circle</i>
+          <AppIcon  name="play_circle" />
           <span>视频教程</span>
         </a>
 
         <a 
           class="promo-button secondary"
         >
-          <i class="material-icons">menu_book</i>
+          <AppIcon  name="menu_book" />
           <span>使用文档</span>
         </a>
 
@@ -25,29 +25,30 @@
           target="_blank" 
           class="promo-button accent"
         >
-          <i class="material-icons">code</i>
+          <AppIcon  name="code" />
           <span>GitHub仓库</span>
         </a>
 
-        <button 
+        <n-button 
           class="promo-button qr-button"
+          tertiary
           @click="showQrModal = true"
         >
-          <i class="material-icons">qr_code_2</i>
+          <AppIcon  name="qr_code_2" />
           <span>实验动物交流群</span>
-        </button>
+        </n-button>
       </div>
     </main>
     <!-- 二维码弹窗 -->
     <div v-if="showQrModal" class="modal-overlay" @click="showQrModal = false">
       <div class="qr-modal" @click.stop>
-        <button class="close-btn" @click="showQrModal = false">
-          <i class="material-icons">close</i>
-        </button>
+        <n-button quaternary circle class="close-btn" @click="showQrModal = false">
+          <AppIcon  name="close" />
+        </n-button>
         <h3>扫码联系</h3>
-        <div class="qr-code-container">
+        <n-space justify="center" class="qr-code-container">
           <img src="@/assets/qrcode.png" alt="qrcode" style="max-height: 450px;">
-        </div>
+        </n-space>
         <p class="qr-tip">使用手机QQ扫描二维码</p>
       </div>
     </div>
@@ -94,20 +95,20 @@ const showQrModal = ref(false)
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--n-color) 90%, transparent);
   border-radius: 16px;
   text-decoration: none;
-  color: #333;
+  color: var(--n-text-color-1);
   transition: all 0.3s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--n-text-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--n-color) 80%, transparent);
   min-height: 120px;
 }
 
 .promo-button:hover {
   transform: translateY(-5px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
-  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 15px 40px color-mix(in srgb, var(--n-text-color) 20%, transparent);
+  background: var(--n-color);
 }
 
 .promo-button i {
@@ -121,10 +122,10 @@ const showQrModal = ref(false)
 }
 
 /* 不同按钮颜色 */
-.promo-button.primary i { color: #2196F3; }
-.promo-button.secondary i { color: #FF9800; }
-.promo-button.accent i { color: #9C27B0; }
-.promo-button.qr-button i { color: #4CAF50; }
+.promo-button.primary i { color: var(--n-info-color); }
+.promo-button.secondary i { color: var(--n-warning-color); }
+.promo-button.accent i { color: var(--n-primary-color); }
+.promo-button.qr-button i { color: var(--n-success-color); }
 
 /* 二维码弹窗样式 */
 .modal-overlay {
@@ -133,7 +134,7 @@ const showQrModal = ref(false)
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: color-mix(in srgb, var(--n-text-color) 70%, transparent);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -142,13 +143,13 @@ const showQrModal = ref(false)
 }
 
 .qr-modal {
-  background: white;
+  background: var(--n-color);
   border-radius: 20px;
   padding: 2rem;
   text-align: center;
   position: relative;
   max-height: 700px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--n-text-color) 30%, transparent);
   animation: modalAppear 0.3s ease-out;
 }
 
@@ -167,35 +168,28 @@ const showQrModal = ref(false)
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #666;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
   transition: background 0.3s;
 }
 
 .close-btn:hover {
-  background: #f5f5f5;
+  background: var(--n-color-embedded);
 }
 
 .qr-modal h3 {
   margin-bottom: 1.5rem;
-  color: #333;
+  color: var(--n-text-color-1);
   font-size: 1.5rem;
 }
 
 .qr-code-container {
   padding: 1rem;
-  background: #f8f8f8;
+  background: var(--n-color-embedded);
   border-radius: 12px;
   margin-bottom: 1rem;
 }
 
 .qr-tip {
-  color: #666;
+  color: var(--n-text-color-3);
   font-size: 0.9rem;
   margin: 0;
 }

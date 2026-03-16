@@ -81,20 +81,20 @@ git clone https://github.com/lanternx/animal_lab.git
 cd backend 
 ```
 
-3. 创建虚拟环境
+3. 使用 uv 创建开发环境
 
 ```cmd
-# 创建虚拟环境
-python -m venv venv
+# 安装 uv（若尚未安装）
+pip install uv
 
-# 激活虚拟环境
-venv\Scripts\activate.bat
+# 创建环境
+uv venv .venv
 
 # 安装依赖包
-pip install -r requirements.txt
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 ```
 
-注意：以后每次运行都需要激活虚拟环境，也即在命令行执行 `venv\Scripts\activate.bat`。
+注意：以后可以直接使用 `.venv\Scripts\python.exe` 运行后端，也可以先执行 `.venv\Scripts\activate.bat` 再使用 `python`。
 
 4. 利用 npm 安装前端：
 
@@ -113,9 +113,11 @@ npm run serve
 
 ```bash
 cd backend
-python app.py
+.venv\Scripts\python.exe app.py
 ```
 然后可在浏览器中打开本项目（localhost:8080）
+
+说明：如果后续需要导入旧版本数据库并执行升级迁移，还需要额外提供 `backend/migration_script.py`；普通开发启动不依赖这个文件。
 
 8. 打包为可执行文件：
 
@@ -139,26 +141,23 @@ git clone https://github.com/lanternx/animal_lab.git
 cd backend 
 ```
 
-3. 创建虚拟环境
+3. 使用 uv 创建开发环境
 
 ```bash
-# 创建虚拟环境
-python3 -m venv ~/.python/sglang
-
-# 激活虚拟环境
-source ~/.python/sglang/bin/activate
-
 # 安装 uv
 pip install uv
+
+# 创建环境
+uv venv .venv
 ```
 
-注意：以后每次运行都需要激活虚拟环境，也即在命令行执行 `source ~/.python/sglang/bin/activate`。
+注意：以后可以直接使用 `.venv/bin/python` 运行后端，也可以先执行 `source .venv/bin/activate`。
 
 
 4. 安装依赖包
 
 ```bash
-python3 -m uv pip install -r requirements.txt
+uv pip install --python .venv/bin/python -r requirements.txt
 ```
 
 5. 利用 npm 安装前端：
@@ -178,7 +177,7 @@ npm run serve
 
 ```bash
 cd backend
-python3 app.py
+.venv/bin/python app.py
 ```
 
 在 `localhost:8080` 上直接访问

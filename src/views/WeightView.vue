@@ -2,31 +2,35 @@
 <div class="main-content">
     <!-- 标题和操作按钮 -->
     <div class="section">
-    <div class="header-with-button">
+  <n-space justify="space-between" align="center" class="header-with-button">
         <h2>体重数据管理</h2>
-    </div>
+  </n-space>
     
     <!-- 搜索和筛选控件 -->
     <div class="search-controls">
         <div class="filter-group">
-        <label>小鼠ID:</label>
-        <input v-model="filters.mouse_id" placeholder="小鼠ID" @input="loadWeightRecords">
+        <n-form-item label="小鼠ID" label-placement="top">
+          <n-input v-model:value="filters.mouse_id" placeholder="小鼠ID" @update:value="loadWeightRecords" clearable />
+        </n-form-item>
         
-        <button @click="resetFilters" class="reset-btn">
-        <i class="material-icons">refresh</i>
+        <n-button quaternary @click="resetFilters">
+        <AppIcon  name="refresh" />
         重置
-        </button>
+        </n-button>
         </div>
 
         <div class="filter-group">
-        <label>日期范围:</label>
-        <input type="date" v-model="filters.start_date"> 至
-        <input type="date" v-model="filters.end_date">
+        <n-form-item label="日期范围" label-placement="top">
+          <div class="date-range">
+            <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.start_date" /> 至
+            <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.end_date" />
+          </div>
+        </n-form-item>
         
-        <button @click="loadWeightRecords" class="search-btn">
-        <i class="material-icons">search</i>
+        <n-button type="primary" secondary @click="loadWeightRecords">
+        <AppIcon  name="search" />
         搜索
-        </button>
+        </n-button>
         </div>
     </div>
     
@@ -37,118 +41,88 @@
     </div>
     
     <!-- 体重记录表格 -->
-    <table class="mouse-table">
-        <thead>
-        <tr>
-            <th @click="sortBy('mouse_id')">
-            小鼠ID <i :class="sortIcon('mouse_id')"></i>
-            </th>
-            <th @click="sortBy('birth_date')">
-            生日 <i :class="sortIcon('birth_date')"></i>
-            </th>
-            <th @click="sortBy('record_livingdays')">
-            记录年龄(天) <i :class="sortIcon('record_livingdays')"></i>
-            </th>
-            <th @click="sortBy('record_date')">
-            记录时间 <i :class="sortIcon('record_date')"></i>
-            </th>
-            <th @click="sortBy('weight')">
-            体重(g) <i :class="sortIcon('weight')"></i>
-            </th>
-            <th>操作</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="record in filteredRecords" :key="record.id">
-            <td>{{ record.mouse_info.id }}</td>
-            <td>{{ record.mouse_info.birth_date }}</td>
-            <td>{{ record.record_livingdays }}</td>
-            <td>{{ formatDate(record.record_date) }}</td>
-            <td>{{ record.weight }}</td>
-            <td>
-            <button @click="addRecord(record)" class="add-btn">
-                <i class="material-icons">add</i>
-            </button>
-            <button @click="editRecord(record)" class="edit-btn">
-                <i class="material-icons">edit</i>
-            </button>
-            <button @click="deleteRecord(record.id)" class="delete-btn">
-                <i class="material-icons">delete</i>
-            </button>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+    <div class="table-scroll">
+      <n-data-table
+        :columns="weightColumns"
+        :data="filteredRecords"
+        :bordered="false"
+        :single-line="false"
+        :row-key="(row) => row.id"
+      />
+    </div>
     
     <!-- 空状态 -->
     <div v-if="filteredRecords.length === 0 && !loading" class="empty-state">
-        <i class="material-icons">monitor_weight</i>
+        <AppIcon  name="monitor_weight" />
         <p>没有找到体重记录</p>
     </div>
     
     <!-- 分页控件 -->
     <div v-if="totalPages > 1" class="pagination">
-        <button @click="prevPage" :disabled="currentPage === 1">
-        <i class="material-icons">chevron_left</i>
-        </button>
-        <span>第 {{ currentPage }} 页，共 {{ totalPages }} 页</span>
-        <button @click="nextPage" :disabled="currentPage === totalPages">
-        <i class="material-icons">chevron_right</i>
-        </button>
+      <n-pagination
+        v-model:page="currentPage"
+        :page-count="totalPages"
+        :page-size="pageSize"
+        @update:page="handlePageChange"
+      />
     </div>
     </div>
     
     <!-- 添加/编辑体重记录模态框 -->
-    <div v-if="showAddModal || editingRecord" class="modal" @click.self="closeModal">
-    <div class="modal-content">
-        <div class="modal-header">
+    <n-modal v-model:show="showAddModal" :mask-closable="false">
+    <n-card class="modal-content" :bordered="false" role="dialog" aria-modal="true">
+        <n-space justify="space-between" align="center" class="modal-header">
         <h3>{{ editingRecord ? '编辑体重记录' : '添加体重记录' }}</h3>
-        <button class="close-btn" @click="closeModal">
-            <i class="material-icons">close</i>
-        </button>
-        </div>
+        <n-button quaternary circle @click="closeModal">
+          <AppIcon  name="close" />
+        </n-button>
+        </n-space>
         
         <div class="form-body">
         
         <div class="form-group">
-            <label>选中小鼠信息:</label>
-            <div class="mouse-info">
-            <p>ID: {{ selectedMouse.id }}</p>
-            <p>基因型: {{ selectedMouse.genotype }}</p>
-            <p>性别: {{ selectedMouse.sex === 'M' ? '雄性' : '雌性' }}</p>
-            <p>生日: {{ formatDate(selectedMouse.birth_date) }}</p>
-            </div>
+            <n-form-item label="选中小鼠信息" label-placement="top">
+              <div class="mouse-info">
+              <p>ID: {{ selectedMouse.id }}</p>
+              <p>基因型: {{ selectedMouse.genotype }}</p>
+              <p>性别: {{ selectedMouse.sex === 'M' ? '雄性' : '雌性' }}</p>
+              <p>生日: {{ formatDate(selectedMouse.birth_date) }}</p>
+              </div>
+            </n-form-item>
         </div>
         
         <div class="form-group">
-            <label>记录日期:</label>
-            <input type="date" v-model="newRecord.record_date">
+            <n-form-item label="记录日期" label-placement="top">
+              <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="newRecord.record_date" />
+            </n-form-item>
         </div>
         
         <div class="form-group">
-            <label>体重(g):</label>
-            <input type="number" step="0.01" v-model="newRecord.weight">
+            <n-form-item label="体重(g)" label-placement="top">
+              <n-input-number v-model:value="newRecord.weight" :min="0" :precision="2" :step="0.01" style="width: 100%;" />
+            </n-form-item>
         </div>
         </div>
         
-        <div class="button-group">
-        <button @click="saveRecord" :disabled="saving" class="primary-btn">
-            <i class="material-icons">{{ editingRecord ? 'save' : 'add' }}</i>
+        <n-space justify="end" class="button-group">
+        <n-button type="primary" @click="saveRecord" :disabled="saving">
+            <AppIcon  :name="editingRecord ? 'save' : 'add'" />
             <span v-if="saving">保存中...</span>
             <span v-else>{{ editingRecord ? '保存' : '添加' }}</span>
-        </button>
-        <button @click="closeModal" class="cancel-btn">
-            <i class="material-icons">cancel</i>
+        </n-button>
+        <n-button tertiary @click="closeModal">
+            <AppIcon  name="cancel" />
             取消
-        </button>
-        </div>
-    </div>
-    </div>
+        </n-button>
+        </n-space>
+      </n-card>
+    </n-modal>
 </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { h, ref, computed, onMounted, watch } from 'vue'
+import { NButton, NSpace } from 'naive-ui'
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
 import axios from 'axios'
@@ -165,8 +139,8 @@ const selectedMouse = ref(null)
 // 筛选和排序
 const filters = ref({
 mouse_id: '',
-start_date: '',
-end_date: ''
+start_date: null,
+end_date: null
 })
 
 const sortField = ref('record_date')
@@ -185,6 +159,69 @@ mouse_id: '',
 record_date: new Date().toISOString().split('T')[0],
 weight: ''
 })
+
+const getSortValue = (record, field) => {
+if (field === 'mouse_id') return record.mouse_info?.id || ''
+if (field === 'birth_date') return record.mouse_info?.birth_date || ''
+return record[field]
+}
+
+const weightColumns = computed(() => [
+{
+  title: '小鼠ID',
+  key: 'mouse_id',
+  sorter: (a, b) => String(getSortValue(a, 'mouse_id')).localeCompare(String(getSortValue(b, 'mouse_id'))),
+  render: (row) => row.mouse_info?.id || ''
+},
+{
+  title: '生日',
+  key: 'birth_date',
+  sorter: (a, b) => String(getSortValue(a, 'birth_date')).localeCompare(String(getSortValue(b, 'birth_date'))),
+  render: (row) => formatDate(row.mouse_info?.birth_date)
+},
+{
+  title: '记录年龄(天)',
+  key: 'record_livingdays',
+  sorter: (a, b) => Number(a.record_livingdays || 0) - Number(b.record_livingdays || 0)
+},
+{
+  title: '记录时间',
+  key: 'record_date',
+  sorter: (a, b) => new Date(a.record_date).getTime() - new Date(b.record_date).getTime(),
+  render: (row) => formatDate(row.record_date)
+},
+{
+  title: '体重(g)',
+  key: 'weight',
+  sorter: (a, b) => Number(a.weight || 0) - Number(b.weight || 0)
+},
+{
+  title: '操作',
+  key: 'actions',
+  render: (row) => h(NSpace, { size: 6 }, {
+  default: () => [
+    h(NButton, {
+    circle: true,
+    quaternary: true,
+    type: 'primary',
+    onClick: () => addRecord(row)
+    }, { default: () => '+' }),
+    h(NButton, {
+    circle: true,
+    quaternary: true,
+    type: 'warning',
+    onClick: () => editRecord(row)
+    }, { default: () => 'E' }),
+    h(NButton, {
+    circle: true,
+    quaternary: true,
+    type: 'error',
+    onClick: () => deleteRecord(row.id)
+    }, { default: () => 'D' })
+  ]
+  })
+}
+])
 
 // 生命周期
 onMounted(() => {
@@ -255,7 +292,7 @@ try {
 const addRecord = (record) => {
 newRecord.value = {
     mouse_id: record.mouse_id,
-    record_date: new Date(),
+  record_date: new Date().toISOString().split('T')[0],
     weight: ''
 }
 selectedMouse.value = record.mouse_info
@@ -296,9 +333,14 @@ selectedMouse.value = null
 const resetFilters = () => {
 filters.value = {
     mouse_id: '',
-    start_date: '',
-    end_date: ''
+  start_date: null,
+  end_date: null
 }
+loadWeightRecords()
+}
+
+const handlePageChange = (page) => {
+currentPage.value = page
 loadWeightRecords()
 }
 
@@ -326,11 +368,16 @@ filteredRecords.value = [...weightRecords.value].sort((a, b) => {
 })
 }
 
-const sortIcon = (field) => {
-if (sortField.value !== field) return 'material-icons inactive-icon'
+const sortIconClass = (field) => {
+if (sortField.value !== field) return 'sort-icon inactive-icon'
 return sortDirection.value === 'asc' 
-    ? 'material-icons' 
-    : 'material-icons rotated-icon'
+  ? 'sort-icon'
+  : 'sort-icon rotated-icon'
+}
+
+const sortIconName = (field) => {
+if (sortField.value !== field) return 'arrow_downward'
+return sortDirection.value === 'asc' ? 'arrow_upward' : 'arrow_downward'
 }
 
 const formatDate = (dateString) => {
@@ -356,7 +403,7 @@ if (currentPage.value > 1) {
 // 监听筛选条件变化
 watch(filters, () => {
 currentPage.value = 1
-loadWeightRecords
+loadWeightRecords()
 }, { deep: true })
 </script>
 
@@ -364,9 +411,9 @@ loadWeightRecords
 .section {
   margin-bottom: 30px;
   padding: 25px;
-  background: #ffffff;
+  background: var(--n-color);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   position: relative;
   overflow: hidden;
 }
@@ -384,14 +431,14 @@ loadWeightRecords
 .header-with-button h2 {
   font-size: 1.8rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--n-text-color-1);
   margin: 0;
 }
 
 /* 复用MiceView的样式，添加一些特定于体重记录的样式 */
 
 .mouse-info {
-background: #f5f7fa;
+background: var(--n-hover-color);
 padding: 12px;
 border-radius: 6px;
 margin-top: 8px;
@@ -402,6 +449,14 @@ margin: 4px 0;
 font-size: 14px;
 }
 
+.table-scroll {
+overflow-x: auto;
+border: 1px solid var(--n-border-color);
+border-radius: 12px;
+background: var(--n-color);
+box-shadow: inset 0 1px 0 color-mix(in srgb, var(--n-color) 90%, transparent);
+}
+
 .pagination {
 display: flex;
 justify-content: center;
@@ -410,48 +465,10 @@ margin-top: 20px;
 gap: 15px;
 }
 
-.pagination button {
-padding: 8px 12px;
-background: #f8f9fa;
-border: 1px solid #dcdfe6;
-border-radius: 4px;
-cursor: pointer;
-}
-
-.pagination button:disabled {
-opacity: 0.5;
-cursor: not-allowed;
-}
-
-.add-btn, .edit-btn, .delete-btn {
-padding: 6px;
-border: none;
-border-radius: 4px;
-cursor: pointer;
-margin-right: 5px;
-}
-
-.add-btn {
-background: #23d03d;
-color: white;
-}
-
-.edit-btn {
-background: #1890ff;
-color: white;
-}
-
-.delete-btn {
-background: #f5222d;
-color: white;
-}
-
-.edit-btn:hover {
-background: #40a9ff;
-}
-
-.delete-btn:hover {
-background: #ff4d4f;
+.actions-cell {
+display: flex;
+align-items: center;
+gap: 6px;
 }
 
 /* 响应式设计 */
@@ -494,51 +511,37 @@ background: #ff4d4f;
 
 .mouse-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 0.95rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   cursor: pointer;
   position: relative;
   user-select: none;
 }
 
 .mouse-table th {
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--n-color-embedded);
+  color: var(--n-text-color-3);
   font-weight: 600;
   text-align: left;
   padding: 14px 12px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--n-border-color);
 }
 
 .mouse-table td {
   padding: 12px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-/* 模态框样式 */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(3px);
+  border-bottom: 1px solid var(--n-border-color);
 }
 
 .modal-content {
-  background: white;
+  background: var(--n-color);
   border-radius: 12px;
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 25px color-mix(in srgb, var(--n-text-color) 20%, transparent);
 }
 
 .modal-header {
@@ -546,31 +549,12 @@ background: #ff4d4f;
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #eaeaea;
+  border-bottom: 1px solid var(--n-border-color);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 1.4rem;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #718096;
-  padding: 5px;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: #f8f9fa;
-  color: #4a5568;
 }
 
 .form-body {
@@ -585,7 +569,7 @@ background: #ff4d4f;
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #4a5568;
+  color: var(--n-text-color-2);
 }
 
 .form-group input,
@@ -593,7 +577,7 @@ background: #ff4d4f;
 .form-group textarea {
   width: 100%;
   padding: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--n-border-color);
   border-radius: 6px;
   font-size: 1rem;
   transition: all 0.3s;
@@ -602,9 +586,9 @@ background: #ff4d4f;
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-  border-color: #4a9bff;
+  border-color: var(--n-primary-color);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(74, 155, 255, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 20%, transparent);
 }
 
 .form-group textarea {
@@ -617,48 +601,7 @@ background: #ff4d4f;
   justify-content: flex-end;
   gap: 12px;
   padding: 20px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.primary-btn {
-  padding: 10px 20px;
-  background: #4a9bff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: background 0.3s;
-}
-
-.primary-btn:hover:not(:disabled) {
-  background: #3a8beb;
-}
-
-.primary-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.cancel-btn {
-  padding: 10px 20px;
-  background: #f8fafc;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: background 0.3s;
-}
-
-.cancel-btn:hover {
-  background: #e2e8f0;
+  border-top: 1px solid var(--n-border-color);
 }
 
 /* 加载状态 */
@@ -668,7 +611,7 @@ background: #ff4d4f;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--n-color) 80%, transparent);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -677,8 +620,8 @@ background: #ff4d4f;
 }
 
 .loading-spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #4a9bff;
+  border: 4px solid color-mix(in srgb, var(--n-text-color) 10%, transparent);
+  border-left-color: var(--n-primary-color);
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -694,13 +637,18 @@ background: #ff4d4f;
 .empty-state {
   text-align: center;
   padding: 50px 20px;
-  color: #718096;
+  color: var(--n-text-color-3);
 }
 
-.empty-state .material-icons {
+.empty-state .n-icon {
   font-size: 60px;
-  color: #cbd5e0;
+  color: var(--n-border-color);
   margin-bottom: 15px;
+}
+
+.sort-icon {
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 .empty-state p {
@@ -714,46 +662,20 @@ background: #ff4d4f;
   gap: 12px;
   margin-bottom: 25px;
   flex-wrap: wrap;
-  align-items: center;
-}
-
-.search-btn, .reset-btn {
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  transition: all 0.3s;
-}
-
-.search-btn {
-  background: #f5f7fa;
-  color: #606266;
-  border: 1px solid #dcdfe6;
-}
-
-.search-btn:hover {
-  background: #e4e7ed;
-  color: #4a9bff;
-}
-
-.reset-btn {
-  background: #f8f9fa;
-  color: #606266;
-  border: 1px solid #dcdfe6;
-}
-
-.reset-btn:hover {
-  background: #e2e8f0;
+  align-items: stretch;
 }
 
 .filter-group {
 display: flex;
 align-items: center;
-margin-right: 15px;
+flex: 1 1 320px;
+flex-wrap: wrap;
 gap: 12px;
+margin-right: 0;
+padding: 14px 16px;
+background: var(--n-color-embedded);
+border: 1px solid var(--n-border-color);
+border-radius: 12px;
 }
 
 .filter-group label {
@@ -763,25 +685,41 @@ white-space: nowrap;
 }
 
 .filter-group input {
-  flex-grow: 1;
+  flex: 1 1 150px;
   padding: 10px 15px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--n-border-color);
   border-radius: 6px;
   font-size: 1rem;
-  min-width: 250px;
+  min-width: 0;
   transition: border 0.3s;
 }
 
-.filter-group select {
-padding: 8px;
-border: 1px solid #dcdfe6;
-border-radius: 4px;
-font-size: 14px;
+.filter-group input:focus {
+  border-color: var(--n-primary-color);
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 20%, transparent);
 }
 
-.filter-group input:focus {
-  border-color: #4a9bff;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(74, 155, 255, 0.2);
+@media (max-width: 768px) {
+.section {
+  padding: 18px;
+}
+
+.filter-group {
+  padding: 12px;
+}
+
+.filter-group label {
+  width: 100%;
+  margin-right: 0;
+}
+
+.filter-group input {
+  width: 100%;
+}
+
+.mouse-table {
+  min-width: 680px;
+}
 }
 </style>

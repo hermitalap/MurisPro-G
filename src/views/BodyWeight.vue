@@ -1,8 +1,8 @@
 <template>
 <div class="main-content">
-    <div class="content-header">
+    <n-space justify="space-between" align="center" class="content-header">
     <h1 class="page-title">小鼠体重管理</h1>
-    </div>
+    </n-space>
     
     <div class="card">
     <div class="card-header">
@@ -11,38 +11,40 @@
     <div class="card-body">
         <!-- 控制按钮区域 -->
         <div class="d-flex mb-4">
-        <select v-model="showChartType" style="min-width:200px;">
-            <option value="pred">使用预设分组</option>
-            <option value="temp">使用临时分组</option>
-        </select>
-        <button class="btn btn-primary" @click="openRecordModal">
-            <i class="material-icons btn-icon">add</i>
+        <n-select
+          v-model:value="showChartType"
+          :options="chartTypeOptions"
+          style="min-width: 200px;"
+        />
+        <n-button type="primary" @click="openRecordModal">
+            <AppIcon  class="btn-icon" name="add" />
             录入体重
-        </button>
+        </n-button>
         </div>
         <div v-if="showChartType === 'pred'" class="d-flex justify-content-between mb-4">
-            <select v-model="selectedPredefinedGroupId" style="min-width:100px;">
-                <option v-if="predefinedGroups.length === 0" :value='null' :disabled="true">---请在设置中确定预设分组---</option>
-                <option v-for="group in predefinedGroups" :value="group.id" :key="group.id">
-                    {{ group.name }}
-                </option>
-            </select>
-            <button class="btn btn-primary me-2" @click="showChart('pred')">
-            <i class="material-icons">insights</i>
+            <n-select
+              v-model:value="selectedPredefinedGroupId"
+              :options="predefinedGroupOptions"
+              placeholder="请在设置中确定预设分组"
+              :disabled="predefinedGroups.length === 0"
+              style="min-width: 180px;"
+            />
+            <n-button type="primary" @click="showChart('pred')">
+            <AppIcon  name="insights" />
             以预设分组生成图表
-            </button>
+            </n-button>
         </div>
         <div v-if="showChartType === 'temp'" class="d-flex justify-content-between mb-4">
-            <button class="btn btn-primary me-2" @click="showChart('temp')">
-            <i class="material-icons">insights</i>
+            <n-button type="primary" @click="showChart('temp')">
+            <AppIcon  name="insights" />
             以临时分组生成图表
-            </button>
-            <button id="addGroupBtn" class="btn btn-sm btn-outline" @click="addGroup">
-            <i class="material-icons">add</i> 添加分组
-            </button>
-            <button id="addGroupBtn" class="btn btn-sm btn-danger" @click="clearGroups">
-            <i class="material-icons">add</i> 清空分组
-            </button>
+            </n-button>
+            <n-button id="addGroupBtn" secondary @click="addGroup">
+            <AppIcon  name="add" /> 添加分组
+            </n-button>
+            <n-button id="addGroupBtn" type="error" @click="clearGroups">
+            <AppIcon  name="add" /> 清空分组
+            </n-button>
         </div>
         
         <!-- 分组设置 -->
@@ -57,31 +59,19 @@
                 <div class="card">
                 <div class="card-header compact-header">
                     <span>分组 {{ index }}</span>
-                    <button @click="removeGroup(index)"  v-if="tempGroups.length > 1">
-                        <i class="material-icons">close</i>
-                    </button>
+                    <n-button quaternary circle @click="removeGroup(index)"  v-if="tempGroups.length > 1">
+                        <AppIcon  name="close" />
+                    </n-button>
                 </div>
                 <div class="card-body">
                     <div class="mb-2">
                     <label class="form-label">性别</label>
                     <div class="d-flex flex-wrap">
                         <div class="form-check me-3">
-                        <input 
-                            class="form-check-input" 
-                            type="checkbox" 
-                            v-model="group.sex.M" 
-                            :id="'group'+index+'SexM'"
-                        >
-                        <label class="form-check-label" :for="'group'+index+'SexM'">雄性</label>
+                        <n-checkbox v-model:checked="group.sex.M">雄性</n-checkbox>
                         </div>
                         <div class="form-check">
-                        <input 
-                            class="form-check-input" 
-                            type="checkbox" 
-                            v-model="group.sex.F" 
-                            :id="'group'+index+'SexF'"
-                        >
-                        <label class="form-check-label" :for="'group'+index+'SexF'">雌性</label>
+                        <n-checkbox v-model:checked="group.sex.F">雌性</n-checkbox>
                         </div>
                     </div>
                     </div>
@@ -92,26 +82,22 @@
                             <div v-for="(combinations, locus) in geneStore.allGenotypes" :key="locus" class="locus-item">
                             <div class="locus-header">
                                 <label class="locus-label">
-                                <input 
-                                    type="checkbox" 
-                                    :value="locus" 
-                                    v-model="group.genotype"
-                                    @change="onLocusSelect(index, locus)"
+                                <n-checkbox
+                                    :checked="group.genotype.includes(locus)"
+                                    @update:checked="onLocusSelect(index, locus)"
                                     class="locus-checkbox"
-                                >
+                                />
                                 <span class="locus-name">{{ locus }}</span>
                                 </label>
                             </div>
                             <div v-if="combinations && combinations.length" class="combinations-list">
                                 <div v-for="combination in combinations" :key="combination" class="combination-item">
                                 <label class="combination-label">
-                                    <input 
-                                    type="checkbox" 
-                                    :value="`${locus}<sup>${combination}</sup>`"
-                                    v-model="group.genotype"
-                                    @change="onCombinationSelect(index, locus, combination)"
+                                    <n-checkbox
+                                    :checked="group.genotype.includes(`${locus}<sup>${combination}</sup>`)"
+                                    @update:checked="onCombinationSelect(index, locus, combination)"
                                     class="combination-checkbox"
-                                    >
+                                    />
                                     <span class="combination-name" v-html="`${locus}<sup>${combination}</sup>`"></span>
                                 </label>
                                 </div>
@@ -129,7 +115,7 @@
                 class="group-card add-card"
                 @click="addGroup"
             >
-                <i class="material-icons">add</i>
+                <AppIcon  name="add" />
                 <span>添加分组</span>
             </div>
             </div>
@@ -139,28 +125,18 @@
         <div class="chart-controls" v-if="hasData">
             <div class="control-group">
                 <span class="control-label">平均线计算方式</span>
-                <div>
-                    <div class="form-check">
-                        <input type="radio" id="monthlyAverage" v-model="averageMethod" value="monthly" class="form-check-input">
-                        <label for="monthlyAverage" class="form-check-label">按月平均</label>
-                    </div>
-                    <div class="form-check">
-                        <input type="radio" id="weeklyAverage" v-model="averageMethod" value="weekly" class="form-check-input">
-                        <label for="weeklyAverage" class="form-check-label">按周平均</label>
-                    </div>
-                    <div class="form-check">
-                        <input type="radio" id="dailyAverage" v-model="averageMethod" value="daily" class="form-check-input">
-                        <label for="dailyAverage" class="form-check-label">按天平均</label>
-                    </div>
-                </div>
+                <n-radio-group v-model:value="averageMethod" class="average-method-group">
+                    <n-radio value="monthly">按月平均</n-radio>
+                    <n-radio value="weekly">按周平均</n-radio>
+                    <n-radio value="daily">按天平均</n-radio>
+                </n-radio-group>
             </div>
             
             <div class="control-group">
                 <span class="control-label">趋势线拟合</span>
                 <div>
                     <div class="form-check">
-                        <input type="checkbox" id="showTrendLine" v-model="showTrendLine" class="form-check-input">
-                        <label for="showTrendLine" class="form-check-label">显示趋势线</label>
+                        <n-checkbox v-model:checked="showTrendLine">显示趋势线</n-checkbox>
                     </div>
                 </div>
             </div>
@@ -169,8 +145,7 @@
                 <span class="control-label">置信区间</span>
                 <div>
                     <div class="form-check">
-                        <input type="checkbox" id="showConfidenceBand" v-model="showConfidenceBand" class="form-check-input">
-                        <label for="showConfidenceBand" class="form-check-label">显示置信区间</label>
+                        <n-checkbox v-model:checked="showConfidenceBand">显示置信区间</n-checkbox>
                     </div>
                 </div>
             </div>
@@ -179,8 +154,7 @@
                 <span class="control-label">散点图</span>
                 <div>
                     <div class="form-check">
-                        <input type="checkbox" id="showDot" v-model="showDot" class="form-check-input">
-                        <label for="showDot" class="form-check-label">显示散点</label>
+                        <n-checkbox v-model:checked="showDot">显示散点</n-checkbox>
                     </div>
                 </div>
             </div>
@@ -195,7 +169,7 @@
             <!-- 无数据提示 -->
         <div v-else class="text-center py-5">
             <div class="mb-3">
-                <i class="material-icons" style="font-size: 3rem; color: #6c757d;">bar_chart</i>
+                <AppIcon style="font-size: 3rem; color: var(--n-text-color-3);" name="bar_chart" />
             </div>
             <h5 class="text-muted">请设置分组条件并点击"生成图表"按钮</h5>
         </div>
@@ -203,81 +177,51 @@
     </div>
     
     <!-- 录入模态框 -->
-    <div v-if="showModal">
-        <div class="dialog-container">
-            <div class="modal-header">
+    <n-modal v-model:show="showModal" :mask-closable="true" @mask-click="closeModal">
+        <n-card class="dialog-container" :bordered="false" role="dialog" aria-modal="true">
+            <n-space justify="space-between" align="center" class="modal-header">
             <h5 class="modal-title">批量录入体重信息</h5>
-            <button type="button" class="btn-close" @click="closeModal">
-                <i class="material-icons">close</i>
-            </button>
-            </div>
+            <n-button quaternary circle @click="closeModal">
+                <AppIcon  name="close" />
+            </n-button>
+            </n-space>
             <div class="modal-body">
             <div class="form-group">
                 <label for="recordDate" class="form-label">记录日期</label>
-                <input type="date" class="form-control" id="recordDate" v-model="recordDate">
+                <n-date-picker type="date" value-format="yyyy-MM-dd" id="recordDate" v-model:formatted-value="recordDate" />
             </div>
             
             <div class="input-table">
                 <div class="table-wrapper">
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th>区域</th>
-                        <th>笼位</th>
-                        <th>小鼠ID</th>
-                        <th>基因型</th>
-                        <th>性别</th>
-                        <th>体重 (g)</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr 
-                        v-for="(mouse, index) in lived_mice" 
-                        :key="mouse.id"
-                    >
-                        <td>{{ mouse.section }}</td>
-                        <td>{{ mouse.cage_name }}</td>
-                        <td>{{ mouse.id }}</td>
-                        <td v-html="mouse.genotype"></td>
-                        <td>{{ mouse.sex }}</td>
-                        <td>
-                        <input 
-                            type="number" 
-                            step="0.01" 
-                            class="form-control weight-input" 
-                            placeholder="输入体重"
-                            v-model="weightValues[mouse.tid]"
-                            :tabindex="index + 1"
-                            @keydown.tab.prevent="handleTab(index)"
-                            @wheel="$event.preventDefault()"
-                            @focus="$event.target.select()"
-                        >
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                    <n-data-table
+                        :columns="weightInputColumns"
+                        :data="weightInputRows"
+                        :single-line="false"
+                        :bordered="false"
+                        max-height="420"
+                        :row-key="(row) => row.id"
+                    />
                 </div>
             </div>
             
             <div class="d-grid mt-3">
-                <button id="saveBtn" class="btn btn-primary" @click="handleSaveWeight">
-                <i class="material-icons">save</i> 保存体重记录
-                </button>
+                <n-button id="saveBtn" type="primary" @click="handleSaveWeight">
+                <AppIcon  name="save" /> 保存体重记录
+                </n-button>
             </div>
             </div>
-        </div>
-        <div class="modal-backdrop" @click.self="closeModal"></div>
-    </div>
+        </n-card>
+    </n-modal>
 </div>
 
     <!-- 确认对话框 -->
-    <div v-if="showConfirmModal">
-        <div class="confirm-dialog">
+    <n-modal v-model:show="showConfirmModal" :mask-closable="true" @mask-click="cancelConfirm">
+        <n-card class="confirm-dialog" :bordered="false" role="dialog" aria-modal="true">
         <div class="confirm-header">
             <h5 class="confirm-title">确认体重记录</h5>
-            <button type="button" class="btn-close" @click="cancelConfirm">
-            <i class="material-icons">close</i>
-            </button>
+            <n-button quaternary circle @click="cancelConfirm">
+            <AppIcon  name="close" />
+            </n-button>
         </div>
         <div class="confirm-body">
             <div class="confirm-info">
@@ -290,18 +234,18 @@
                 <span class="info-value">{{ confirmRecordCount }} 条</span>
             </div>
             </div>
-            <div class="confirm-actions">
-            <button class="btn btn-outline" @click="cancelConfirm">取消</button>
-            <button class="btn btn-primary" @click="confirmSave" :disabled="isSaving">{{isSaving? "保存中...": "确认保存"}}</button>
-            </div>
+            <n-space justify="end" class="confirm-actions">
+            <n-button secondary @click="cancelConfirm">取消</n-button>
+            <n-button type="primary" @click="confirmSave" :disabled="isSaving">{{isSaving? "保存中...": "确认保存"}}</n-button>
+            </n-space>
         </div>
-        </div>
-        <div class="confirm-backdrop" @click.self="cancelConfirm"></div>
-    </div>
+        </n-card>
+    </n-modal>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, watch } from 'vue'
+import { h, ref, computed, nextTick, onMounted, watch } from 'vue'
+import { NInputNumber } from 'naive-ui'
 import axios from 'axios'
 import Chart from 'chart.js/auto'
 import regression from 'regression'
@@ -316,6 +260,13 @@ const { addGroup, removeGroup, clearGroups, getTempGroups, onLocusSelect, onComb
 const experimentStore = useExperimentStore()
 const { predefinedGroups, selectedPredefinedGroupId, showChartType } = storeToRefs(experimentStore)
 const { getPredefinedGroups } = experimentStore
+const chartTypeOptions = [
+    { label: '使用预设分组', value: 'pred' },
+    { label: '使用临时分组', value: 'temp' }
+]
+const predefinedGroupOptions = computed(() =>
+    predefinedGroups.value.map(group => ({ label: group.name, value: group.id }))
+)
 
 // 小鼠数据
 const lived_mice = ref([])
@@ -342,6 +293,56 @@ const confirmDate = ref('')
 const confirmRecordCount = ref(0)
 const isSaving = ref(false)
 
+const weightInputRows = computed(() => lived_mice.value.map((mouse, index) => ({ ...mouse, _index: index })))
+
+const weightInputColumns = computed(() => [
+{
+    title: '区域',
+    key: 'section'
+},
+{
+    title: '笼位',
+    key: 'cage_name'
+},
+{
+    title: '小鼠ID',
+    key: 'id'
+},
+{
+    title: '基因型',
+    key: 'genotype',
+    render: (row) => h('span', { innerHTML: row.genotype || '' })
+},
+{
+    title: '性别',
+    key: 'sex'
+},
+{
+    title: '体重 (g)',
+    key: 'weight',
+    render: (row) => h(NInputNumber, {
+    class: 'weight-input',
+    placeholder: '输入体重',
+    value: weightValues.value[row.tid],
+    'onUpdate:value': (value) => {
+        weightValues.value[row.tid] = value
+    },
+    tabindex: row._index + 1,
+    precision: 2,
+    step: 0.01,
+    min: 0,
+    onKeydown: (event) => {
+        if (event.key === 'Tab') {
+        event.preventDefault()
+        handleTab(row._index)
+        }
+    },
+    onWheel: (event) => event.preventDefault(),
+    style: 'width: 100%;'
+    })
+}
+])
+
 // 初始化方法
 const init = async () => {
 try {
@@ -362,7 +363,7 @@ const openRecordModal = () => {
     showModal.value = true
     nextTick(() => {
         // 自动聚焦到第一个输入框
-        const firstInput = document.querySelector('.weight-input')
+        const firstInput = document.querySelector('.weight-input input')
         if (firstInput) firstInput.focus()
     })
 }
@@ -907,15 +908,15 @@ init()
 .card {
 margin-bottom: 1.5rem;
 border-radius: 8px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 background-color: white;
 overflow: hidden;
 }
 
 .card-header {
 padding: 1rem;
-background-color: #f8f9fa;
-border-bottom: 1px solid #dee2e6;
+background-color: var(--n-color-embedded);
+border-bottom: 1px solid var(--n-border-color);
 font-weight: 600;
 }
 
@@ -957,26 +958,21 @@ width: 100%;
 padding: 0.5rem;
 font-size: 1rem;
 line-height: 1.5;
-color: #495057;
-background-color: #fff;
-border: 1px solid #ced4da;
+color: var(--n-text-color-2);
+background-color: var(--n-color);
+border: 1px solid var(--n-border-color);
 border-radius: 4px;
 transition: border-color 0.15s;
 }
 
 .dialog-container {
-position: fixed;
-top: 50%;
-left: 50%;
-transform: translate(-50%, -50%);
-z-index: 1001; /* 高于遮罩层 */
-background-color: white;
+background-color: var(--n-color);
 border-radius: 8px;
 width: 90%;
 max-width: 800px;
 max-height: 90vh;
 overflow: auto;
-box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+box-shadow: 0 4px 20px color-mix(in srgb, var(--n-text-color) 20%, transparent);
 }
 
 .modal-header {
@@ -1015,23 +1011,23 @@ margin-bottom: 1rem;
 .table th, 
 .table td {
 padding: 0.75rem;
-border: 1px solid #dee2e6;
+border: 1px solid var(--n-border-color);
 text-align: left;
 }
 
 .table th {
-background-color: #f8f9fa;
+background-color: var(--n-color-embedded);
 font-weight: 600;
 }
 
 .table tbody tr:hover {
-background-color: #f5f7fa;
+background-color: var(--n-hover-color);
 }
 
 .weight-input {
 width: 100%;
 padding: 0.5rem;
-border: 1px solid #ced4da;
+border: 1px solid var(--n-border-color);
 border-radius: 4px;
 font-size: 1rem;
 }
@@ -1065,7 +1061,7 @@ margin-right: 0.5rem;
     gap: 30px;
     margin-bottom: 20px;
     padding: 15px;
-    background-color: #f8f9fa;
+    background-color: var(--n-color-embedded);
     border-radius: 8px;
 }
 
@@ -1113,13 +1109,13 @@ margin-right: 0.5rem;
   height: 210px;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   transition: all 0.3s ease;
 }
 
 .group-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 10px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
 /* 添加分组卡片样式 */
@@ -1128,25 +1124,25 @@ margin-right: 0.5rem;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #f8f9fa;
-  border: 1px dashed #ced4da;
+  background-color: var(--n-color-embedded);
+  border: 1px dashed var(--n-border-color);
   cursor: pointer;
 }
 
 .add-card:hover {
-  background-color: #e9ecef;
-  border-color: #adb5bd;
+  background-color: var(--n-color-embedded);
+  border-color: var(--n-text-color-3);
 }
 
 .add-card i {
   font-size: 2rem;
   margin-bottom: 8px;
-  color: #6c757d;
+  color: var(--n-text-color-3);
 }
 
 .add-card span {
   font-weight: 500;
-  color: #495057;
+  color: var(--n-text-color-2);
 }
 
 /* 卡片内部调整 */
@@ -1193,26 +1189,13 @@ margin-right: 0.5rem;
   }
 }
 
-.modal-backdrop {
-position: fixed;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background-color: rgba(0, 0, 0, 0.5);
-display: flex;
-justify-content: center;
-align-items: center;
-z-index: 950;
-}
-
 .compact-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.3rem 0.5rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background-color: var(--n-color-embedded);
+  border-bottom: 1px solid var(--n-color-embedded);
   font-size: 0.85rem;
   font-weight: 600;
 }
@@ -1221,13 +1204,13 @@ z-index: 950;
   background: none;
   border: none;
   padding: 0;
-  color: #6c757d;
+  color: var(--n-text-color-3);
   cursor: pointer;
   font-size: 0.9rem;
 }
 
 .compact-header button:hover {
-  color: #dc3545;
+  color: var(--n-error-color);
 }
 
 .text-center {
@@ -1235,27 +1218,22 @@ z-index: 950;
 }
 
 .text-muted {
-  color: #6c757d;
+  color: var(--n-text-color-3);
 }
 
 /* 确认对话框样式 */
 .confirm-dialog {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1003; /* 高于其他模态框 */
-  background-color: white;
+    background-color: var(--n-color);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--n-text-color) 20%, transparent);
 }
 
 .confirm-header {
   padding: 1rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
+  background-color: var(--n-color-embedded);
+  border-bottom: 1px solid var(--n-border-color);
   border-radius: 8px 8px 0 0;
   display: flex;
   justify-content: space-between;
@@ -1291,7 +1269,7 @@ z-index: 950;
 }
 
 .info-value {
-  color: #495057;
+  color: var(--n-text-color-2);
 }
 
 .confirm-actions {
@@ -1300,13 +1278,4 @@ z-index: 950;
   gap: 10px;
 }
 
-.confirm-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1002;
-}
 </style>

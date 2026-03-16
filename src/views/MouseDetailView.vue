@@ -1,26 +1,25 @@
 <template>
 <div class="main-content">
-<!-- 背景遮罩（主模态） -->
-<div class="modal-overlay" @click.self="closeMainModal"></div>
-
-<!-- 主内容区 -->
-<div class="mouse-detail-modal">
-  <div class="page-header">
-    <button class="back-button" @click="closeMainModal">
-      <i class="material-icons">arrow_back</i>
+<n-modal :show="true" @mask-click="closeMainModal">
+<n-card class="mouse-detail-modal" :bordered="false" role="dialog" aria-modal="true">
+  <n-space justify="space-between" align="center" class="page-header">
+    <n-button class="back-button" type="primary" @click="closeMainModal">
+      <AppIcon  name="arrow_back" />
       返回
-    </button>
+    </n-button>
     <!-- 添加返回上一只按钮 -->
-    <button 
+    <n-button 
       v-if="prevMouseId"
-      class="back-button" 
+      class="back-button"
+      secondary
+      type="primary"
       @click="navigateToMouse(prevMouseId)"
     >
-      <i class="material-icons">replay</i>
+      <AppIcon  name="replay" />
       返回上一只
-    </button>
+    </n-button>
     <h2>小鼠详情 #{{ mouseData.id }}</h2>
-  </div>
+  </n-space>
 
   <div class="detail-grid">
     <div class="grid-item basic-info">
@@ -54,32 +53,37 @@
     <div class="grid-item status-records">
       <div class="card">
         <h3 class="card-title">状态记录</h3>
-          <button 
+          <n-button 
             v-if="!showAddRecordForm" 
-            class="add-record-button" 
+            class="add-record-button"
+            secondary
+            type="primary"
             @click.stop="openAddRecordForm">
-            <i class="material-icons">add</i>
+            <AppIcon  name="add" />
             添加记录
-          </button>
+          </n-button>
 
           <!-- 添加记录表单（内联显示） -->
           <div v-else class="add-record-form">
             <div class="form-group">
-              <label>记录日期</label>
-              <input type="date" v-model="newRecord.record_date">
+              <n-form-item label="记录日期" label-placement="top">
+                <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="newRecord.record_date" />
+              </n-form-item>
             </div>
             <div class="form-group">
-              <label>详细描述</label>
-              <textarea 
-                v-model="newRecord.status" 
-                placeholder="输入详细描述..."
-                rows="2"
-              ></textarea>
+              <n-form-item label="详细描述" label-placement="top">
+                <n-input
+                  v-model:value="newRecord.status"
+                  type="textarea"
+                  placeholder="输入详细描述..."
+                  :rows="2"
+                />
+              </n-form-item>
             </div>
-            <div class="form-buttons">
-              <button class="btn btn-outline" @click="cancelAddRecord">取消</button>
-              <button class="btn btn-primary" @click="saveNewRecord">保存</button>
-            </div>
+            <n-space justify="end" class="form-buttons">
+              <n-button secondary @click="cancelAddRecord">取消</n-button>
+              <n-button type="primary" @click="saveNewRecord">保存</n-button>
+            </n-space>
           </div>
 
         <div class="status-content">
@@ -91,7 +95,7 @@
             </div>
           </div>
           <div v-else-if="!showAddRecordForm" class="no-data">
-            <i class="material-icons">info</i>
+            <AppIcon  name="info" />
             <p>暂无状态记录</p>
           </div>
         </div>
@@ -103,8 +107,7 @@
         <div class="pedigree-header card-title">
           <h3>谱系图</h3>
           <div class="checkbox-group">
-            <input type="checkbox" v-model="liveOnly" id="live_only-checkbox">
-            <label for="live_only-checkbox">仅显示存活小鼠的关系</label>
+            <n-checkbox v-model:checked="liveOnly">仅显示存活小鼠的关系</n-checkbox>
           </div>
         </div>
         <!-- SVG 容器（D3 绘图） -->
@@ -122,7 +125,8 @@
       </div>
     </div>
   </div>
-</div>
+</n-card>
+</n-modal>
 </div>
 </template>
 
@@ -285,12 +289,12 @@ const renderWeightChart = () => {
       datasets: [{
         label: '体重 (g)',
         data: dataPoints,
-        borderColor: '#4285f4',
-        backgroundColor: 'rgba(66, 133, 244, 0.1)',
+        borderColor: 'var(--n-primary-color)',
+        backgroundColor: 'color-mix(in srgb, var(--n-primary-color) 10%, transparent)',
         tension: 0.3,
         fill: true,
-        pointBackgroundColor: '#4285f4',
-        pointBorderColor: '#fff',
+        pointBackgroundColor: 'var(--n-primary-color)',
+        pointBorderColor: 'var(--n-color)',
         pointRadius: 4,
         pointHoverRadius: 6
       }]
@@ -317,12 +321,12 @@ const renderWeightChart = () => {
         x: {
         type: 'linear', // 关键：x 轴为线性数值轴（天数）
         title: { display: true, text: '天数' },
-        grid: { color: 'rgba(0,0,0,0.05)' }
+        grid: { color: 'color-mix(in srgb, var(--n-text-color) 5%, transparent)' }
         },
         y: {
         beginAtZero: false,
         title: { display: true, text: '体重 (g)' },
-        grid: { color: 'rgba(0,0,0,0.05)' }
+        grid: { color: 'color-mix(in srgb, var(--n-text-color) 5%, transparent)' }
         }
       }
     }
@@ -366,7 +370,7 @@ const renderPedigreeChart = async () => {
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', '#ccc');
+    .attr('fill', 'var(--n-border-color)');
 
   // 当前小鼠到后代的箭头
   defs.append('marker')
@@ -379,7 +383,7 @@ const renderPedigreeChart = async () => {
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', '#999');
+    .attr('fill', 'var(--n-text-color-3)');
 
   // 创建节点数组
   const nodes = []
@@ -583,9 +587,9 @@ const renderPedigreeChart = async () => {
     .enter()
     .append('line')
     .attr('stroke', d => {
-      if (d.type === 'father') return '#34a853' // 父代用绿色
-      if (d.type === 'mother') return '#ea4335' // 母代用红色
-      return '#999' // 后代用灰色
+      if (d.type === 'father') return 'var(--n-success-color)' // 父代用绿色
+      if (d.type === 'mother') return 'var(--n-error-color)' // 母代用红色
+      return 'var(--n-text-color-3)' // 后代用灰色
     })
     .attr('stroke-width', 2)
     .attr('marker-end', d => {
@@ -616,15 +620,15 @@ const renderPedigreeChart = async () => {
     .attr('fill', d => {
       // 如果 live 为 -1，直接返回灰色
       if (d.live === -1) {
-        return '#cccccc'; // 未知状态用浅灰色
+        return 'var(--n-border-color)'; // 未知状态用浅灰色
       }
       // 根据节点类型设置基础颜色
-      let baseColor = '#999'; // 默认灰色
+      let baseColor = 'var(--n-text-color-3)'; // 默认灰色
       switch (d.type) {
-        case 'current': baseColor = '#4285f4'; break; // 当前小鼠用蓝色
-        case 'father': baseColor = '#34a853'; break;  // 父代用绿色
-        case 'mother': baseColor = '#ea4335'; break;  // 母代用红色
-        case 'offspring': baseColor = '#9c27b0'; break; // 后代用紫色
+        case 'current': baseColor = 'var(--n-primary-color)'; break; // 当前小鼠用蓝色
+        case 'father': baseColor = 'var(--n-success-color)'; break;  // 父代用绿色
+        case 'mother': baseColor = 'var(--n-error-color)'; break;  // 母代用红色
+        case 'offspring': baseColor = 'var(--n-info-color)'; break; // 后代用紫色
       }
       // 根据 live 值调整亮度
       if (d.live === 1) {
@@ -642,7 +646,7 @@ const renderPedigreeChart = async () => {
     .attr('font-size', '12px')
     .attr('text-anchor', 'middle')
     .attr('dy', 5)
-    .attr('fill', '#fff');
+    .attr('fill', 'var(--n-color)');
 
   simulation.on('tick', () => {
     link
@@ -682,11 +686,11 @@ const renderPedigreeChart = async () => {
       .attr('class', 'pedigree-tooltip')
       .style('position', 'absolute')
       .style('visibility', 'hidden')
-      .style('background', 'rgba(255,255,255,0.9)')
-      .style('border', '1px solid #ddd')
+      .style('background', 'color-mix(in srgb, var(--n-color) 90%, transparent)')
+      .style('border', '1px solid var(--n-border-color)')
       .style('border-radius', '4px')
       .style('padding', '8px')
-      .style('box-shadow', '0 2px 8px rgba(0,0,0,0.15)')
+      .style('box-shadow', '0 2px 8px color-mix(in srgb, var(--n-text-color) 15%, transparent)')
       .style('z-index', '1000')
       .style('font-size', '14px')
   }
@@ -709,15 +713,15 @@ const renderPedigreeChart = async () => {
       
       // 高亮当前节点和相关边
       nodeGroups.attr('stroke-width', 0);
-      d3.select(this).attr('stroke', '#333').attr('stroke-width', 2);
+      d3.select(this).attr('stroke', 'var(--n-text-color-1)').attr('stroke-width', 2);
       
       link.attr('stroke-opacity', 0.2);
       link.filter(l => l.source.id === d.id || l.target.id === d.id)
         .attr('stroke-opacity', 1)
         .attr('stroke', d => {
-            if (d.type === 'father') return '#34a853'
-            if (d.type === 'mother') return '#ea4335'
-            return '#4285f4'
+            if (d.type === 'father') return 'var(--n-success-color)'
+            if (d.type === 'mother') return 'var(--n-error-color)'
+            return 'var(--n-primary-color)'
           })
       })
     .on('mouseout', function() {
@@ -726,9 +730,9 @@ const renderPedigreeChart = async () => {
         // 恢复默认样式
         nodeGroups.attr('stroke-width', 0)
         link.attr('stroke-opacity', 1).attr('stroke', d => {
-          if (d.type === 'father') return '#34a853'
-          if (d.type === 'mother') return '#ea4335'
-          return '#999'
+          if (d.type === 'father') return 'var(--n-success-color)'
+          if (d.type === 'mother') return 'var(--n-error-color)'
+          return 'var(--n-text-color-3)'
         })
       })
     .on('dblclick', (event, d) => {
@@ -782,35 +786,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 遮罩层 */
-.modal-overlay {
-position: fixed;
-top: 0; left: 10px; right: 0; bottom: 0;
-background-color: rgba(0, 0, 0, 0.6);
-z-index: 100;
-animation: fadeIn 0.3s ease;
-}
-
 /* 主模态 */
 .mouse-detail-modal {
-position: fixed;
-top: 50%; left: 52%;
-transform: translate(-50%, -50%);
 width: 90%; 
 max-width: 1200px; 
 max-height: 90vh;
-background-color: #f8f9fa;
+background-color: var(--n-color-embedded);
 border-radius: 12px;
-box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+box-shadow: 0 10px 40px color-mix(in srgb, var(--n-text-color) 30%, transparent);
 padding: 20px;
 overflow-y: auto;
-z-index: 101;
 animation: slideIn 0.4s ease;
-}
-
-@keyframes fadeIn {
-from { opacity: 0; }
-to { opacity: 1; }
 }
 
 @keyframes slideIn {
@@ -833,24 +819,17 @@ margin-bottom: 20px;
 .back-button {
 display: flex;
 align-items: center;
-background: #4285f4;
-color: white;
-border: none;
-padding: 8px 12px;
-border-radius: 4px;
-cursor: pointer;
 margin-right: 15px;
 font-size: 14px;
 transition: all 0.2s;
 }
 
 .back-button:hover {
-background: #3367d6;
 transform: translateX(-2px);
 }
 
 .page-header h2 {
-color: #2c3e50;
+color: var(--n-text-color-1);
 margin: 0;
 font-weight: 600;
 font-size: 1.8rem;
@@ -882,7 +861,7 @@ grid-row: 1;
 pointer-events: auto;
 cursor: pointer;
 padding: 8px 12px;
-border: 1px solid #e0e0e0;
+border: 1px solid var(--n-border-color);
 border-radius: 4px;
 margin-bottom: 8px;
 transition: all 0.3s ease;
@@ -890,9 +869,9 @@ position: relative;
 }
 
 .status-item.deleting {
-background-color: #fff5f5;
-border-color: #feb2b2;
-box-shadow: 0 0 0 1px #feb2b2;
+background-color: var(--n-color)5f5;
+border-color: var(--n-error-color-suppl);
+box-shadow: 0 0 0 1px var(--n-error-color-suppl);
 }
 
 .pedigree {
@@ -906,9 +885,9 @@ grid-row: 2;
 }
 
 .card {
-background: white;
+background: var(--n-color);
 border-radius: 8px;
-box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 8%, transparent);
 padding: 20px;
 height: 100%;
 display: flex;
@@ -918,13 +897,13 @@ max-width: 600px;
 }
 
 .card-title {
-color: #4285f4;
+color: var(--n-primary-color);
 margin-top: 0;
 margin-bottom: 15px;
 font-size: 16px;
 font-weight: 600;
 padding-bottom: 10px;
-border-bottom: 1px solid #eaeaea;
+border-bottom: 1px solid var(--n-border-color);
 }
 
 .info-content {
@@ -939,13 +918,13 @@ align-items: center;
 
 .info-label {
 font-weight: 600;
-color: #555;
+color: var(--n-text-color-2);
 width: 120px;
 flex-shrink: 0;
 }
 
 .info-value {
-color: #333;
+color: var(--n-text-color-1);
 overflow : auto;
 }
 
@@ -965,20 +944,20 @@ gap: 12px;
 display: flex;
 align-items: center;
 padding: 10px;
-background-color: #f8f9fa;
+background-color: var(--n-color-embedded);
 border-radius: 6px;
-border-left: 3px solid #4285f4;
+border-left: 3px solid var(--n-primary-color);
 }
 
 .status-date {
 font-weight: 600;
-color: #4285f4;
+color: var(--n-primary-color);
 margin-right: 12px;
 min-width: 80px;
 }
 
 .status-description {
-color: #555;
+color: var(--n-text-color-2);
 }
 
 .no-data {
@@ -987,7 +966,7 @@ flex-direction: column;
 align-items: center;
 justify-content: center;
 height: 100%;
-color: #999;
+color: var(--n-text-color-3);
 }
 
 .no-data i {
@@ -1039,7 +1018,7 @@ justify-content: flex-end;
 gap: 15px;
 margin-top: 25px;
 padding-top: 20px;
-border-top: 1px solid #eaeaea;
+border-top: 1px solid var(--n-border-color);
 }
 
 .btn {
@@ -1061,11 +1040,9 @@ transition: all 0.2s;
 }
 
 @media (max-width: 992px) {
-  .mouse-detail-modal {
+.mouse-detail-modal {
     width: 95%;
-    left: 50%;
-    transform: translateX(-50%);
-  }
+}
 .detail-grid {
     grid-template-columns: 1fr;
     grid-template-rows: repeat(4, auto);
@@ -1139,31 +1116,20 @@ transition: all 0.2s;
 .add-record-button {
 display: flex;
 align-items: center;
-background: #4285f4;
-color: white;
-border: none;
-padding: 6px 12px;
-border-radius: 4px;
-cursor: pointer;
 font-size: 14px;
 transition: all 0.2s;
 }
 
 .add-record-button:hover {
-background: #3367d6;
-}
-
-.add-record-button i {
-margin-right: 5px;
-font-size: 18px;
+transform: translateY(-1px);
 }
 
 .modal-content {
-background: white;
+background: var(--n-color);
 border-radius: 12px;
 width: 90%;
 max-width: 500px;
-box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+box-shadow: 0 10px 30px color-mix(in srgb, var(--n-text-color) 20%, transparent);
 animation: modalIn 0.3s ease;
 }
 
@@ -1177,52 +1143,52 @@ display: flex;
 justify-content: space-between;
 align-items: center;
 padding: 20px;
-border-bottom: 1px solid #eaeaea;
+border-bottom: 1px solid var(--n-border-color);
 }
 
 .modal-header h3 {
 margin: 0;
-color: #2c3e50;
+color: var(--n-text-color-1);
 }
 
 .close-button {
 background: none;
 border: none;
 cursor: pointer;
-color: #777;
+color: var(--n-text-color-3);
 font-size: 24px;
 padding: 5px;
 }
 
 .close-button:hover {
-color: #333;
+color: var(--n-text-color-1);
 }
 
 .btn-cancel {
-background: #f5f5f5;
-color: #555;
-border: 1px solid #ddd;
+background: var(--n-color-embedded);
+color: var(--n-text-color-2);
+border: 1px solid var(--n-border-color);
 }
 
 .btn-cancel:hover {
-background: #eaeaea;
+background: var(--n-border-color);
 }
 
 .btn-confirm {
-background: #4285f4;
+background: var(--n-primary-color);
 color: white;
 }
 
 .btn-confirm:hover {
-background: #3367d6;
+background: var(--n-primary-color-hover);
 }
 
 .add-record-form {
-  background-color: #f9f9f9;
+  background-color: var(--n-color-embedded);
   border-radius: 6px;
   padding: 15px;
   margin-bottom: 15px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--n-border-color);
 }
 
 .add-record-form .form-group {
@@ -1232,21 +1198,21 @@ background: #3367d6;
 .add-record-form label {
   display: block;
   font-weight: 500;
-  color: #555;
+  color: var(--n-text-color-2);
   margin-bottom: 5px;
 }
 
 .add-record-form input[type="date"] {
   width: 100%;
   padding: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
 }
 
 .add-record-form textarea {
   width: 100%;
   padding: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
   resize: vertical;
   min-height: 60px;
@@ -1265,11 +1231,11 @@ background: #3367d6;
   font-size: 14px;
   line-height: 1.4;
   min-width: 120px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #ddd;
+  background: color-mix(in srgb, var(--n-color) 90%, transparent);
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
   padding: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 15%, transparent);
   position: absolute;
 }
 

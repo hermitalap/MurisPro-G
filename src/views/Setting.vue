@@ -1,833 +1,384 @@
 <template>
 <div class="main-content">
-    <div class="content-header">
+    <n-space class="content-header" justify="space-between" align="center">
     <h1 class="page-title">系统设置</h1>
-    </div>
+    </n-space>
     
-    <!-- 标签页导航 -->
-    <div class="section-tabs">
-    <div 
-        v-for="tab in tabs" 
-        :key="tab.id" 
-        class="tab-item"
-        :class="{ active: activeTab === tab.id }"
-        @click="activeTab = tab.id"
-    >
-        {{ tab.title }}
-    </div>
-    </div>
-    
+<!-- 标签页导航 -->
+<n-tabs v-model:value="activeTab" type="line" justify-content="space-evenly" class="setting-tabs" animated>
     <!-- 基因型设置 -->
-    <div v-if="activeTab === 'genotype'" class="form-container">
-    <h2 class="section-title">基因型管理系统</h2>
-    
-    <!-- 添加新基因位点 -->
-    <div class="form-section">
-        <h3>添加新基因位点</h3>
-        <form @submit.prevent="addGeneLocus" class="form-group-row">
-        <div class="form-group">
-            <label>基因组位点 *</label>
-            <input type="text" v-model="newGeneLocus.symbol" placeholder="例如: TP53" required>
-        </div>
-        
-        <div class="form-group">
-            <label>描述</label>
-            <input type="text" v-model="newGeneLocus.description" placeholder="例如: 该基因编码一种肿瘤抑制蛋白，含有转录激活、DNA结合和寡聚化结构域。编码的蛋白能响应多种细胞应激，调控靶基因的表达，从而诱导细胞周期阻滞、凋亡、衰老、DNA修复或代谢变化。">
-        </div>
-        
-        <div class="form-group">
-            <button type="submit" class="btn btn-primary">添加基因位点</button>
-        </div>
-        </form>
-    </div>
-    
-    <!-- 基因位点与等位基因表格 -->
-    <div class="form-section">
-        <h3>基因位点与等位基因</h3>
-        <div class="table-container">
-        <table class="settings-table">
-            <thead>
-            <tr>
-                <th>基因符号</th>
-                <th>描述</th>
-                <th>等位基因数量</th>
-                <th>操作</th>
-            </tr>
-            </thead>
-            <tbody>
-            <template v-for="locus in genotypes" :key="locus.id">
-                <!-- 基因位点行 -->
-                <tr class="locus-row">
-                <td>{{ locus.symbol }}</td>
-                <td>{{ locus.description }}</td>
-                <td>{{ locus.alleles.length }}</td>
-                <td class="action-cell">
-                    <div class="btn-group" v-if="locus.symbol !== 'WT'">
-                        <button class="action-btn" @click="editGeneLocus(locus)">编辑</button>
-                        <button class="action-btn btn-danger" @click="deleteGeneLocus(locus.id)">删除</button>
-                        <button class="action-btn btn-success" @click="toggleAlleles(locus.id)">
-                        {{ expandedLoci.includes(locus.id) ? '收起' : '展开并为该位点添加等位基因' }}
-                        </button>
-                    </div>
-                </td>
-                </tr>
-                
-                <!-- 等位基因子表格 -->
-                <tr v-if="expandedLoci.includes(locus.id)" class="alleles-subtable">
-                <td colspan="4">
-                    <div class="subtable-container">
-                    <table class="subtable">
-                        <thead>
-                        <tr>
-                            <th>等位基因符号</th>
-                            <th>描述</th>
-                            <th>是否为野生型</th>
-                            <th>操作</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="allele in locus.alleles" :key="allele.id">
-                            <td>{{ allele.symbol }}</td>
-                            <td>{{ allele.description }}</td>
-                            <td>{{ allele.is_wildtype ? '是' : '否' }}</td>
-                            <td class="action-cell">
-                                <div class="btn-group">
-                                    <button class="action-btn" @click="editAllele(allele)">编辑</button>
-                                    <button v-if="locus.alleles.length > 1" class="action-btn btn-danger" @click="deleteAllele(allele.id)">删除</button>
-                                </div>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    
-                    <!-- 添加新等位基因表单 -->
-                    <div class="add-allele-form">
-                        <h4>添加新等位基因</h4>
-                        <form @submit.prevent="addAllele(locus.id)" class="form-group-row">
-                        <div class="form-group">
-                            <label>符号 *</label>
-                            <input type="text" v-model="newAllele.symbol" placeholder="例如: KO" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>描述</label>
-                            <input type="text" v-model="newAllele.description" placeholder="例如: 基因敲除">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>是否为野生型</label>
-                            <input type="checkbox" v-model="newAllele.is_wildtype"> 
-                        </div>
-                        
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary">添加</button>
-                        </div>
-                        </form>
-                    </div>
-                    </div>
-                </td>
-                </tr>
-            </template>
-            </tbody>
-        </table>
-        </div>
-    </div>
-    </div>
+    <n-tab-pane name="genotype" tab="基因型设置">
+    <n-space vertical size="large" class="form-container">
+    <n-card title="添加新基因位点" size="small">
+        <n-form @submit.prevent="addGeneLocus" label-placement="top">
+            <n-grid :cols="24" :x-gap="12">
+                <n-form-item-gi :span="8" label="基因组位点 *">
+                    <n-input v-model:value="newGeneLocus.symbol" placeholder="例如: TP53" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="描述">
+                    <n-input v-model:value="newGeneLocus.description" placeholder="例如: 该基因编码一种肿瘤抑制蛋白，含有转录激活、DNA结合和寡聚化结构域。编码的蛋白能响应多种细胞应激，调控靶基因的表达，从而诱导细胞周期阻滞、凋亡、衰老、DNA修复或代谢变化。" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="4" label=" ">
+                    <n-button type="primary" attr-type="submit" style="width: 100%;">添加基因位点</n-button>
+                </n-form-item-gi>
+            </n-grid>
+        </n-form>
+    </n-card>
+
+    <n-card title="基因位点与等位基因" size="small">
+        <n-data-table :columns="genotypeLocusColumns" :data="genotypeLocusRows" :pagination="false" :bordered="true" />
+
+        <n-space vertical size="medium" style="margin-top: 16px;">
+            <n-card
+                v-for="locus in expandedLocusDetails"
+                :key="locus.id"
+                size="small"
+                :title="`等位基因 - ${locus.symbol}`"
+            >
+                <n-data-table :columns="alleleColumns" :data="locus.alleles" :pagination="false" :bordered="true" />
+                <n-divider />
+                <n-form @submit.prevent="addAllele(locus.id)" label-placement="top">
+                    <n-grid :cols="24" :x-gap="12">
+                        <n-form-item-gi :span="8" label="符号 *">
+                            <n-input v-model:value="newAllele.symbol" placeholder="例如: KO" />
+                        </n-form-item-gi>
+                        <n-form-item-gi :span="10" label="描述">
+                            <n-input v-model:value="newAllele.description" placeholder="例如: 基因敲除" />
+                        </n-form-item-gi>
+                        <n-form-item-gi :span="3" label="是否为野生型">
+                            <n-checkbox v-model:checked="newAllele.is_wildtype" />
+                        </n-form-item-gi>
+                        <n-form-item-gi :span="3" label=" ">
+                            <n-button type="primary" attr-type="submit" style="width: 100%;">添加</n-button>
+                        </n-form-item-gi>
+                    </n-grid>
+                </n-form>
+            </n-card>
+        </n-space>
+    </n-card>
+    </n-space>
+    </n-tab-pane>
 
     <!-- 位置设置 -->
-    <div v-if="activeTab === 'location'" class="form-container">
-    <h2 class="section-title">位置设置</h2>
-    
-    <div class="form-section">
-        <h3>新增位置</h3>
-        <form @submit.prevent="addLocation" class="form-group-row">
-        <div class="form-group">
-            <label>位置标识 *</label>
-            <input type="text" v-model="newLocation.identifier" placeholder="例如: A-3-2" required>
-        </div>
-        
-        <div class="form-group">
-            <label>描述</label>
-            <input type="text" v-model="newLocation.description" placeholder="例如: A区3排2号架">
-        </div>
-        
-        <div class="form-group">
-            <button type="submit" class="btn btn-primary">添加位置</button>
-        </div>
-        </form>
-    </div>
-    
-    <div class="form-section">
-        <h3>位置列表</h3>
-        <div class="table-container">
-        <table class="settings-table">
-            <thead>
-            <tr>
-                <th>位置标识</th>
-                <th>描述</th>
-                <th>操作</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="location in locations" :key="location.id">
-                <td>{{ location.identifier }}</td>
-                <td>{{ location.description }}</td>
-                <td class="action-cell">
-                    <div class="btn-group">
-                    <button class="action-btn" @click="editLocation(location)">编辑</button>
-                    <button class="action-btn btn-danger" @click="deleteLocation(location.id)">删除</button>
-                    </div>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-        </div>
-    </div>
-    </div>
+    <n-tab-pane name="location" tab="位置设置">
+    <n-space vertical size="large" class="form-container">
+
+    <n-card title="新增位置" size="small">
+        <n-form @submit.prevent="addLocation" label-placement="top">
+            <n-grid :cols="24" :x-gap="12">
+                <n-form-item-gi :span="8" label="位置标识 *">
+                    <n-input v-model:value="newLocation.identifier" placeholder="例如: A-3-2" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="12" label="描述">
+                    <n-input v-model:value="newLocation.description" placeholder="例如: A区3排2号架" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="4" label=" ">
+                    <n-button type="primary" attr-type="submit" style="width: 100%;">添加位置</n-button>
+                </n-form-item-gi>
+            </n-grid>
+        </n-form>
+    </n-card>
+
+    <n-card title="位置列表" size="small">
+        <n-data-table :columns="locationColumns" :data="locations" :pagination="false" :bordered="true" />
+    </n-card>
+    </n-space>
+    </n-tab-pane>
     
     <!-- 导出设置 -->
-    <div v-if="activeTab === 'export'" class="form-container">
-    <h2 class="section-title">导出设置</h2>
-    <p class="section-description">在此设置导出数据的相关选项</p>
-    
-    <div class="form-section">
-        <h3>数据导出设置</h3>
-        <div class="btn-group">
-            <button class="btn btn-primary" 
+    <n-tab-pane name="export" tab="导出设置">
+    <n-space vertical size="large" class="form-container">
+
+    <n-card title="数据导出设置" size="small">
+        <n-space class="btn-group">
+            <n-button
                 v-for="option in exportOptions" 
-                :key="option.id" @click="exportData(option.id)" 
-                :class="{ active: currentExportType === option.id }">
+                :key="option.id"
+                :type="currentExportType === option.id ? 'primary' : 'default'"
+                @click="exportData(option.id)"
+            >
                     {{ option.title }}
-            </button>
-        </div>
+            </n-button>
+        </n-space>
         
         <div v-if="exportOptionsVisible" class="export-options">
-        <div v-if="currentExportType !== 'survival' && currentExportType !== 'experiment'" class="form-group">
-            <label>时间范围</label>
-            <div class="date-range">
-            <input type="date" v-model="exportStartDate">
-            <span>至</span>
-            <input type="date" v-model="exportEndDate">
-            </div>
+        <n-form label-placement="top">
+            <n-grid :cols="24" :x-gap="12">
+            <n-form-item-gi
+                v-if="currentExportType !== 'survival' && currentExportType !== 'experiment'"
+                :span="24"
+                label="时间范围"
+            >
+                <div class="date-range">
+                <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="exportStartDate" />
+                <span>至</span>
+                <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="exportEndDate" />
+                </div>
+            </n-form-item-gi>
+        <n-data-table
+            v-if="currentExportType === 'experiment'"
+            :columns="exportExperimentColumns"
+            :data="experiments"
+            :bordered="true"
+            :single-line="false"
+            :pagination="false"
+            :row-key="(row) => row.id"
+            :row-class-name="(row) => (selectedExperiments.includes(row.id) ? 'selected' : '')"
+        />
+            <n-form-item-gi :span="12" label="文件格式">
+                <n-select v-model:value="exportFormat" :options="exportFormatOptions" />
+            </n-form-item-gi>
+            <n-form-item-gi :span="6" label=" ">
+                <n-button type="primary" @click="confirmExport" style="width: 100%;">确认导出</n-button>
+            </n-form-item-gi>
+            </n-grid>
+        </n-form>
         </div>
-        <table class="settings-table" v-if="currentExportType === 'experiment'" >
-            <thead>
-                <tr>
-                <th>实验类型名称</th>
-                <th>描述</th>
-                <th>字段数量</th>
-                <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-            <template v-for="experimentType in experiments" :key="experimentType.id">
-                <tr :class="{ selected: selectedExperiments.includes(experimentType.id) }">
-                    <td>{{ experimentType.name }}</td>
-                    <td>{{ experimentType.description }}</td>
-                    <td>{{ experimentType.fields ? experimentType.fields.length : 0 }}</td>
-                    <td class="action-cell">
-                        <button class="action-btn btn-info" @click="toggleSelect(experimentType.id)">
-                            {{ selectedExperiments.includes(experimentType.id) ? '取消' : '选择' }}
-                        </button>
-                    </td>
-                </tr>
-            </template>
-            </tbody>   
-        </table> 
-        <div class="form-group">
-            <label>文件格式</label>
-            <select v-model="exportFormat">
-            <option v-if="currentExportType !== 'experiment'" value="csv">CSV</option>
-            <option value="xlsx">Excel</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <button class="btn btn-primary" @click="confirmExport">确认导出</button>
-        </div>
-        </div>
-    </div>
-    </div>
+    </n-card>
+    </n-space>
+    </n-tab-pane>
     
     <!-- 导入设置 -->
-    <div v-if="activeTab === 'import'" class="form-container">
-    <h2 class="section-title">导入数据</h2>
-    <p class="section-description">从Excel文件导入小鼠数据</p>
-    
-    <div class="form-section">
+    <n-tab-pane name="import" tab="导入数据">
+    <n-space vertical size="large" class="form-container">
+
+    <n-card size="small" title="从Excel文件导入小鼠数据">
         <div class="import-options">
-            <div class="form-group">
-                <label>导入类型</label>
-                <select v-model="importType">
-                    <option value="mice">小鼠信息</option>
-                    <option value="weights">体重数据</option>
-                    <option value="record">小鼠状态记录数据</option>
-                    <!-- <option value="pedigree">血统关系</option>功能尚未实现 -->
-                </select>
-            </div>
+            <n-form label-placement="top">
+                <n-grid :cols="24" :x-gap="12">
+                    <n-form-item-gi :span="8" label="导入类型">
+                        <n-select v-model:value="importType" :options="importTypeOptions" />
+                    </n-form-item-gi>
+                </n-grid>
+            </n-form>
             <h3>选择Excel文件</h3>
             <div class="file-upload" @dragover.prevent @drop="handleDrop">
-                <input type="file" accept=".xlsx, .xls" @change="handleFileUpload">
                 <div class="upload-area" :class="{ 'dragover': isDragging }">
-                    <i class="material-icons">cloud_upload</i>
+                    <AppIcon  name="cloud_upload" />
                     <p v-if="!selectedFile">点击或拖拽Excel文件到此处上传</p>
                     <p v-else class="file-info">
                     <span>{{ selectedFile.name }}</span>
                     <span>({{ formatFileSize(selectedFile.size) }})</span>
                     </p>
-                    <button v-if="selectedFile" class="btn btn-outline" @click="clearFile">清除</button>
+                    <n-upload
+                        accept=".xlsx,.xls"
+                        :show-file-list="false"
+                        :default-upload="false"
+                        @change="handleNaiveFileChange"
+                    >
+                        <n-button quaternary>选择文件</n-button>
+                    </n-upload>
+                    <n-button v-if="selectedFile" quaternary @click="clearFile">清除</n-button>
                 </div>
             </div>
-            <div v-if="selectedFile" class="form-group">
-                <label>处理重复数据</label>
-                <select v-model="importConflictResolution">
-                <option value="skip">跳过重复项</option>
-                <option value="overwrite">覆盖现有数据</option>
-                </select>
-            </div>
-            <div v-if="selectedFile" class="form-group">
-                <button class="btn btn-primary" @click="importData" :disabled="isImporting">
-                <span v-if="isImporting">导入中...</span>
-                <span v-else>开始导入</span>
-                </button>
-            </div>
+            <n-form v-if="selectedFile" label-placement="top">
+                <n-grid :cols="24" :x-gap="12">
+                    <n-form-item-gi :span="10" label="处理重复数据">
+                        <n-select v-model:value="importConflictResolution" :options="importConflictOptions" />
+                    </n-form-item-gi>
+                    <n-form-item-gi :span="6" label=" ">
+                        <n-button type="primary" @click="importData" :disabled="isImporting" style="width: 100%;">
+                        <span v-if="isImporting">导入中...</span>
+                        <span v-else>开始导入</span>
+                        </n-button>
+                    </n-form-item-gi>
+                </n-grid>
+            </n-form>
         </div>
         <!-- 数据格式提示 - 根据导入类型动态显示 -->
-        <div class="format-hint">
-            <h4>
-                <i class="material-icons">info</i>
+        <n-alert type="info" class="format-hint" :show-icon="false">
+            <template #header>
                 数据格式要求 - {{ importType === 'mice' ? '小鼠信息' : importType === 'weights' ? '体重数据' : importType === 'record' ? '小鼠状态记录数据' : '血统关系' }}
-            </h4>
+            </template>
             
-            <!-- 小鼠信息导入格式 -->
-            <div v-if="importType === 'mice'">
-                <table class="format-table">
-                    <thead>
-                        <tr>
-                            <th>列名</th>
-                            <th>数据类型</th>
-                            <th>是否必填</th>
-                            <th>说明</th>
-                            <th>示例</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="required">id</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>小鼠唯一标识</td>
-                            <td class="example-row">M001</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">genotype</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>基因型描述，格式为：{位点1}[等位基因1]/[等位基因2]&{位点2}[等位基因3]/[等位基因4]</td>
-                            <td class="example-row">{Trp53}[KO]/[+]或{WT}</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">sex</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>性别：M/F</td>
-                            <td class="example-row">M</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">birth_date</span></td>
-                            <td>日期</td>
-                            <td><span class="required">是</span></td>
-                            <td>出生日期（YYYY-MM-DD）</td>
-                            <td class="example-row">2023-05-15</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">live_status</span></td>
-                            <td>整数</td>
-                            <td><span class="required">是</span></td>
-                            <td>存活状态：1=存活，0=死亡，2=解剖，3=失踪，4=丢弃，5=处理后死亡</td>
-                            <td class="example-row">1</td>
-                        </tr>
-                        <tr>
-                            <td><span class="optional">death_date</span></td>
-                            <td>日期</td>
-                            <td><span class="optional">否</span></td>
-                            <td>死亡日期（当live_status=0时必填）</td>
-                            <td class="example-row">2023-10-20</td>
-                        </tr>
-                        <tr>
-                            <td><span class="optional">cage_id</span></td>
-                            <td>字符串</td>
-                            <td><span class="optional">否</span></td>
-                            <td>笼位名称</td>
-                            <td class="example-row">CAGE-01</td>
-                        </tr>
-                        <tr>
-                            <td><span class="optional">location</span></td>
-                            <td>字符串</td>
-                            <td><span class="optional">否</span></td>
-                            <td>区域名称</td>
-                            <td class="example-row">本部动物房</td>
-                        </tr>
-                        <tr>
-                            <td><span class="optional">strain</span></td>
-                            <td>字符串</td>
-                            <td><span class="optional">否</span></td>
-                            <td>小鼠品系</td>
-                            <td class="example-row">C57BL/6J</td>
-                        </tr>
-                        <tr>
-                            <td><span class="optional">record</span></td>
-                            <td>字符串</td>
-                            <td><span class="optional">否</span></td>
-                            <td>导入时备注信息</td>
-                            <td class="example-row">2025.1.1 被咬</td>
-                        </tr>
-                    </tbody>
-                </table>
-                
-                <div class="note">
-                    <div class="note-title">重要提示：</div>
-                    <div class="note-content">
-                        <p>1. 列名一定要按照要求填写，否则无法识别</p>
-                        <p>2. 日期格式必须为YYYY-MM-DD（例如：2023-05-15）</p>
-                        <p>3. 性别字段只接受'M'（雄性）或'F'（雌性）</p>
-                        <p>4. 基因型如果不存在会自动创建新基因型</p>
-                        <p>5. 基因型的位点和等位基因中不能出现特殊字符，示例：{p53}[S46A]/[-]&{p21}[-]/[-]</p>
-                        <p>6. 当live_status!=1（不为存活）时，必须提供death_date</p>
-                        <p>7. 区域名称只有在存在笼位名称时才生效</p>
-                        <p>8. 若无区域名称，新笼位自动添加到新创建的区域，后续可调整（通过笼位设置）</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 体重数据导入格式 -->
-            <div v-if="importType === 'weights'">
-                <table class="format-table">
-                    <thead>
-                        <tr>
-                            <th>列名</th>
-                            <th>数据类型</th>
-                            <th>是否必填</th>
-                            <th>说明</th>
-                            <th>示例</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="required">id</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>小鼠唯一标识</td>
-                            <td class="example-row">M001</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">birth_date</span></td>
-                            <td>日期</td>
-                            <td><span class="required">是</span></td>
-                            <td>出生日期（YYYY-MM-DD）</td>
-                            <td class="example-row">2023-05-15</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">weight</span></td>
-                            <td>数值</td>
-                            <td><span class="required">是</span></td>
-                            <td>体重值（克）</td>
-                            <td class="example-row">25.3</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">record_date</span></td>
-                            <td>日期</td>
-                            <td><span class="required">是</span></td>
-                            <td>记录日期（YYYY-MM-DD）</td>
-                            <td class="example-row">2023-06-15</td>
-                        </tr>
-                    </tbody>
-                </table>
-                
-                <div class="note">
-                    <div class="note-title">重要提示：</div>
-                    <div class="note-content">
-                        <p>1. 列名一定要按照要求填写，否则无法识别</p>
-                        <p>2. 日期格式必须为YYYY-MM-DD（例如：2023-05-15）</p>
-                        <p>3. 体重值应为数值类型，最多保留两位小数</p>
-                        <p>4. 记录日期必须晚于出生日期</p>
-                        <p>5. 系统会自动计算生存天数 = (记录日期 - 出生日期)</p>
-                    </div>
-                </div>
-            </div>
+            <n-data-table
+                class="format-table"
+                :columns="importFormatColumns"
+                :data="importFormatRows"
+                :pagination="false"
+                :bordered="true"
+                :single-line="false"
+                :row-key="(row) => row.column"
+            />
 
-            <!-- 状态数据导入格式 -->
-            <div v-if="importType === 'record'">
-                <table class="format-table">
-                    <thead>
-                        <tr>
-                            <th>列名</th>
-                            <th>数据类型</th>
-                            <th>是否必填</th>
-                            <th>说明</th>
-                            <th>示例</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="required">id</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>小鼠唯一标识</td>
-                            <td class="example-row">M001</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">birth_date</span></td>
-                            <td>日期</td>
-                            <td><span class="required">是</span></td>
-                            <td>出生日期（YYYY-MM-DD）</td>
-                            <td class="example-row">2023-05-15</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">record</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>每条记录</td>
-                            <td class="example-row">脱毛</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">record_date</span></td>
-                            <td>日期</td>
-                            <td><span class="required">是</span></td>
-                            <td>记录日期（YYYY-MM-DD）</td>
-                            <td class="example-row">2023-06-15</td>
-                        </tr>
-                    </tbody>
-                </table>
-                
-                <div class="note">
-                    <div class="note-title">重要提示：</div>
-                    <div class="note-content">
-                        <p>1. 列名一定要按照要求填写，否则无法识别</p>
-                        <p>2. 日期格式必须为YYYY-MM-DD（例如：2023-05-15）</p>
-                        <p>3. 记录日期必须晚于出生日期</p>
-                        <p>4. 系统会自动计算生存天数 = (记录日期 - 出生日期)</p>
-                    </div>
+            <div class="note">
+                <div class="note-title">重要提示：</div>
+                <div class="note-content">
+                    <p v-for="(note, index) in importFormatNotes" :key="index">{{ index + 1 }}. {{ note }}</p>
                 </div>
             </div>
-            
-            <!-- 血统关系导入格式 -->
-            <div v-if="importType === 'pedigree'">
-                <table class="format-table">
-                    <thead>
-                        <tr>
-                            <th>列名</th>
-                            <th>数据类型</th>
-                            <th>是否必填</th>
-                            <th>说明</th>
-                            <th>示例</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="required">mouse_id</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>小鼠唯一标识</td>
-                            <td class="example-row">M001</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">birth_date</span></td>
-                            <td>日期</td>
-                            <td><span class="required">是</span></td>
-                            <td>出生日期（YYYY-MM-DD）</td>
-                            <td class="example-row">2023-05-15</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">father_id</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>父鼠ID（如不存在填'None'）</td>
-                            <td class="example-row">F001</td>
-                        </tr>
-                        <tr>
-                            <td><span class="required">mother_id</span></td>
-                            <td>字符串</td>
-                            <td><span class="required">是</span></td>
-                            <td>母鼠ID（如不存在填'None'）</td>
-                            <td class="example-row">M002</td>
-                        </tr>
-                    </tbody>
-                </table>
-                
-                <div class="note">
-                    <div class="note-title">重要提示：</div>
-                    <div class="note-content">
-                        <p>1. 列名一定要按照要求填写，否则无法识别</p>
-                        <p>2. 日期格式必须为YYYY-MM-DD（例如：2023-05-15）</p>
-                        <p>3. 父鼠ID和母鼠ID如不存在，必须填写字符串'None'（区分大小写）</p>
-                        <p>4. 所有小鼠ID必须已在系统中存在</p>
-                        <p>5. 父鼠和母鼠的出生日期必须早于当前小鼠的出生日期</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    </div>
+        </n-alert>
+    </n-card>
+    </n-space>
+    </n-tab-pane>
 
     <!-- 实验类型设置 -->
-    <div v-if="activeTab === 'experiment'" class="form-container">
-        <h2 class="section-title">实验类型设置</h2>
+    <n-tab-pane name="experiment" tab="实验类型设置">
+    <n-space vertical size="large" class="form-container">
         
-        <div class="form-section">
+        <n-card size="small" class="form-section">
             <h3>可选择预设实验类型</h3>
-            <div class="preset-selector">
-            <label>选择预设：</label>
-            <select v-model="selectedPreset" @change="applyPreset">
-                <option value="">-- 请选择预设 --</option>
-                <option v-for="(preset, key) in experimentPresets" :key="key" :value="key">
-                {{ preset.name }}
-                </option>
-            </select>
+            <n-form label-placement="top">
+                <n-form-item label="选择预设">
+                    <n-select v-model:value="selectedPreset" :options="experimentPresetOptions" placeholder="-- 请选择预设 --" @update:value="applyPreset" />
+                </n-form-item>
+            </n-form>
             <span class="preset-description" v-if="selectedPreset">
                 {{ experimentPresets[selectedPreset].description }}
             </span>
-            </div>
-        </div>
+        </n-card>
         
-        <div class="form-section">
+        <n-card size="small" class="form-section">
         <h3>{{ editingExperimentType.id ? '编辑实验类型' : '新增实验类型' }}</h3>
-        <form @submit.prevent="saveExperimentType" class="form-group-row">
-            <div class="form-group">
-            <label>实验类型名称 *</label>
-            <input type="text" v-model="editingExperimentType.name" placeholder="例如: 肿瘤测量" required>
-            </div>
-            
-            <div class="form-group">
-            <label>描述</label>
-            <input type="text" v-model="editingExperimentType.description" placeholder="例如: 测量裸鼠肿瘤尺寸">
-            </div>
-
-            <div class="form-group">
-                <label>是否展示</label>
-                <div class="checkbox-group">
-                    <input type="checkbox" v-model="editingExperimentType.is_show" id="edit-show-checkbox">
-                    <label for="edit-show-checkbox">在侧边栏显示</label>
-                </div>
-            </div>
-            
-            <div class="btn-group">
-            <button type="submit" class="btn btn-primary">
-                {{ editingExperimentType.id ? '更新' : '添加' }}
-            </button>
-            <button v-if="editingExperimentType.id" type="button" class="btn btn-outline" @click="cancelEdit">
-                取消
-            </button>
-            <button type="button" class="btn btn-outline" @click="resetForm">
-                重置表单
-            </button>
-            </div>
-        </form>
+        <n-form @submit.prevent="saveExperimentType" label-placement="top">
+            <n-grid :cols="24" :x-gap="12">
+                <n-form-item-gi :span="8" label="实验类型名称 *">
+                    <n-input v-model:value="editingExperimentType.name" placeholder="例如: 肿瘤测量" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="10" label="描述">
+                    <n-input v-model:value="editingExperimentType.description" placeholder="例如: 测量裸鼠肿瘤尺寸" />
+                </n-form-item-gi>
+                <n-form-item-gi :span="6" label="是否展示">
+                    <n-checkbox v-model:checked="editingExperimentType.is_show">在侧边栏显示</n-checkbox>
+                </n-form-item-gi>
+                <n-form-item-gi :span="24" label=" ">
+                    <n-space class="btn-group">
+                        <n-button type="primary" attr-type="submit">
+                            {{ editingExperimentType.id ? '更新' : '添加' }}
+                        </n-button>
+                        <n-button v-if="editingExperimentType.id" quaternary @click="cancelEdit">
+                            取消
+                        </n-button>
+                        <n-button quaternary @click="resetForm">
+                            重置表单
+                        </n-button>
+                    </n-space>
+                </n-form-item-gi>
+            </n-grid>
+        </n-form>
         
         <div class="fields-section">
             <h4>字段定义</h4>
             <div class="table-container">
-            <table class="settings-table">
-                <thead>
-                <tr>
-                    <th>字段名称</th>
-                    <th>数据类型</th>
-                    <th>单位</th>
-                    <th>必填</th>
-                    <th>可视化</th>
-                    <th>操作</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr v-for="(field, index) in editingExperimentType.fields" :key="index">
-                    <td>
-                    <input type="text" v-model="field.field_name" placeholder="字段名称" required>
-                    </td>
-                    <td>
-                    <select v-model="field.data_type" required @change="chooseDataType(field)">
-                        <option value="INTEGER">整数</option>
-                        <option value="REAL">小数</option>
-                        <option value="TEXT">文本</option>
-                        <option value="BOOLEAN">布尔值</option>
-                        <option value="DATE">日期</option>
-                    </select>
-                    </td>
-                    <td>
-                    <input type="text" v-model="field.unit" placeholder="单位">
-                    </td>
-                    <td>
-                    <input type="checkbox" v-model="field.is_required">
-                    </td>
-                    <td>
-                    <select v-model="field.visualize_type" required>
-                        <option value="">不进行可视化</option>
-                        <option v-if="field.data_type === 'INTEGER' || field.data_type === 'REAL' || field.data_type === 'DATE'" value="x">作为横坐标</option>
-                        <option v-if="field.data_type === 'INTEGER' || field.data_type === 'REAL'" value="y">作为纵坐标</option>
-                        <option v-if="field.data_type === 'INTEGER' || field.data_type === 'REAL'" value="column">作为柱状图</option>
-                    </select>
-                    </td>
-                    <td class="action-cell">
-                        <button class="action-btn btn-danger" @click="removeField(index)">
-                        <i class="material-icons">delete</i>
-                        </button>
-                        <button class="action-btn btn-outline" @click="moveFieldUp(index)" :disabled="index === 0">
-                        <i class="material-icons">arrow_upward</i>
-                        </button>
-                        <button class="action-btn btn-outline" @click="moveFieldDown(index)" :disabled="index === editingExperimentType.fields.length - 1">
-                        <i class="material-icons">arrow_downward</i>
-                        </button>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+                <n-data-table
+                    :columns="fieldDefinitionColumns"
+                    :data="editingExperimentType.fields"
+                    :pagination="false"
+                    :bordered="true"
+                    :single-line="false"
+                    :row-key="(_row, index) => index"
+                />
             </div>
             
             <div class="field-actions">
-            <button class="btn btn-outline" @click="addField">
-                <i class="material-icons">add</i> 添加字段
-            </button>
+            <n-button quaternary @click="addField">
+                <AppIcon  name="add" /> 添加字段
+            </n-button>
             </div>
         </div>
-        </div>
+        </n-card>
         
-        <div class="form-section">
+        <n-card size="small" class="form-section">
         <h3>实验类型列表</h3>
         <div class="table-container">
-            <table class="settings-table">
-            <thead>
-                <tr>
-                <th>实验类型名称</th>
-                <th>描述</th>
-                <th>字段数量</th>
-                <th>是否展示</th>
-                <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-            <template v-for="experimentType in experiments" :key="experimentType.id">
-                <tr>
-                    <td>{{ experimentType.name }}</td>
-                    <td>{{ experimentType.description }}</td>
-                    <td>{{ experimentType.fields ? experimentType.fields.length : 0 }}</td>
-                    <td>{{ experimentType.is_show ? '是' : '否' }}</td>
-                    <td class="action-cell">
-                        <div class="btn-group">
-                        <button class="action-btn" @click="editExperimentType(experimentType.id)">
-                            编辑
-                        </button>
-                        <button class="action-btn btn-danger" @click="deleteExperimentType(experimentType.id)">
-                            删除
-                        </button>
-                        <button class="action-btn btn-outline" @click="duplicateExperimentType(experimentType)">
-                            复制
-                        </button>
-                        <button class="action-btn btn-info" @click="toggleDetails(experimentType.id)">
-                            {{ expandedExperimentType === experimentType.id ? '收起' : '详情' }}
-                        </button>
-                        </div>
-                    </td>
-                </tr>
-                <!-- 详情展开行 -->
-                <tr v-if="expandedExperimentType === experimentType.id" class="detail-row" :key="'detail-'+experimentType.id">
-                    <td colspan="4">
-                        <div class="detail-content">
-                            <div class="detail-header">
-                                <h3 class="detail-title">{{ experimentType.name }} - 详情</h3>
-                                <button class="btn btn-outline" @click="expandedExperimentType = null">
-                                    <i class="material-icons">close</i> 收起
-                                </button>
-                            </div>
-                            
-                            <div class="detail-section">
-                                <h4>描述</h4>
-                                <p>{{ experimentType.description || '暂无描述' }}</p>
-                            </div>
-                            
-                            <div class="detail-section">
-                                <h4>字段定义</h4>
-                                <div v-if="experimentType.fields && experimentType.fields.length > 0" class="field-list">
-                                    <div v-for="(field, index) in experimentType.fields" :key="index" class="field-item">
-                                        <div class="field-name">{{ field.field_name }}</div>
-                                        <div class="field-props">
-                                            <span>{{ field.data_type }}</span>
-                                            <span v-if="field.unit">{{ field.unit }}</span>
-                                            <span v-else>无单位</span>
-                                        </div>
-                                        <div class="field-props">
-                                            <span v-if="field.is_required" class="required-badge">必填</span>
-                                            <span v-else>可选</span>
-                                            <span v-if="field.visualize_type" class="visualized-badge">可视化 {{ field.visualize_type }}</span>
-                                            <span v-else class="not-visualized-badge">不可视化</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-else class="no-fields">
-                                    <i class="material-icons">inbox</i>
-                                    <p>此实验类型尚未定义任何字段</p>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                </template>
-            </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
+            <n-data-table
+                :columns="experimentTypeColumns"
+                :data="experiments"
+                :pagination="false"
+                :bordered="true"
+                :single-line="false"
+                :row-key="(row) => row.id"
+            />
+            <n-card v-if="selectedExperimentType" class="detail-content" size="small" style="margin-top: 12px;">
+                <div class="detail-header">
+                    <h3 class="detail-title">{{ selectedExperimentType.name }} - 详情</h3>
+                    <n-button quaternary @click="expandedExperimentType = null">
+                        <AppIcon  name="close" /> 收起
+                    </n-button>
+                </div>
 
-    <!-- 在template中添加分组设置的内容 -->
-    <div v-if="activeTab === 'group'" class="form-container">
-        <h2 class="section-title">预设分组逻辑</h2>
-        
-        <!-- 添加新分组 -->
-        <div class="form-section">
-            <h3>{{ editingGroup.id ? '编辑分组' : '添加新分组' }}</h3>
-            <form class="form-group-row">
-                <div class="form-group">
-                    <label>是否为实验预设分组？</label>
-                    <div class="group-type-selector">
-                        <select v-model="editingGroup.experiment_id" @change="changeGroupExperiment(editingGroup.experiment_id)" :disabled="editingGroup.id">
-                            <option :value=null>不为实验预设分组</option>
-                            <option v-for="experiment in experiments" :value="experiment.id" :key="experiment.id" >
-                            {{ experiment.name }}
-                            </option>
-                        </select>
+                <div class="detail-section">
+                    <h4>描述</h4>
+                    <p>{{ selectedExperimentType.description || '暂无描述' }}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h4>字段定义</h4>
+                    <div v-if="selectedExperimentType.fields && selectedExperimentType.fields.length > 0" class="field-list">
+                        <div v-for="(field, index) in selectedExperimentType.fields" :key="index" class="field-item">
+                            <div class="field-name">{{ field.field_name }}</div>
+                            <div class="field-props">
+                                <span>{{ field.data_type }}</span>
+                                <span v-if="field.unit">{{ field.unit }}</span>
+                                <span v-else>无单位</span>
+                            </div>
+                            <div class="field-props">
+                                <span v-if="field.is_required" class="required-badge">必填</span>
+                                <span v-else>可选</span>
+                                <span v-if="field.visualize_type" class="visualized-badge">可视化 {{ field.visualize_type }}</span>
+                                <span v-else class="not-visualized-badge">不可视化</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="no-fields">
+                        <AppIcon  name="inbox" />
+                        <p>此实验类型尚未定义任何字段</p>
                     </div>
                 </div>
-                <div class="form-group" style="gap: 20px;display: flex;">
-                    <button @click="saveGroup" class="btn btn-primary" :disabled="isSaving">
-                        {{ editingGroup.id ? '更新' : '添加' }}
-                    </button>
-                    <button type="button" class="btn btn-outline" @click="cancelEditGroup">
-                        取消
-                    </button>
-                </div>
-            </form>
-            <form class="form-group-row">
-                <div class="form-group">
-                    <label>分组名称 *</label>
-                    <input type="text" v-model="editingGroup.name" placeholder="例如: WT vs TP53 ♀" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>描述</label>
-                    <input type="text" v-model="editingGroup.description" placeholder="例如: WT雌性小鼠 vs TP53敲除雌性小鼠">
-                </div>
+            </n-card>
+        </div>
+        </n-card>
+    </n-space>
+    </n-tab-pane>
 
-                <div class="form-group">
-                    <label>分组类型</label>
-                    <select v-model="editingGroup.Gtype" @change="changeGroupType" class="group-type-selector" :disabled="editingGroup.experiment_id">
-                        <option class="radio-label" value="" disabled selected>--请选择分组--</option>
-                        <option value="rule" class="radio-label">
-                            规则分组
-                        </option>
-                        <option value="id" class="radio-label">
-                            ID分组
-                        </option>
-                    </select>
-                </div>
-            </form>
+    <!-- 在template中添加分组设置的内容 -->
+    <n-tab-pane name="group" tab="预设分组">
+    <n-space vertical size="large" class="form-container">
+        
+        <!-- 添加新分组 -->
+        <n-card size="small" class="form-section">
+            <h3>{{ editingGroup.id ? '编辑分组' : '添加新分组' }}</h3>
+            <n-form label-placement="top">
+                <n-grid :cols="24" :x-gap="12">
+                    <n-form-item-gi :span="12" label="是否为实验预设分组？">
+                        <n-select
+                            v-model:value="editingGroup.experiment_id"
+                            :options="groupExperimentOptions"
+                            :disabled="editingGroup.id"
+                            @update:value="changeGroupExperiment"
+                        />
+                    </n-form-item-gi>
+                    <n-form-item-gi :span="12" label=" ">
+                        <div class="form-group group-actions-row">
+                            <n-button type="primary" @click="saveGroup" :disabled="isSaving">
+                                {{ editingGroup.id ? '更新' : '添加' }}
+                            </n-button>
+                            <n-button quaternary @click="cancelEditGroup">
+                                取消
+                            </n-button>
+                        </div>
+                    </n-form-item-gi>
+                </n-grid>
+            </n-form>
+            <n-form label-placement="top">
+                <n-grid :cols="24" :x-gap="12">
+                    <n-form-item-gi :span="8" label="分组名称 *">
+                        <n-input v-model:value="editingGroup.name" placeholder="例如: WT vs TP53 ♀" />
+                    </n-form-item-gi>
+                    <n-form-item-gi :span="10" label="描述">
+                        <n-input v-model:value="editingGroup.description" placeholder="例如: WT雌性小鼠 vs TP53敲除雌性小鼠" />
+                    </n-form-item-gi>
+                    <n-form-item-gi :span="6" label="分组类型">
+                        <n-select
+                            v-model:value="editingGroup.Gtype"
+                            :options="groupTypeOptions"
+                            placeholder="--请选择分组--"
+                            :disabled="editingGroup.experiment_id"
+                            @update:value="changeGroupType"
+                        />
+                    </n-form-item-gi>
+                </n-grid>
+            </n-form>
             <!-- 规则配置 -->
             <div v-if="editingGroup.Gtype" class="form-section-rule">
                 <!-- 规则分组小组管理 -->
@@ -839,28 +390,19 @@
                         <div class="subgroup-header">
                             <div class="subgroup-title">
                                 <h5>小组 {{ subgroupIndex + 1 }}</h5>
-                                <input type="text" v-model="subgroup.name" placeholder="小组名称" class="subgroup-name-input">
+                                <n-input v-model:value="subgroup.name" placeholder="小组名称" class="subgroup-name-input" />
                                 <div class="color-picker-container">
-                                    <label>主题色:</label>
-                                    <div v-for="color in colors" 
-                                        :key="color"
-                                        class="color-option"
-                                        :class="{ selected: subgroup.color === color }"
-                                        :style="{ backgroundColor: color }"
-                                        @click="subgroup.color = color"
-                                    >
-                                        <i v-if="subgroup.color === color" class="material-icons">check</i>
-                                    </div>
-                                    <input type="color" v-model="subgroup.color" class="color-input">
+                                    <span>主题色:</span>
+                                    <n-color-picker v-model:value="subgroup.color" :swatches="colors" />
                                 </div>
                             </div>
                             <div class="subgroup-actions">
-                                <button class="action-btn btn-danger" @click="removeGroup(subgroupIndex)">
-                                    <i class="material-icons">delete</i>
-                                </button>
-                                <button class="action-btn btn-outline" @click="toggleSubgroupRules(subgroupIndex)">
+                                <n-button text type="error" @click="removeGroup(subgroupIndex)">
+                                    <AppIcon  name="delete" />
+                                </n-button>
+                                <n-button text @click="toggleSubgroupRules(subgroupIndex)">
                                     {{ subgroup.expanded ? '收起规则' : '展开规则' }}
-                                </button>
+                                </n-button>
                             </div>
                         </div>
                         
@@ -870,29 +412,23 @@
                                 <div v-for="(rule, ruleIndex) in subgroup.rules" :key="ruleIndex" class="rule-item">
                                     <div class="rule-header">
                                         <span>规则 {{ ruleIndex + 1 }}</span>
-                                        <button class="action-btn btn-danger" @click="removeRule(subgroupIndex, ruleIndex)">
-                                            <i class="material-icons">delete</i>
-                                        </button>
+                                        <n-button text type="error" @click="removeRule(subgroupIndex, ruleIndex)">
+                                            <AppIcon  name="delete" />
+                                        </n-button>
                                     </div>
                                     
                                     <div class="rule-content">
                                         <!-- 保持原有的规则设置界面不变 -->
-                                        <div class="form-group-row">
-                                            <div class="form-group">
-                                                <label>规则类型</label>
-                                                <select v-model="rule.Rtype" @change="resetRuleValues(rule)">
-                                                    <option value="genotype">基因型</option>
-                                                    <option value="sex">性别</option>
-                                                    <option value="strain">品系</option>
-                                                    <option value="cage">笼位</option>
-                                                    <option value="live_status">存活状态</option>
-                                                    <option value="test_planned">计划实验</option>
-                                                </select>
+                                        <n-space class="form-group-row" align="end">
+                                            <div class="form-group" style="min-width: 220px;">
+                                                <n-form-item label="规则类型" label-placement="top">
+                                                <n-select v-model:value="rule.Rtype" :options="ruleTypeOptions" @update:value="resetRuleValues(rule)" />
+                                                </n-form-item>
                                             </div>
-                                                <button class="action-btn" v-if="rule.Rtype === 'genotype'" :disabled="!genotypeAddable" @click="addGenotype(subgroupIndex, ruleIndex)">
+                                                <n-button text v-if="rule.Rtype === 'genotype'" :disabled="!genotypeAddable" @click="addGenotype(subgroupIndex, ruleIndex)">
                                                     添加基因型
-                                                </button>
-                                        </div>
+                                                </n-button>
+                                        </n-space>
 
                                         <!-- 基因型规则 -->
                                         <div v-if="rule.Rtype === 'genotype'" class="form-group-row" style="width: 100%;">
@@ -900,60 +436,62 @@
                                                 <!-- 基因型选择 -->
                                                 <div class="gene-form-group">
                                                     <div class="form-header">
-                                                    <label>基因型:
+                                                    <div>基因型:
                                                         <span class="selected-gene" v-if="!gene?.selectedGeneName" v-html="geneStore.selectedGeneName"></span>
                                                         <span class="selected-gene" v-else v-html="gene.selectedGeneName"></span>
-                                                    </label>
-                                                    <button v-if="!gene?.selectedGeneName" class="" @click="addGene" :disabled="!geneStore.addable">
-                                                        <i class="material-icons">add</i>
-                                                    </button>
-                                                    <button v-else class="btn-remove" @click="removeGeneSelection(subgroupIndex, ruleIndex, geneIndex)">
-                                                        <i class="material-icons">close</i>
-                                                    </button>
+                                                    </div>
+                                                    <n-button text v-if="!gene?.selectedGeneName" @click="addGene" :disabled="!geneStore.addable">
+                                                        <AppIcon  name="add" />
+                                                    </n-button>
+                                                    <n-button text type="error" v-else @click="removeGeneSelection(subgroupIndex, ruleIndex, geneIndex)">
+                                                        <AppIcon  name="close" />
+                                                    </n-button>
                                                     </div>
 
                                                     <div v-if="!gene?.selectedGeneName" v-for="(gene, index) in selectedGenes" class="genotype-select-container" :key="gene">
                                                     <div class="locus-control">
                                                         <div class="locus-select">
-                                                        <select v-model="gene.locus" @change="onFormLocusChange(index, gene.locus)">
-                                                        <option v-for="locus in geneStore.locusSuggestions[index]" :key="locus.id" :value="locus.symbol">
-                                                            {{ locus.symbol }}
-                                                        </option>
-                                                        </select>
+                                                        <n-select
+                                                            v-model:value="gene.locus"
+                                                            :options="getLocusOptions(index)"
+                                                            @update:value="onFormLocusChange(index, gene.locus)"
+                                                        />
                                                         </div>
-                                                        <button class="action-btn btn-remove" @click="deleteGene(index)">
-                                                        <i class="material-icons">delete</i>
-                                                        </button>
+                                                        <n-button text type="error" @click="deleteGene(index)">
+                                                        <AppIcon  name="delete" />
+                                                        </n-button>
                                                     </div>
 
                                                     <div class="allele-controls">
                                                         <div class="allele-group" v-if="gene.locus && gene.locus !== 'WT'">
-                                                        <label>等位基因 1</label>
-                                                        <select v-model="gene.allele1" :disabled="!gene.locus" @change="onFormAlleleChange(true, index, gene.allele1)">
-                                                        <option v-for="allele in alleleSuggestions[index][0]" :key="allele.id" :value="allele.id">
-                                                            {{ allele.symbol }}
-                                                        </option>
-                                                        </select>
+                                                        <div class="n-form-item-label">等位基因 1</div>
+                                                        <n-select
+                                                            v-model:value="gene.allele1"
+                                                            :disabled="!gene.locus"
+                                                            :options="getAlleleOptions(index, 0)"
+                                                            @update:value="onFormAlleleChange(true, index, gene.allele1)"
+                                                        />
                                                         </div>
                                                         <div class="allele-group" v-if="gene.locus && gene.locus !== 'WT'">
-                                                        <label>等位基因 2</label>
-                                                        <select v-model="gene.allele2" :disabled="!gene.locus" @change="onFormAlleleChange(false, index, gene.allele2)">
-                                                        <option v-for="allele in alleleSuggestions[index][1]" :key="allele.id" :value="allele.id">
-                                                            {{ allele.symbol }}
-                                                        </option>
-                                                        </select>
+                                                        <div class="n-form-item-label">等位基因 2</div>
+                                                        <n-select
+                                                            v-model:value="gene.allele2"
+                                                            :disabled="!gene.locus"
+                                                            :options="getAlleleOptions(index, 1)"
+                                                            @update:value="onFormAlleleChange(false, index, gene.allele2)"
+                                                        />
                                                         </div>
                                                     </div>
                                                     </div>
                                                     <div v-if="selectedGenes.length>0 && !gene?.selectedGeneName" class="form-group-row">
-                                                        <button class="primary-btn btn-clear-all" @click="deleteGenes">
-                                                        <i class="material-icons">delete_forever</i>
+                                                        <n-button type="error" @click="deleteGenes">
+                                                        <AppIcon  name="delete_forever" />
                                                         全部删除
-                                                        </button>
-                                                        <button class="primary-btn" @click="saveGenes(subgroupIndex, ruleIndex, geneIndex)">
-                                                        <i class="material-icons">archive</i>
+                                                        </n-button>
+                                                        <n-button type="primary" @click="saveGenes(subgroupIndex, ruleIndex, geneIndex)">
+                                                        <AppIcon  name="archive" />
                                                         确定基因型
-                                                        </button>
+                                                        </n-button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -961,44 +499,39 @@
                                         
                                         <!-- 性别规则 -->
                                         <div v-if="rule.Rtype === 'sex'" class="form-group">
-                                            <label>性别</label>
-                                            <select v-model="rule.value">
-                                                <option value="M">雄性</option>
-                                                <option value="F">雌性</option>
-                                            </select>
+                                            <n-form-item label="性别" label-placement="top">
+                                                <n-select v-model:value="rule.value" :options="sexRuleOptions" />
+                                            </n-form-item>
                                         </div>
                                         
                                         <!-- 品系规则 -->
                                         <div v-if="rule.Rtype === 'strain'" class="form-group">
-                                            <label>品系</label>
-                                            <input type="text" v-model="rule.value" placeholder="例如: C57BL/6">
+                                            <n-form-item label="品系" label-placement="top">
+                                                <n-input v-model:value="rule.value" placeholder="例如: C57BL/6" />
+                                            </n-form-item>
                                         </div>
                                         
                                         <!-- 笼位规则 -->
                                         <div v-if="rule.Rtype === 'cage'" class="form-group-location">
-                                            <label>笼位标识</label>
+                                            <div class="n-form-item-label">笼位标识</div>
                                             <div class="genotype-tree">
                                                 <div v-for="section in locations" :key="section.id" class="locus-item">
                                                 <div class="locus-header">
                                                     <label class="locus-label">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        :value="section.identifier" 
-                                                        v-model="rule.locations"
-                                                        class="locus-checkbox"
-                                                    >
+                                                    <n-checkbox
+                                                        :checked="(rule.locations || []).includes(section.identifier)"
+                                                        @update:checked="(checked) => updateRuleArray(rule, 'locations', section.identifier, checked)"
+                                                    />
                                                     <span class="locus-name">{{section.identifier}}</span>
                                                     </label>
                                                 </div>
                                                 <div class="combinations-list">
                                                     <div v-for="cage in calculateCages(section.identifier)" :key="cage.id" class="combination-item">
                                                     <label class="combination-label">
-                                                        <input 
-                                                        type="checkbox" 
-                                                        :value="cage.id"
-                                                        v-model="rule.cages"
-                                                        class="combination-checkbox"
-                                                        >
+                                                        <n-checkbox
+                                                            :checked="(rule.cages || []).includes(cage.id)"
+                                                            @update:checked="(checked) => updateRuleArray(rule, 'cages', cage.id, checked)"
+                                                        />
                                                         <span class="combination-name">{{ cage.cage_id }}</span>
                                                     </label>
                                                     </div>
@@ -1009,29 +542,22 @@
                                         
                                         <!-- 存活状态规则 -->
                                         <div v-if="rule.Rtype === 'live_status'" class="form-group">
-                                            <label>存活状态</label>
-                                            <select v-model="rule.value">
-                                                <option value="1">存活</option>
-                                                <option value="0">死亡</option>
-                                                <option value="2">解剖</option>
-                                                <option value="3">意外消失</option>
-                                                <option value="4">丢弃</option>
-                                            </select>
+                                            <n-form-item label="存活状态" label-placement="top">
+                                                <n-select v-model:value="rule.value" :options="liveStatusRuleOptions" />
+                                            </n-form-item>
                                         </div>
 
                                         <!-- 存活状态规则 -->
                                         <div v-if="rule.Rtype === 'test_planned'" class="form-group-location">
-                                            <label>计划实验</label>
+                                            <div class="n-form-item-label">计划实验</div>
                                                 <div class="genotype-tree">
                                                 <div v-for="test in experiments" :key="test.id" class="locus-item">
                                                 <div class="locus-header">
                                                     <label class="locus-label">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        :value="test.id" 
-                                                        v-model="rule.test_planned"
-                                                        class="locus-checkbox"
-                                                    >
+                                                    <n-checkbox
+                                                        :checked="(rule.test_planned || []).includes(test.id)"
+                                                        @update:checked="(checked) => updateRuleArray(rule, 'test_planned', test.id, checked)"
+                                                    />
                                                     <span class="locus-name">{{test.name}}</span>
                                                     </label>
                                                 </div>
@@ -1041,25 +567,25 @@
                                     </div>
                                 </div>
                             </div>
-                            <button @click="addRule(subgroupIndex)" :disabled="showIDList" class="btn btn-outline">
-                                <i class="material-icons">add</i> 添加规则
-                            </button>
+                            <n-button @click="addRule(subgroupIndex)" :disabled="showIDList" quaternary>
+                                <AppIcon  name="add" /> 添加规则
+                            </n-button>
                         </div>
                     </div>
-                    <div class="form-group-row">
-                    <button :disabled="showIDList" @click="addGroup" class="btn btn-outline add-subgroup-btn">
-                        <i class="material-icons">add</i> 添加小组
-                    </button>
-                    <button v-if="!showIDList" @click="reviewRules" class="btn btn-primary add-subgroup-btn">
-                        <i class="material-icons">book</i> 预览规则
-                    </button>
-                    <button v-else @click="reviewRulesClose" class="btn btn-danger add-subgroup-btn">
-                        <i class="material-icons">book</i> 取消预览
-                    </button>
-                    <button @click="saveGroup" class="btn btn-success add-subgroup-btn">
-                        <i class="material-icons">save</i> 按规则存储
-                    </button>
-                    </div>
+                    <n-space class="form-group-row" align="end">
+                    <n-button :disabled="showIDList" @click="addGroup" quaternary class="add-subgroup-btn">
+                        <AppIcon  name="add" /> 添加小组
+                    </n-button>
+                    <n-button v-if="!showIDList" @click="reviewRules" type="primary" class="add-subgroup-btn">
+                        <AppIcon  name="book" /> 预览规则
+                    </n-button>
+                    <n-button v-else @click="reviewRulesClose" type="error" class="add-subgroup-btn">
+                        <AppIcon  name="book" /> 取消预览
+                    </n-button>
+                    <n-button @click="saveGroup" type="primary" class="add-subgroup-btn">
+                        <AppIcon  name="save" /> 按规则存储
+                    </n-button>
+                    </n-space>
                 </div>
                 <!-- ID分组 -->
                 <div v-if="showIDList || editingGroup.Gtype === 'id'">
@@ -1073,88 +599,59 @@
                         />
                 </div>
             </div>
-        </div>
+        </n-card>
         
         <!-- 分组列表 -->
-        <div class="form-section">
+        <n-card size="small" class="form-section">
             <h3>分组列表</h3>
             <div class="table-container">
-                <table class="settings-table">
-                    <thead>
-                        <tr>
-                            <th>分组名称</th>
-                            <th>描述</th>
-                            <th>分组类型</th>
-                            <th>小组数量</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template v-for="group in predefinedGroups" :key="group.id">
-                        <tr >
-                            <td>{{ group.name }}</td>
-                            <td>{{ group.description }}</td>
-                            <td>
-                                <span class="group-type-badge" :class="group.Gtype === 'id' ? 'id-group' : 'rule-group'">
-                                    {{ group.Gtype === 'id' ? 'ID分组' : '规则分组' }}
-                                </span>
-                            </td>
-                            <td>{{ group.rules ? group.rules.length : 0 }}</td>
-                            <td class="action-cell">
-                                <div class="btn-group">
-                                <button class="action-btn" @click="editGroup(group)">编辑</button>
-                                <button class="action-btn btn-danger" @click="deleteGroup(group.id)">删除</button>
-                                <button class="action-btn btn-success" @click="toggleGroupDetails(group.id)">
-                                    {{ expandedGroup.includes(group.id) ? '收起' : '详情' }}
-                                </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr v-if="expandedGroup.includes(group.id)" class="alleles-subtable">
-                        <td colspan="5">
-                            <div class="subtable-container">
-                            <table class="subtable">
-                                <thead>
-                                <tr>
-                                    <th>组名</th>
-                                    <th>主题色</th>
-                                    <th v-if="group.Gtype === 'id'">组内小鼠数量</th>
-                                    <th v-else>规则数量</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr v-for="g in group.rules" :key="g.name">
-                                    <td>{{ g.name }}</td>
-                                    <td :style="{ backgroundColor: g.color }"></td>
-                                    <td>{{ group.Gtype === 'id' ? g.mouseId?.length : g.rules?.length }}</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                            </div>
-                        </td>
-                        </tr>
-                        </template>
-                    </tbody>
-                </table>
+                <n-data-table
+                    :columns="predefinedGroupColumns"
+                    :data="predefinedGroups"
+                    :pagination="false"
+                    :bordered="true"
+                    :single-line="false"
+                    :row-key="(row) => row.id"
+                />
+                <n-card
+                    v-for="group in expandedGroupDetails"
+                    :key="`group-detail-${group.id}`"
+                    class="subtable-container"
+                    size="small"
+                    style="margin-top: 12px;"
+                >
+                    <template #header>
+                        {{ group.name }} - 详情
+                    </template>
+                    <n-data-table
+                        :columns="groupDetailColumns(group.Gtype)"
+                        :data="group.rules || []"
+                        :pagination="false"
+                        :bordered="true"
+                        :single-line="false"
+                        :row-key="(row) => row.name"
+                    />
+                </n-card>
             </div>
-        </div>
-    </div>
+        </n-card>
+    </n-space>
+    </n-tab-pane>
 
 
     <!-- 数据库管理 -->
-    <div v-if="activeTab === 'database'" class="form-container">
-    <h2 class="section-title">数据库管理</h2>
+    <n-tab-pane name="database" tab="数据库管理">
+    <n-space vertical size="large" class="form-container">
     <p class="section-description">管理数据库文件和程序日志</p>
     
     <!-- 数据库信息 -->
-    <div class="form-section">
-        <div class="section-header">
+    <n-card size="small" class="form-section">
+        <n-space class="section-header" justify="space-between" align="center">
             <h3>数据库信息</h3>
-            <div class="btn-group">
-                <button v-if="!addingDatabase" class="btn btn-outline" @click="addDatabase">创建新数据库</button>
-                <button class="btn btn-primary" @click="importDatabase">导入数据库</button>
-            </div>
-        </div>
+            <n-space class="btn-group">
+                <n-button v-if="!addingDatabase" quaternary @click="addDatabase">创建新数据库</n-button>
+                <n-button type="primary" @click="importDatabase">导入数据库</n-button>
+            </n-space>
+        </n-space>
         <div class="database-list">
             <div 
                 v-for="(db, key) in databases" 
@@ -1165,13 +662,13 @@
                 <div class="database-header">
                     <div class="database-name">
                         <template v-if="editingIndex === key && editingField === 'projectName'">
-                            <input 
-                                v-model="editingValue" 
+                            <n-input 
+                                v-model:value="editingValue" 
                                 class="editing-input"
-                                @keyup.enter="saveEdit(key)"
+                                @keydown.enter="saveEdit(key)"
                                 @blur="saveEdit(key)"
                                 autofocus
-                            >
+                            />
                         </template>
                         <template v-else>
                             <span @dblclick="startEdit(key, 'projectName', db.projectName)">
@@ -1201,14 +698,14 @@
                         <span class="detail-label">项目开始时间：</span>
                         <span class="detail-value">
                             <template v-if="editingIndex === key && editingField === 'startAt'">
-                                <input 
-                                    v-model="editingValue" 
+                                <n-date-picker 
+                                    v-model:formatted-value="editingValue"
                                     class="editing-input"
                                     type="date"
-                                    @keyup.enter="saveEdit(key)"
+                                    value-format="yyyy-MM-dd"
                                     @blur="saveEdit(key)"
                                     autofocus
-                                >
+                                />
                             </template>
                             <template v-else>
                                 <span @dblclick="startEdit(key, 'startAt', db.startAt)">
@@ -1221,14 +718,14 @@
                         <span class="detail-label">项目结束时间：</span>
                         <span class="detail-value">
                             <template v-if="editingIndex === key && editingField === 'endAt'">
-                                <input 
-                                    v-model="editingValue" 
+                                <n-date-picker 
+                                    v-model:formatted-value="editingValue"
                                     class="editing-input"
                                     type="date"
-                                    @keyup.enter="saveEdit(key)"
+                                    value-format="yyyy-MM-dd"
                                     @blur="saveEdit(key)"
                                     autofocus
-                                >
+                                />
                             </template>
                             <template v-else>
                                 <span @dblclick="startEdit(key, 'endAt', db.endAt)">
@@ -1252,38 +749,34 @@
                 </div>
                 
                 <div class="actions">
-                    <button
-                        class="action-btn primary" 
+                    <n-button
+                        type="primary"
                         @click="selectDatabase(key)"
                         :disabled="currentDatabase === key || databaseNotChanged === false"
                     >
                         设为当前
-                    </button>
-                    <button
-                        class="action-btn secondary" 
+                    </n-button>
+                    <n-button
+                        quaternary
                         @click="exportDatabase(key)"
                         :disabled="(!db.totalRecords && db.totalRecords !== 0) || databaseNotChanged === false"
                     >
                         导出
-                    </button>
-                    <button
-                        class="action-btn btn-danger" 
+                    </n-button>
+                    <n-button
+                        type="error"
                         @click="deleteDatabase(key)"
                         :disabled="currentDatabase === key || databaseNotChanged === false"
                     >
                         删除
-                    </button>
+                    </n-button>
                 </div>
             </div>
             <div v-if="addingDatabase" class="database-card">
                 <div class="database-header">
                     <span class="detail-label">项目名称：</span>
                     <div class="database-name">
-                        <input 
-                            v-model="editingDatabase.projectName" 
-                            class="editing-input"
-                            autofocus
-                        >
+                        <n-input v-model:value="editingDatabase.projectName" class="editing-input" autofocus />
                     </div>
                 </div>
                 
@@ -1291,212 +784,189 @@
                     <div class="detail-item">
                         <span class="detail-label">项目开始时间：</span>
                         <span class="detail-value">
-                            <input 
-                                v-model="editingDatabase.startAt" 
-                                class="editing-input"
-                                type="date"
-                            >
+                            <n-date-picker v-model:formatted-value="editingDatabase.startAt" class="editing-input" type="date" value-format="yyyy-MM-dd" />
                         </span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">项目结束时间：</span>
                         <span class="detail-value">
-                            <input 
-                                v-model="editingDatabase.endAt" 
-                                class="editing-input"
-                                type="date"
-                            >
+                            <n-date-picker v-model:formatted-value="editingDatabase.endAt" class="editing-input" type="date" value-format="yyyy-MM-dd" />
                         </span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">只读模式</span>
                         <div class="checkbox-group">
-                            <input type="checkbox" v-model="editingDatabase.readOnly" id="edit-readonly-checkbox">
-                            <label for="edit-readonly-checkbox">启用只读模式</label>
+                            <n-checkbox v-model:checked="editingDatabase.readOnly">启用只读模式</n-checkbox>
                         </div>
                     </div>
                 </div>
                 <div class="actions">
-                    <button
-                        class="action-btn btn-primary" 
-                        @click="createDatabase">确认
-                    </button>
-                    <button
-                        class="action-btn btn-danger" 
-                        @click="cancelCreateDatabase">取消
-                    </button>
+                    <n-button type="primary" @click="createDatabase">确认</n-button>
+                    <n-button type="error" @click="cancelCreateDatabase">取消</n-button>
                 </div>
             </div>
         </div>
-    </div>
+    </n-card>
 
     <!-- 数据库清空 -->
-    <div class="form-section">
+    <n-card size="small" class="form-section">
     <h3>清空当前数据库</h3>
     <div class="export-options">
-        <p class="warning-text">警告：此操作将删除所有数据，包括小鼠信息、基因型、位置、实验记录等，且无法恢复！</p>
+        <n-alert type="error" title="警告">
+            此操作将删除所有数据，包括小鼠信息、基因型、位置、实验记录等，且无法恢复！
+        </n-alert>
+        <n-form label-placement="top">
+            <n-form-item label="请输入确认文字 'DELETE ALL DATA' 以继续">
+                <n-input v-model:value="deleteConfirmation" placeholder="DELETE ALL DATA" class="confirmation-field" :class="{ 'error': deleteConfirmationError }" />
+                <div v-if="deleteConfirmationError" class="error-message">
+                {{ deleteConfirmationError }}
+                </div>
+            </n-form-item>
+        </n-form>
         
-        <div class="form-group">
-        <div class="confirmation-input">
-            <label>请输入确认文字 "<strong>DELETE ALL DATA</strong>" 以继续：</label>
-            <input type="text" v-model="deleteConfirmation" placeholder="DELETE ALL DATA" 
-                class="confirmation-field" :class="{ 'error': deleteConfirmationError }">
-            <div v-if="deleteConfirmationError" class="error-message">
-            {{ deleteConfirmationError }}
-            </div>
-        </div>
-        </div>
-        
-        <div class="form-group">
-        <button class="btn btn-danger" @click="clearDatabase" :disabled="!isDeleteConfirmed || isClearingDb">
+        <n-space class="form-group" align="end">
+        <n-button type="error" @click="clearDatabase" :disabled="!isDeleteConfirmed || isClearingDb">
             <span v-if="isClearingDb">清空中...</span>
             <span v-else>清空数据库</span>
-        </button>
-        </div>
+        </n-button>
+        </n-space>
     </div>
-    </div>
+    </n-card>
     
     <!-- 日志导出 -->
-    <div class="form-section">
+    <n-card size="small" class="form-section">
         <h3>导出程序日志</h3>
         <div class="export-options">
         <p>导出当前工作目录的程序日志文件</p>
-        <div class="form-group">
-            <button class="btn btn-outline" @click="exportLogFile" :disabled="isExportingLog">
+        <n-space class="form-group" align="end">
+            <n-button quaternary @click="exportLogFile" :disabled="isExportingLog">
             <span v-if="isExportingLog">导出中...</span>
             <span v-else>导出日志文件</span>
-            </button>
+            </n-button>
+        </n-space>
         </div>
-        </div>
-    </div>
-    </div>
+    </n-card>
+    </n-space>
+    </n-tab-pane>
 
     <!-- 自定义显示设置 -->
-    <div v-if="activeTab === 'display'" class="form-container">
-        <h2 class="section-title">自定义显示设置</h2>
+    <n-tab-pane name="display" tab="自定义显示设置">
+    <n-space vertical size="large" class="form-container">
         
         <!-- 列显示设置 -->
-        <div class="form-section">
+        <n-card size="small" class="form-section">
             <h3>显示列设置</h3>
-            <div class="preset-selector">
-                <label>选择预设：</label>
-                <select v-model="selectedSetting" @change="applyPreset">
-                    <option value="">-- 请选择预设 --</option>
-                    <option v-for="(name, key) in settings" :key="key" :value="key">
-                    {{ name }}
-                    </option>
-                </select>
-            </div>
+            <n-form label-placement="top">
+                <n-form-item label="选择预设">
+                    <n-select v-model:value="selectedSetting" :options="displaySettingOptions" placeholder="-- 请选择预设 --" @update:value="applyDisplayPreset" />
+                </n-form-item>
+            </n-form>
             <!-- 基本信息列 -->
             <div v-if="selectedSetting === 'mouse'" class="column-category">
                 <h4>小鼠列表</h4>
                 <div class="column-grid">
-                    <label class="column-item" :class="{seen : showColumns[column.key]}" v-for="column in mouseColumns" :key="column.key" :for="column.key">
-                        <input type="checkbox" :id="column.key" v-model="showColumns[column.key]" style="visibility: hidden;">
-                        <label :for="column.key">{{ column.label }}</label>
-                        <i class="material-icons" v-if="showColumns[column.key]">visibility</i>
-                        <i class="material-icons" v-else>visibility_off</i>
-                    </label>
+                    <div class="column-item" :class="{ seen: showColumns[column.key] }" v-for="column in mouseColumns" :key="column.key">
+                        <n-checkbox v-model:checked="showColumns[column.key]">{{ column.label }}</n-checkbox>
+                        <AppIcon v-if="showColumns[column.key]" name="visibility" />
+                        <AppIcon v-else name="visibility_off" />
+                    </div>
                 </div>
             </div>
             
             <!-- 操作按钮 -->
             <div v-if="selectedSetting" class="form-group-row">
-                <button class="btn btn-primary" @click="saveDisplaySettings">
-                    <i class="material-icons">save</i> 保存设置
-                </button>
-                <button class="btn btn-outline" @click="resetToDefault(selectedSetting)">
-                    <i class="material-icons">refresh</i> 恢复默认
-                </button>
+                <n-button type="primary" @click="saveDisplaySettings">
+                    <AppIcon  name="save" /> 保存设置
+                </n-button>
+                <n-button quaternary @click="resetToDefault(selectedSetting)">
+                    <AppIcon  name="refresh" /> 恢复默认
+                </n-button>
             </div>
-        </div>
+        </n-card>
 
         <!-- 重置设置 -->
-        <div class="reset-section">
+        <n-card size="small" class="reset-section">
             <h4>重置设置</h4>
             <p>这将重置所有显示设置为默认值，此操作不可撤销。</p>
-            <button class="btn btn-danger" @click="confirmReset">
-                <i class="material-icons">warning</i> 重置所有设置
-            </button>
-        </div>
-    </div>
+            <n-button type="error" @click="confirmReset">
+                <AppIcon  name="warning" /> 重置所有设置
+            </n-button>
+        </n-card>
+    </n-space>
+    </n-tab-pane>
+
+    </n-tabs>
     
     <!-- 编辑基因位点对话框 -->
-    <div v-if="editLocusDialogVisible" class="dialog-overlay">
-    <div class="dialog-container">
-        <h2>编辑基因位点</h2>
-        <div class="form-group">
-        <label>基因符号</label>
-        <input type="text" v-model="editingLocus.symbol" required>
-        </div>
-        <div class="form-group">
-        <label>描述</label>
-        <textarea v-model="editingLocus.description"></textarea>
-        </div>
-        <div class="dialog-buttons">
-        <button class="btn btn-outline" @click="editLocusDialogVisible = false">取消</button>
-        <button class="btn btn-primary" @click="saveGeneLocus">保存</button>
-        </div>
-    </div>
-    </div>
+    <n-modal v-model:show="editLocusDialogVisible" preset="card" title="编辑基因位点" style="width: 520px; max-width: 95vw;">
+        <n-form label-placement="top">
+            <n-form-item label="基因符号">
+                <n-input v-model:value="editingLocus.symbol" />
+            </n-form-item>
+            <n-form-item label="描述">
+                <n-input type="textarea" v-model:value="editingLocus.description" />
+            </n-form-item>
+        </n-form>
+        <template #action>
+            <n-space class="dialog-buttons" justify="end">
+                <n-button quaternary @click="editLocusDialogVisible = false">取消</n-button>
+                <n-button type="primary" @click="saveGeneLocus">保存</n-button>
+            </n-space>
+        </template>
+    </n-modal>
 
     <!-- 编辑等位基因对话框 -->
-    <div v-if="editAlleleDialogVisible" class="dialog-overlay">
-    <div class="dialog-container">
-        <h2>编辑等位基因</h2>
-        <div class="form-group">
-        <label>符号</label>
-        <input type="text" v-model="editingAllele.symbol" required>
-        </div>
-        <div class="form-group">
-        <label>描述</label>
-        <input type="text" v-model="editingAllele.description">
-        </div>
-        <div class="form-group">
-        <label>是否为野生型</label>
-        <input type="checkbox" v-model="editingAllele.is_wildtype">
-        </div>
-        <div class="dialog-buttons">
-        <button class="btn btn-outline" @click="editAlleleDialogVisible = false">取消</button>
-        <button class="btn btn-primary" @click="saveAllele">保存</button>
-        </div>
-    </div>
-    </div>
+    <n-modal v-model:show="editAlleleDialogVisible" preset="card" title="编辑等位基因" style="width: 520px; max-width: 95vw;">
+        <n-form label-placement="top">
+            <n-form-item label="符号">
+                <n-input v-model:value="editingAllele.symbol" />
+            </n-form-item>
+            <n-form-item label="描述">
+                <n-input v-model:value="editingAllele.description" />
+            </n-form-item>
+            <n-form-item label="是否为野生型">
+                <n-checkbox v-model:checked="editingAllele.is_wildtype" />
+            </n-form-item>
+        </n-form>
+        <template #action>
+            <n-space class="dialog-buttons" justify="end">
+                <n-button quaternary @click="editAlleleDialogVisible = false">取消</n-button>
+                <n-button type="primary" @click="saveAllele">保存</n-button>
+            </n-space>
+        </template>
+    </n-modal>
     
     <!-- 编辑位置对话框 -->
-    <div v-if="editLocationDialogVisible" class="dialog-overlay">
-    <div class="dialog-container">
-        <h2>编辑位置</h2>
-        <div class="form-group">
-        <label>位置标识</label>
-        <input type="text" v-model="editingLocation.identifier" required>
-        </div>
-        <div class="form-group">
-        <label>描述</label>
-        <input type="text" v-model="editingLocation.description">
-        </div>
-        <div class="dialog-buttons">
-        <button class="btn btn-outline" @click="editLocationDialogVisible = false">取消</button>
-        <button class="btn btn-primary" @click="saveLocation">保存</button>
-        </div>
-    </div>
-    </div>
+    <n-modal v-model:show="editLocationDialogVisible" preset="card" title="编辑位置" style="width: 520px; max-width: 95vw;">
+        <n-form label-placement="top">
+            <n-form-item label="位置标识">
+                <n-input v-model:value="editingLocation.identifier" />
+            </n-form-item>
+            <n-form-item label="描述">
+                <n-input v-model:value="editingLocation.description" />
+            </n-form-item>
+        </n-form>
+        <template #action>
+            <n-space class="dialog-buttons" justify="end">
+                <n-button quaternary @click="editLocationDialogVisible = false">取消</n-button>
+                <n-button type="primary" @click="saveLocation">保存</n-button>
+            </n-space>
+        </template>
+    </n-modal>
     
     <!-- 导入结果对话框 -->
-    <div v-if="importResultDialogVisible" @click.self="importResultDialogVisible=false" class="dialog-overlay">
-    <div class="dialog-container">
-        <h2>导入结果</h2>
+    <n-modal v-model:show="importResultDialogVisible" preset="card" title="导入结果" style="width: 680px; max-width: 95vw;">
         <div class="import-result">
         <div class="result-item success">
-            <i class="material-icons">check_circle</i>
+            <AppIcon  name="check_circle" />
             <span>成功导入: {{ importResult.successCount }} 条记录</span>
         </div>
         <div class="result-item warning">
-            <i class="material-icons">warning</i>
+            <AppIcon  name="warning" />
             <span>跳过重复: {{ importResult.skippedCount }} 条记录</span>
         </div>
         <div class="result-item error" v-if="importResult.errors.length > 0">
-            <i class="material-icons">error</i>
+            <AppIcon  name="error" />
             <span>错误: {{ importResult.errors.length }} 条记录</span>
         </div>
         
@@ -1509,76 +979,71 @@
             </ul>
         </div>
         </div>
-        <div class="dialog-buttons">
-        <button class="btn btn-primary" @click="importResultDialogVisible = false">确定</button>
-        </div>
-    </div>
-    </div>
+        <n-space class="dialog-buttons" justify="end">
+        <n-button type="primary" @click="importResultDialogVisible = false">确定</n-button>
+        </n-space>
+    </n-modal>
 
     <!-- 数据库导入结果对话框 -->
-    <div v-if="dbImportResultDialogVisible" @click.self="cancelImportDatabase" class="dialog-overlay">
-    <div class="dialog-container">
-        <h3>导入数据库</h3>
+    <n-modal v-model:show="dbImportResultDialogVisible" preset="card" title="导入数据库" style="width: 760px; max-width: 95vw;" @mask-click="cancelImportDatabase">
         <div class="import-options">
         <div class="file-upload" @dragover.prevent @drop="handleDbDrop">
-            <input type="file" accept=".db" @change="handleDbFileUpload">
             <div class="upload-area" :class="{ 'dragover': isDbDragging }">
-            <i class="material-icons">cloud_upload</i>
+            <AppIcon  name="cloud_upload" />
             <p v-if="!selectedDbFile">点击或拖拽数据库文件(.db)到此处上传</p>
             <p v-else class="file-info">
                 <span>{{ selectedDbFile.name }}</span>
                 <span>({{ formatFileSize(selectedDbFile.size) }})</span>
             </p>
-            <button v-if="selectedDbFile" class="btn btn-outline" @click="clearDbFile">清除</button>
+            <n-upload
+                accept=".db"
+                :show-file-list="false"
+                :default-upload="false"
+                @change="handleNaiveDbFileChange"
+            >
+                <n-button quaternary>选择数据库文件</n-button>
+            </n-upload>
+            <n-button v-if="selectedDbFile" quaternary @click="clearDbFile">清除</n-button>
             </div>
         </div>
 
         <div v-if="selectedDbFile" class="warning-message">
-            <i class="material-icons">warning</i>
+            <AppIcon  name="warning" />
             <span>警告：导入数据库将添加到数据库列表中！</span>
         </div>
         
         <div v-if="selectedDbFile">
             <h2>编辑数据库信息</h2>
-            <div class="form-group">
-                <label>项目名称 *</label>
-                <input type="text" v-model="editingDatabase.projectName" required>
-            </div>
-            <div class="form-group">
-                <label>开始时间</label>
-                <input type="date" v-model="editingDatabase.startAt">
-            </div>
-            <div class="form-group">
-                <label>结束时间</label>
-                <input type="date" v-model="editingDatabase.endAt">
-            </div>
-            <div class="form-group">
-                <label>只读模式</label>
-                <div class="checkbox-group">
-                    <input type="checkbox" v-model="editingDatabase.readOnly" id="edit-readonly-checkbox">
-                    <label for="edit-readonly-checkbox">启用只读模式</label>
-                </div>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">数据库升级</span>
-                <div class="checkbox-group">
-                    <input type="checkbox" v-model="editingDatabase.databaseUpdate" id="edit-update-checkbox">
-                    <label for="edit-update-checkbox">从V2.X版本升级（基因型无法更新）</label>
-                </div>
-            </div>
+            <n-form label-placement="top">
+                <n-form-item label="项目名称 *">
+                    <n-input v-model:value="editingDatabase.projectName" />
+                </n-form-item>
+                <n-form-item label="开始时间">
+                    <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="editingDatabase.startAt" />
+                </n-form-item>
+                <n-form-item label="结束时间">
+                    <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="editingDatabase.endAt" />
+                </n-form-item>
+                <n-form-item label="只读模式">
+                    <n-checkbox v-model:checked="editingDatabase.readOnly">启用只读模式</n-checkbox>
+                </n-form-item>
+                <n-form-item label="数据库升级">
+                    <n-checkbox v-model:checked="editingDatabase.databaseUpdate">从V2.X版本升级（基因型无法更新）</n-checkbox>
+                </n-form-item>
+            </n-form>
         </div>
         </div>
-        <div class="dialog-buttons">
-            <button class="btn btn-primary" @click="handleDbImportComplete">确定</button>
-            <button class="btn btn-primary" @click="cancelImportDatabase">取消</button>
-        </div>
-    </div>
-    </div>
+        <n-space class="dialog-buttons" justify="end">
+            <n-button type="primary" @click="handleDbImportComplete">确定</n-button>
+            <n-button quaternary @click="cancelImportDatabase">取消</n-button>
+        </n-space>
+    </n-modal>
 </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
+import { h, ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
+import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox } from 'naive-ui'
 import axios from 'axios'
 import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
@@ -1606,16 +1071,94 @@ const {mouseColumns, resetToDefault, changeSettings} = settingStore
 
 // UI状态
 const activeTab = ref('genotype')
-const tabs = ref([
-{ id: 'genotype', title: '基因型设置' },
-{ id: 'location', title: '位置设置' },
-{ id: 'experiment', title: '实验类型设置' },
-{ id: 'group', title: '预设分组' },
-{ id: 'export', title: '导出设置' },
-{ id: 'import', title: '导入数据' },
-{ id: 'database', title: '数据库管理' },
-{ id: 'display', title: '自定义显示设置' }
+const displaySettingOptions = computed(() =>
+    Object.entries(settings.value || {}).map(([value, label]) => ({
+        label,
+        value
+    }))
+)
+const experimentPresetOptions = computed(() =>
+    Object.entries(experimentPresets.value || {}).map(([value, preset]) => ({
+        label: preset.name,
+        value
+    }))
+)
+const fieldDataTypeOptions = [
+    { label: '整数', value: 'INTEGER' },
+    { label: '小数', value: 'REAL' },
+    { label: '文本', value: 'TEXT' },
+    { label: '布尔值', value: 'BOOLEAN' },
+    { label: '日期', value: 'DATE' }
+]
+const groupTypeOptions = [
+    { label: '规则分组', value: 'rule' },
+    { label: 'ID分组', value: 'id' }
+]
+const ruleTypeOptions = [
+    { label: '基因型', value: 'genotype' },
+    { label: '性别', value: 'sex' },
+    { label: '品系', value: 'strain' },
+    { label: '笼位', value: 'cage' },
+    { label: '存活状态', value: 'live_status' },
+    { label: '计划实验', value: 'test_planned' }
+]
+const groupExperimentOptions = computed(() => [
+    { label: '不为实验预设分组', value: null },
+    ...experiments.value.map((experiment) => ({
+        label: experiment.name,
+        value: experiment.id
+    }))
 ])
+const sexRuleOptions = [
+    { label: '雄性', value: 'M' },
+    { label: '雌性', value: 'F' }
+]
+const liveStatusRuleOptions = [
+    { label: '存活', value: '1' },
+    { label: '死亡', value: '0' },
+    { label: '解剖', value: '2' },
+    { label: '意外消失', value: '3' },
+    { label: '丢弃', value: '4' }
+]
+const getLocusOptions = (index) =>
+    (geneStore.locusSuggestions[index] || []).map((locus) => ({
+        label: locus.symbol,
+        value: locus.symbol
+    }))
+const getAlleleOptions = (index, alleleIndex) =>
+    (alleleSuggestions.value[index]?.[alleleIndex] || []).map((allele) => ({
+        label: allele.symbol,
+        value: allele.id
+    }))
+const updateRuleArray = (rule, field, value, checked) => {
+    if (!Array.isArray(rule[field])) {
+        rule[field] = []
+    }
+    if (checked) {
+        if (!rule[field].includes(value)) {
+            rule[field].push(value)
+        }
+        return
+    }
+    rule[field] = rule[field].filter((item) => item !== value)
+}
+const getVisualizeTypeOptions = (dataType) => {
+    const options = [{ label: '不进行可视化', value: '' }]
+    if (['INTEGER', 'REAL', 'DATE'].includes(dataType)) {
+        options.push({ label: '作为横坐标', value: 'x' })
+    }
+    if (['INTEGER', 'REAL'].includes(dataType)) {
+        options.push({ label: '作为纵坐标', value: 'y' })
+        options.push({ label: '作为柱状图', value: 'column' })
+    }
+    return options
+}
+
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
+const normalizeDateValue = (value) => {
+    if (typeof value !== 'string') return null
+    return DATE_ONLY_REGEX.test(value) ? value : null
+}
 
 // 基因型相关状态
 const newGeneLocus = reactive({ symbol: '', description: '' })
@@ -1633,11 +1176,19 @@ const editLocationDialogVisible = ref(false)
 
 // 导出设置相关状态
 const exportOptionsVisible = ref(false)
-const exportStartDate = ref('')
-const exportEndDate = ref('')
+const exportStartDate = ref(null)
+const exportEndDate = ref(null)
 const exportFormat = ref('xlsx')
 const currentExportType = ref('')
 const selectedExperiments = ref([])
+const exportFormatOptions = computed(() => (
+    currentExportType.value !== 'experiment'
+        ? [
+            { label: 'CSV', value: 'csv' },
+            { label: 'Excel', value: 'xlsx' }
+        ]
+        : [{ label: 'Excel', value: 'xlsx' }]
+))
 const exportOptions = ref([
 { id: 'mice', title: '导出小鼠表' },
 { id: 'weights', title: '导出体重表' },
@@ -1651,6 +1202,16 @@ const selectedFile = ref(null)
 const isDragging = ref(false)
 const importType = ref('mice')
 const importConflictResolution = ref('skip')
+const importTypeOptions = [
+    { label: '小鼠信息', value: 'mice' },
+    { label: '体重数据', value: 'weights' },
+    { label: '小鼠状态记录数据', value: 'record' },
+    { label: '血统关系', value: 'pedigree' }
+]
+const importConflictOptions = [
+    { label: '跳过重复项', value: 'skip' },
+    { label: '覆盖现有数据', value: 'overwrite' }
+]
 const isImporting = ref(false)
 const importResultDialogVisible = ref(false)
 const importResult = reactive({
@@ -1658,6 +1219,101 @@ successCount: 0,
 skippedCount: 0,
 errors: []
 })
+
+const importFormatColumns = [
+    {
+        title: '列名',
+        key: 'column',
+        render: (row) => h('span', { class: row.required ? 'required' : 'optional' }, row.column)
+    },
+    {
+        title: '数据类型',
+        key: 'dataType'
+    },
+    {
+        title: '是否必填',
+        key: 'requiredLabel',
+        render: (row) => h('span', { class: row.required ? 'required' : 'optional' }, row.required ? '是' : '否')
+    },
+    {
+        title: '说明',
+        key: 'description'
+    },
+    {
+        title: '示例',
+        key: 'example',
+        render: (row) => h('span', { class: 'example-row' }, row.example)
+    }
+]
+
+const importFormatRowsByType = {
+    mice: [
+        { column: 'id', dataType: '字符串', required: true, description: '小鼠唯一标识', example: 'M001' },
+        { column: 'genotype', dataType: '字符串', required: true, description: '基因型描述，格式为：{位点1}[等位基因1]/[等位基因2]&{位点2}[等位基因3]/[等位基因4]', example: '{Trp53}[KO]/[+]或{WT}' },
+        { column: 'sex', dataType: '字符串', required: true, description: '性别：M/F', example: 'M' },
+        { column: 'birth_date', dataType: '日期', required: true, description: '出生日期（YYYY-MM-DD）', example: '2023-05-15' },
+        { column: 'live_status', dataType: '整数', required: true, description: '存活状态：1=存活，0=死亡，2=解剖，3=失踪，4=丢弃，5=处理后死亡', example: '1' },
+        { column: 'death_date', dataType: '日期', required: false, description: '死亡日期（当live_status=0时必填）', example: '2023-10-20' },
+        { column: 'cage_id', dataType: '字符串', required: false, description: '笼位名称', example: 'CAGE-01' },
+        { column: 'location', dataType: '字符串', required: false, description: '区域名称', example: '本部动物房' },
+        { column: 'strain', dataType: '字符串', required: false, description: '小鼠品系', example: 'C57BL/6J' },
+        { column: 'record', dataType: '字符串', required: false, description: '导入时备注信息', example: '2025.1.1 被咬' }
+    ],
+    weights: [
+        { column: 'id', dataType: '字符串', required: true, description: '小鼠唯一标识', example: 'M001' },
+        { column: 'birth_date', dataType: '日期', required: true, description: '出生日期（YYYY-MM-DD）', example: '2023-05-15' },
+        { column: 'weight', dataType: '数值', required: true, description: '体重值（克）', example: '25.3' },
+        { column: 'record_date', dataType: '日期', required: true, description: '记录日期（YYYY-MM-DD）', example: '2023-06-15' }
+    ],
+    record: [
+        { column: 'id', dataType: '字符串', required: true, description: '小鼠唯一标识', example: 'M001' },
+        { column: 'birth_date', dataType: '日期', required: true, description: '出生日期（YYYY-MM-DD）', example: '2023-05-15' },
+        { column: 'record', dataType: '字符串', required: true, description: '每条记录', example: '脱毛' },
+        { column: 'record_date', dataType: '日期', required: true, description: '记录日期（YYYY-MM-DD）', example: '2023-06-15' }
+    ],
+    pedigree: [
+        { column: 'mouse_id', dataType: '字符串', required: true, description: '小鼠唯一标识', example: 'M001' },
+        { column: 'birth_date', dataType: '日期', required: true, description: '出生日期（YYYY-MM-DD）', example: '2023-05-15' },
+        { column: 'father_id', dataType: '字符串', required: true, description: "父鼠ID（如不存在填'None'）", example: 'F001' },
+        { column: 'mother_id', dataType: '字符串', required: true, description: "母鼠ID（如不存在填'None'）", example: 'M002' }
+    ]
+}
+
+const importFormatNotesByType = {
+    mice: [
+        '列名一定要按照要求填写，否则无法识别',
+        '日期格式必须为YYYY-MM-DD（例如：2023-05-15）',
+        "性别字段只接受'M'（雄性）或'F'（雌性）",
+        '基因型如果不存在会自动创建新基因型',
+        '基因型的位点和等位基因中不能出现特殊字符，示例：{p53}[S46A]/[-]&{p21}[-]/[-]',
+        '当live_status!=1（不为存活）时，必须提供death_date',
+        '区域名称只有在存在笼位名称时才生效',
+        '若无区域名称，新笼位自动添加到新创建的区域，后续可调整（通过笼位设置）'
+    ],
+    weights: [
+        '列名一定要按照要求填写，否则无法识别',
+        '日期格式必须为YYYY-MM-DD（例如：2023-05-15）',
+        '体重值应为数值类型，最多保留两位小数',
+        '记录日期必须晚于出生日期',
+        '系统会自动计算生存天数 = (记录日期 - 出生日期)'
+    ],
+    record: [
+        '列名一定要按照要求填写，否则无法识别',
+        '日期格式必须为YYYY-MM-DD（例如：2023-05-15）',
+        '记录日期必须晚于出生日期',
+        '系统会自动计算生存天数 = (记录日期 - 出生日期)'
+    ],
+    pedigree: [
+        '列名一定要按照要求填写，否则无法识别',
+        '日期格式必须为YYYY-MM-DD（例如：2023-05-15）',
+        "父鼠ID和母鼠ID如不存在，必须填写字符串'None'（区分大小写）",
+        '所有小鼠ID必须已在系统中存在',
+        '父鼠和母鼠的出生日期必须早于当前小鼠的出生日期'
+    ]
+}
+
+const importFormatRows = computed(() => importFormatRowsByType[importType.value] || [])
+const importFormatNotes = computed(() => importFormatNotesByType[importType.value] || [])
 
 // 实验类型相关状态
 const editingExperimentType = reactive({
@@ -1680,8 +1336,8 @@ const deleteConfirmationError = ref('')
 const isClearingDb = ref(false)
 const editingDatabase = ref({
 projectName: '',
-startAt: '',
-endAt: '',
+startAt: null,
+endAt: null,
 readOnly: false,
 databaseUpdate: false
 })
@@ -1730,6 +1386,390 @@ const toggleAlleles = (id) => {
     expandedLoci.value.splice(index, 1)
     }
 }
+
+const genotypeLocusRows = computed(() => genotypes.value || [])
+
+const expandedLocusDetails = computed(() => {
+    const genotypeMap = new Map((genotypes.value || []).map((item) => [item.id, item]))
+    return expandedLoci.value
+        .map((id) => genotypeMap.get(id))
+        .filter((item) => Boolean(item))
+})
+
+const genotypeLocusColumns = [
+    {
+        title: '基因符号',
+        key: 'symbol'
+    },
+    {
+        title: '描述',
+        key: 'description'
+    },
+    {
+        title: '等位基因数量',
+        key: 'alleleCount',
+        render: (row) => row.alleles?.length ?? 0
+    },
+    {
+        title: '操作',
+        key: 'actions',
+        render: (row) => {
+            if (row.symbol === 'WT') return null
+            return h(NSpace, { size: 8 }, {
+                default: () => [
+                    h(
+                        NButton,
+                        {
+                            size: 'small',
+                            quaternary: true,
+                            onClick: () => editGeneLocus(row)
+                        },
+                        { default: () => '编辑' }
+                    ),
+                    h(
+                        NButton,
+                        {
+                            size: 'small',
+                            type: 'error',
+                            quaternary: true,
+                            onClick: () => deleteGeneLocus(row.id)
+                        },
+                        { default: () => '删除' }
+                    ),
+                    h(
+                        NButton,
+                        {
+                            size: 'small',
+                            type: 'success',
+                            quaternary: true,
+                            onClick: () => toggleAlleles(row.id)
+                        },
+                        {
+                            default: () => (expandedLoci.value.includes(row.id) ? '收起' : '展开并添加等位基因')
+                        }
+                    )
+                ]
+            })
+        }
+    }
+]
+
+const alleleColumns = [
+    {
+        title: '等位基因符号',
+        key: 'symbol'
+    },
+    {
+        title: '描述',
+        key: 'description'
+    },
+    {
+        title: '是否为野生型',
+        key: 'is_wildtype',
+        render: (row) => h(
+            NTag,
+            {
+                type: row.is_wildtype ? 'success' : 'default',
+                bordered: false,
+                size: 'small'
+            },
+            { default: () => (row.is_wildtype ? '是' : '否') }
+        )
+    },
+    {
+        title: '操作',
+        key: 'actions',
+        render: (row) => h(NSpace, { size: 8 }, {
+            default: () => [
+                h(
+                    NButton,
+                    {
+                        size: 'small',
+                        quaternary: true,
+                        onClick: () => editAllele(row)
+                    },
+                    { default: () => '编辑' }
+                ),
+                h(
+                    NButton,
+                    {
+                        size: 'small',
+                        type: 'error',
+                        quaternary: true,
+                        onClick: () => deleteAllele(row.id)
+                    },
+                    { default: () => '删除' }
+                )
+            ]
+        })
+    }
+]
+
+const locationColumns = [
+    {
+        title: '位置标识',
+        key: 'identifier'
+    },
+    {
+        title: '描述',
+        key: 'description'
+    },
+    {
+        title: '操作',
+        key: 'actions',
+        render: (row) => h(NSpace, { size: 8 }, {
+            default: () => [
+                h(
+                    NButton,
+                    {
+                        size: 'small',
+                        quaternary: true,
+                        onClick: () => editLocation(row)
+                    },
+                    { default: () => '编辑' }
+                ),
+                h(
+                    NButton,
+                    {
+                        size: 'small',
+                        type: 'error',
+                        quaternary: true,
+                        onClick: () => deleteLocation(row.id)
+                    },
+                    { default: () => '删除' }
+                )
+            ]
+        })
+    }
+]
+
+const exportExperimentColumns = computed(() => [
+    {
+        title: '实验类型名称',
+        key: 'name'
+    },
+    {
+        title: '描述',
+        key: 'description'
+    },
+    {
+        title: '字段数量',
+        key: 'field_count',
+        render: (row) => (row.fields ? row.fields.length : 0)
+    },
+    {
+        title: '操作',
+        key: 'actions',
+        render: (row) => h(
+            NButton,
+            {
+                size: 'small',
+                type: selectedExperiments.value.includes(row.id) ? 'warning' : 'info',
+                quaternary: true,
+                onClick: () => toggleSelect(row.id)
+            },
+            { default: () => (selectedExperiments.value.includes(row.id) ? '取消' : '选择') }
+        )
+    }
+])
+
+const selectedExperimentType = computed(() =>
+    experiments.value.find((item) => item.id === expandedExperimentType.value) || null
+)
+
+const experimentTypeColumns = computed(() => [
+    {
+        title: '实验类型名称',
+        key: 'name'
+    },
+    {
+        title: '描述',
+        key: 'description'
+    },
+    {
+        title: '字段数量',
+        key: 'field_count',
+        render: (row) => (row.fields ? row.fields.length : 0)
+    },
+    {
+        title: '是否展示',
+        key: 'is_show',
+        render: (row) => (row.is_show ? '是' : '否')
+    },
+    {
+        title: '操作',
+        key: 'actions',
+        render: (row) => h(NSpace, { size: 8 }, {
+            default: () => [
+                h(NButton, { text: true, onClick: () => editExperimentType(row.id) }, { default: () => '编辑' }),
+                h(NButton, { text: true, type: 'error', onClick: () => deleteExperimentType(row.id) }, { default: () => '删除' }),
+                h(NButton, { text: true, onClick: () => duplicateExperimentType(row) }, { default: () => '复制' }),
+                h(
+                    NButton,
+                    { text: true, type: 'info', onClick: () => toggleDetails(row.id) },
+                    { default: () => (expandedExperimentType.value === row.id ? '收起' : '详情') }
+                )
+            ]
+        })
+    }
+])
+
+const fieldDefinitionColumns = computed(() => [
+    {
+        title: '字段名称',
+        key: 'field_name',
+        render: (row) => h(NInput, {
+            value: row.field_name,
+            placeholder: '字段名称',
+            'onUpdate:value': (value) => {
+                row.field_name = value
+            }
+        })
+    },
+    {
+        title: '数据类型',
+        key: 'data_type',
+        render: (row) => h(NSelect, {
+            value: row.data_type,
+            options: fieldDataTypeOptions,
+            'onUpdate:value': (value) => {
+                row.data_type = value
+                chooseDataType(row)
+            }
+        })
+    },
+    {
+        title: '单位',
+        key: 'unit',
+        render: (row) => h(NInput, {
+            value: row.unit,
+            placeholder: '单位',
+            'onUpdate:value': (value) => {
+                row.unit = value
+            }
+        })
+    },
+    {
+        title: '必填',
+        key: 'is_required',
+        width: 90,
+        render: (row) => h(NCheckbox, {
+            checked: row.is_required,
+            'onUpdate:checked': (checked) => {
+                row.is_required = checked
+            }
+        })
+    },
+    {
+        title: '可视化',
+        key: 'visualize_type',
+        render: (row) => h(NSelect, {
+            value: row.visualize_type,
+            options: getVisualizeTypeOptions(row.data_type),
+            'onUpdate:value': (value) => {
+                row.visualize_type = value
+            }
+        })
+    },
+    {
+        title: '操作',
+        key: 'actions',
+        width: 130,
+        render: (_row, index) => h(NSpace, { size: 4 }, {
+            default: () => [
+                h(NButton, {
+                    text: true,
+                    type: 'error',
+                    onClick: () => removeField(index)
+                }, { default: () => '删' }),
+                h(NButton, {
+                    text: true,
+                    disabled: index === 0,
+                    onClick: () => moveFieldUp(index)
+                }, { default: () => '上' }),
+                h(NButton, {
+                    text: true,
+                    disabled: index === editingExperimentType.fields.length - 1,
+                    onClick: () => moveFieldDown(index)
+                }, { default: () => '下' })
+            ]
+        })
+    }
+])
+
+const expandedGroupDetails = computed(() =>
+    expandedGroup.value
+        .map((id) => predefinedGroups.value.find((group) => group.id === id))
+        .filter(Boolean)
+)
+
+const predefinedGroupColumns = computed(() => [
+    {
+        title: '分组名称',
+        key: 'name'
+    },
+    {
+        title: '描述',
+        key: 'description'
+    },
+    {
+        title: '分组类型',
+        key: 'Gtype',
+        render: (row) => h(
+            NTag,
+            {
+                bordered: false,
+                type: row.Gtype === 'id' ? 'info' : 'success'
+            },
+            { default: () => (row.Gtype === 'id' ? 'ID分组' : '规则分组') }
+        )
+    },
+    {
+        title: '小组数量',
+        key: 'group_count',
+        render: (row) => (row.rules ? row.rules.length : 0)
+    },
+    {
+        title: '操作',
+        key: 'actions',
+        render: (row) => h(NSpace, { size: 8 }, {
+            default: () => [
+                h(NButton, { text: true, onClick: () => editGroup(row) }, { default: () => '编辑' }),
+                h(NButton, { text: true, type: 'error', onClick: () => deleteGroup(row.id) }, { default: () => '删除' }),
+                h(
+                    NButton,
+                    { text: true, type: 'info', onClick: () => toggleGroupDetails(row.id) },
+                    { default: () => (expandedGroup.value.includes(row.id) ? '收起' : '详情') }
+                )
+            ]
+        })
+    }
+])
+
+const groupDetailColumns = (groupType) => [
+    {
+        title: '组名',
+        key: 'name'
+    },
+    {
+        title: '主题色',
+        key: 'color',
+        render: (row) => h('div', {
+            style: {
+                width: '24px',
+                height: '14px',
+                borderRadius: '4px',
+                border: '1px solid var(--n-border-color)',
+                backgroundColor: row.color || 'transparent'
+            }
+        })
+    },
+    {
+        title: groupType === 'id' ? '组内小鼠数量' : '规则数量',
+        key: 'count',
+        render: (row) => (groupType === 'id' ? (row.mouseId?.length || 0) : (row.rules?.length || 0))
+    }
+]
 
 const addGeneLocus = async () => {
     if (!newGeneLocus.symbol) {
@@ -1901,8 +1941,8 @@ const toggleSelect = (id) => {
 
 const confirmExport = async () => {
     const params = {
-        start_date: exportStartDate.value,
-        end_date: exportEndDate.value,
+        start_date: exportStartDate.value || undefined,
+        end_date: exportEndDate.value || undefined,
         experiment_ids: selectedExperiments.value,
         format: exportFormat.value
     }
@@ -1941,8 +1981,8 @@ const confirmExport = async () => {
     } finally {
         exportOptionsVisible.value = false
         currentExportType.value = ""
-        exportStartDate.value = ""
-        exportEndDate.value = ""
+        exportStartDate.value = null
+        exportEndDate.value = null
     }
 }
 
@@ -1950,6 +1990,12 @@ const confirmExport = async () => {
 const handleFileUpload = (event) => {
     selectedFile.value = event.target.files[0]
     event.target.value = null
+}
+
+const handleNaiveFileChange = ({ file }) => {
+    if (file && file.file) {
+        selectedFile.value = file.file
+    }
 }
 
 const handleDrop = (event) => {
@@ -2213,6 +2259,16 @@ const handleDbFileUpload = (event) => {
   event.target.value = null
 }
 
+const handleNaiveDbFileChange = ({ file }) => {
+    if (file && file.file) {
+        if (file.file.name.endsWith('.db')) {
+            selectedDbFile.value = file.file
+        } else {
+            toast.error('请选择.db格式的数据库文件')
+        }
+    }
+}
+
 const handleDbDrop = (event) => {
   event.preventDefault()
   isDbDragging.value = false
@@ -2236,8 +2292,8 @@ const importDatabase = () => {
     selectedDbFile.value = null
     editingDatabase.value = {
         projectName: '',
-        startAt: '',
-        endAt: '',
+        startAt: null,
+        endAt: null,
         readOnly: false,
         databaseUpdate: false
     }
@@ -2248,8 +2304,8 @@ const cancelImportDatabase = () => {
     selectedDbFile.value = null
     editingDatabase.value = {
         projectName: '',
-        startAt: '',
-        endAt: '',
+        startAt: null,
+        endAt: null,
         readOnly: false,
         databaseUpdate: false
     }
@@ -2358,7 +2414,11 @@ const exportLogFile = async () => {
 const refreshDbInfo = async () => {
     try {
         const response = await axios.get('/api/database/info')
-        const dbInfo = response.data
+        const dbInfo = {
+            ...response.data,
+            startAt: normalizeDateValue(response.data?.startAt),
+            endAt: normalizeDateValue(response.data?.endAt)
+        }
         
         if (databaseNotChanged.value) {
             databases.value[currentDatabase.value] = {...databases.value[currentDatabase.value], ...dbInfo}
@@ -2405,14 +2465,14 @@ const clearDatabase = async () => {
 // 编辑状态
 const editingIndex = ref('')
 const editingField = ref('')
-const editingValue = ref('')
+const editingValue = ref(null)
 
 // 创建数据库
 const addDatabase = async () => {
     editingDatabase.value = {
         projectName: '',
-        startAt: '',
-        endAt: '',
+        startAt: null,
+        endAt: null,
         readOnly: false,
         databaseUpdate: false
     }
@@ -2423,8 +2483,8 @@ const createDatabase = async () => {
     const response = await axios.post('/api/database/create', editingDatabase.value)
     editingDatabase.value = {
         projectName: '',
-        startAt: '',
-        endAt: '',
+        startAt: null,
+        endAt: null,
         readOnly: false,
         databaseUpdate: false
     }
@@ -2445,8 +2505,8 @@ const createDatabase = async () => {
 const cancelCreateDatabase = () => {
     editingDatabase.value = {
         projectName: '',
-        startAt: '',
-        endAt: '',
+        startAt: null,
+        endAt: null,
         readOnly: false,
         databaseUpdate: false
     }
@@ -2457,7 +2517,9 @@ const cancelCreateDatabase = () => {
 const startEdit = (index, field, value) => {
     editingIndex.value = index
     editingField.value = field
-    editingValue.value = value
+    editingValue.value = ['startAt', 'endAt'].includes(field)
+        ? normalizeDateValue(value)
+        : value
 }
 
 const saveEdit = async (index) => {
@@ -2478,7 +2540,7 @@ const saveEdit = async (index) => {
 const resetEdit = () => {
     editingIndex.value = ''
     editingField.value = ''
-    editingValue.value = ''
+    editingValue.value = null
 }
 
 // 获取数据库状态文本
@@ -2549,7 +2611,17 @@ const deleteDatabase = async (key) => {
 const fetchDbInfo = async () => {
     try {
         const response = await axios.get('/api/database')
-        databases.value = response.data.databases
+        const rawDatabases = response.data.databases || {}
+        databases.value = Object.fromEntries(
+            Object.entries(rawDatabases).map(([key, db]) => [
+                key,
+                {
+                    ...db,
+                    startAt: normalizeDateValue(db?.startAt),
+                    endAt: normalizeDateValue(db?.endAt)
+                }
+            ])
+        )
         currentDatabase.value = response.data.current_database
     } catch (error) {
         console.error('获取数据库列表失败:', error)
@@ -2770,6 +2842,12 @@ const saveDisplaySettings = () => {
     toast.success('设置保存成功')
 }
 
+const applyDisplayPreset = () => {
+    if (selectedSetting.value) {
+        changeSettings(selectedSetting.value)
+    }
+}
+
 // 确认重置
 const confirmReset = () => {
     if (confirm('确定要重置所有显示设置吗？此操作不可撤销。')) {
@@ -2789,15 +2867,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 使用与Dashboard.vue相同的样式变量 */
-:root {
---primary: #2c6fbb;
---secondary: #4CAF50;
---danger: #f44336;
---warning: #FF9800;
---light: #f8f9fa;
---dark: #343a40;
---border: #dee2e6;
+.main-content {
+--primary: var(--n-primary-color);
+--secondary: var(--n-success-color);
+--danger: var(--n-error-color);
+--warning: var(--n-warning-color);
+--light: var(--n-color);
+--light-embedded: var(--n-color-embedded);
+--dark: var(--n-text-color);
+--border: var(--n-border-color);
 --header-height: 60px;
 --footer-height: 25px;
 }
@@ -2814,42 +2892,20 @@ font-size: 1.5rem;
 font-weight: 600;
 }
 
-.section-tabs {
-display: flex;
-border-bottom: 1px solid #e0e0e0;
-margin-bottom: 25px;
-padding: 0 10px;
-}
-
-.tab-item {
-padding: 10px 20px;
-cursor: pointer;
-margin-right: 5px;
-border-radius: 5px 5px 0 0;
-font-weight: 500;
-color: #666;
-transition: all 0.2s ease;
-}
-
-.tab-item:hover {
-background-color: #f5f5f5;
-}
-
-.tab-item.active {
-color: var(--primary);
-background-color: rgba(25, 118, 210, 0.08);
-border-bottom: 2px solid var(--primary);
+.setting-tabs {
+margin-bottom: 20px;
 }
 
 .form-container {
-background: white;
+background: var(--light);
 padding: 20px;
 border-radius: 8px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+box-shadow: var(--n-box-shadow-1);
+border: 1px solid var(--border);
 }
 
 .section-description {
-color: #666;
+color: var(--n-text-color-3);
 margin-bottom: 20px;
 }
 
@@ -2857,10 +2913,15 @@ margin-bottom: 20px;
 margin-bottom: 30px;
 }
 
+.form-container :deep(.n-card.form-section),
+.form-container :deep(.n-card.reset-section) {
+margin-bottom: 0;
+}
+
 .form-section h3 {
 font-size: 1.1rem;
 margin-bottom: 15px;
-color: #333;
+color: var(--n-text-color-1);
 font-weight: 500;
 }
 
@@ -2869,7 +2930,7 @@ display: flex;
 flex-wrap: wrap;
 gap: 15px;
 margin-bottom: 20px;
-align-items: center;
+align-items: flex-end;
 }
 
 .form-group {
@@ -2881,13 +2942,13 @@ min-width: 250px;
 display: block;
 margin-bottom: 8px;
 font-weight: 500;
-color: #444;
+color: var(--n-text-color-1);
 }
 
 .form-group input, .form-group select {
 width: 100%;
 padding: 10px;
-border: 1px solid #ddd;
+border: 1px solid var(--n-border-color);
 border-radius: 4px;
 font-size: 14px;
 }
@@ -2895,39 +2956,43 @@ font-size: 14px;
 .form-group input:focus, .form-group select:focus {
 border-color: var(--primary);
 outline: none;
-box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 25%, transparent);
 }
 
 .table-container {
 overflow-x: auto;
+border: 1px solid var(--border);
+border-radius: 8px;
+background: var(--light);
 }
 
 .settings-table {
 width: 100%;
 border-collapse: collapse;
 margin-top: 15px;
+background: var(--light);
 }
 
 .settings-table th, 
 .settings-table td {
 padding: 12px 15px;
 text-align: left;
-border-bottom: 1px solid #eee;
+border-bottom: 1px solid var(--n-border-color);
 }
 
 .settings-table th {
-background-color: #f8f9fa;
+background-color: var(--n-color-embedded);
 font-weight: 600;
 position: sticky;
 top: 0;
 }
 
 .settings-table tbody tr:hover {
-background-color: #f5f7fa;
+background-color: var(--n-hover-color);
 }
 
 .settings-table tbody tr.selected {
-background-color: #d3f1d9;
+background-color: var(--n-success-color-suppl);
 }
 
 .action-cell {
@@ -2939,11 +3004,10 @@ display: flex;
 gap: 15px;
 }
 
-.btn-group .btn.active {
-    /* 激活状态样式 */
-    background-color: #2ecc71;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+.group-actions-row {
+display: flex;
+align-items: center;
+gap: 12px;
 }
 
 .file-upload {
@@ -2955,7 +3019,7 @@ display: none;
 }
 
 .upload-area {
-border: 2px dashed #ccc;
+border: 2px dashed var(--n-border-color);
 border-radius: 8px;
 padding: 30px;
 text-align: center;
@@ -2970,17 +3034,17 @@ min-height: 150px;
 
 .upload-area.dragover {
 border-color: var(--primary);
-background-color: rgba(25, 118, 210, 0.05);
+background-color: color-mix(in srgb, var(--n-primary-color) 8%, transparent);
 }
 
 .upload-area i {
 font-size: 48px;
-color: #888;
+color: var(--n-text-color-3);
 margin-bottom: 15px;
 }
 
 .upload-area p {
-color: #666;
+color: var(--n-text-color-3);
 margin: 5px 0;
 }
 
@@ -2999,7 +3063,7 @@ margin-bottom: 5px;
 .import-options, .export-options {
 margin-top: 20px;
 padding: 15px;
-background-color: #f9f9f9;
+background-color: var(--n-color-embedded);
 border-radius: 8px;
 }
 
@@ -3009,7 +3073,7 @@ align-items: center;
 gap: 10px;
 }
 
-.date-range input {
+.date-range :deep(.n-date-picker) {
 flex: 1;
 }
 
@@ -3019,7 +3083,7 @@ top: 0;
 left: 0;
 width: 100%;
 height: 100%;
-background-color: rgba(0, 0, 0, 0.5);
+background-color: color-mix(in srgb, var(--n-text-color) 50%, transparent);
 display: flex;
 justify-content: center;
 align-items: center;
@@ -3027,13 +3091,13 @@ z-index: 1000;
 }
 
 .dialog-container {
-background-color: white;
+background-color: var(--n-color);
 padding: 25px;
 border-radius: 8px;
 width: 450px;
 max-width: 100%;
 max-height: 80%;
-box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+box-shadow: var(--n-box-shadow-3);
 overflow-y: auto;
 }
 
@@ -3063,8 +3127,8 @@ margin-bottom: 10px;
 }
 
 .format-hint {
-    background: #f0f7ff;
-    border-left: 4px solid #4a6fa5;
+    background: var(--n-info-color-suppl);
+    border-left: 4px solid var(--n-primary-color);
     border-radius: 4px;
     padding: 20px;
     margin-top: 25px;
@@ -3072,7 +3136,7 @@ margin-bottom: 10px;
 }
 
 .format-hint h4 {
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     margin-bottom: 15px;
     display: flex;
     align-items: center;
@@ -3088,41 +3152,41 @@ margin-bottom: 10px;
 }
 
 .format-table th {
-    background: #e6f0ff;
+    background: var(--n-info-color-suppl);
     padding: 12px 15px;
     text-align: left;
     font-weight: 600;
-    color: #2c3e50;
-    border-bottom: 1px solid #d1d8e0;
+    color: var(--n-text-color-1);
+    border-bottom: 1px solid var(--n-border-color);
 }
 
 .format-table td {
     padding: 12px 15px;
-    border-bottom: 1px solid #eef2f7;
+    border-bottom: 1px solid var(--n-border-color);
 }
 
 .format-table tr:nth-child(even) {
-    background: #f9fbfd;
+    background: var(--n-color-embedded);
 }
 
 .format-table tr:hover {
-    background: #f0f7ff;
+    background: var(--n-info-color-suppl);
 }
 
 .required {
-    color: #e74c3c;
+    color: var(--n-error-color);
     font-weight: 600;
 }
 
 .optional {
-    color: #7f8c8d;
+    color: var(--n-text-color-3);
 }
 
 .note {
     margin-top: 15px;
     padding: 15px;
-    background: #fff8e6;
-    border-left: 4px solid #ffc107;
+    background: var(--n-warning-color-suppl);
+    border-left: 4px solid var(--n-warning-color);
     border-radius: 4px;
     font-size: 14px;
 }
@@ -3130,11 +3194,11 @@ margin-bottom: 10px;
 .note-title {
     font-weight: 600;
     margin-bottom: 5px;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
 }
 
 .note-content {
-    color: #7f8c8d;
+    color: var(--n-text-color-3);
 }
 
 .note-content p {
@@ -3144,7 +3208,7 @@ margin-bottom: 10px;
 .example-row {
     font-family: monospace;
     font-size: 14px;
-    color: #4a6fa5;
+    color: var(--n-primary-color);
 }
 
 .preset-selector {
@@ -3158,27 +3222,27 @@ flex-wrap: wrap;
 .preset-selector select {
 width: 200px;
 padding: 8px;
-border: 1px solid #ddd;
+border: 1px solid var(--n-border-color);
 border-radius: 4px;
 }
 
 .preset-description {
-color: #666;
+color: var(--n-text-color-3);
 font-style: italic;
 }
 
 .fields-section {
 margin-top: 20px;
 padding: 15px;
-border: 1px solid #e0e0e0;
+border: 1px solid var(--n-border-color);
 border-radius: 5px;
-background-color: #f9f9f9;
+background-color: var(--n-color-embedded);
 }
 
 .fields-section h4 {
 margin-top: 0;
 margin-bottom: 15px;
-color: #333;
+color: var(--n-text-color-1);
 }
 
 .field-actions {
@@ -3190,18 +3254,18 @@ margin-top: 15px;
 .settings-table select {
 width: 100%;
 padding: 5px;
-border: 1px solid #ddd;
+border: 1px solid var(--n-border-color);
 border-radius: 3px;
 }
 
 /* 详情展开区域样式 */
 .detail-row {
-    background-color: #f9fafb;
+    background-color: var(--n-color-embedded);
 }
 
 .detail-content {
     padding: 20px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--n-border-color);
 }
 
 .detail-header {
@@ -3213,7 +3277,7 @@ border-radius: 3px;
 
 .detail-title {
     font-size: 1.1rem;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     font-weight: 500;
 }
 
@@ -3223,10 +3287,10 @@ border-radius: 3px;
 
 .detail-section h4 {
     font-size: 1rem;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     margin-bottom: 10px;
     padding-bottom: 5px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--n-border-color);
 }
 
 .field-list {
@@ -3236,29 +3300,29 @@ border-radius: 3px;
 }
 
 .field-item {
-    background: white;
+    background: var(--n-color);
     padding: 15px;
     border-radius: 6px;
-    border: 1px solid #eef2f7;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border: 1px solid var(--n-border-color);
+    box-shadow: var(--n-box-shadow-1);
 }
 
 .field-name {
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     margin-bottom: 5px;
 }
 
 .field-props {
     display: flex;
     justify-content: space-between;
-    color: #666;
+    color: var(--n-text-color-3);
     font-size: 0.9rem;
 }
 
 .required-badge {
-    background-color: #ffecb3;
-    color: #7d6608;
+    background-color: var(--n-warning-color-suppl);
+    color: var(--n-warning-color);
     padding: 2px 8px;
     border-radius: 10px;
     font-size: 0.8rem;
@@ -3268,25 +3332,25 @@ border-radius: 3px;
     grid-column: 1 / -1;
     text-align: center;
     padding: 20px;
-    color: #7f8c8d;
-    background: #f9fafb;
+    color: var(--n-text-color-3);
+    background: var(--n-color-embedded);
     border-radius: 6px;
-    border: 1px dashed #ddd;
+    border: 1px dashed var(--n-border-color);
 }
 
 .btn-info {
-    background-color: #17a2b8;
-    color: white;
+    background-color: var(--n-primary-color);
+    color: var(--n-base-color);
 }
 
 .btn-info:hover {
-    background-color: #138496;
+    background-color: var(--n-primary-color-hover);
 }
 
 /* 可视化徽章样式 */
 .visualized-badge {
-    background-color: #d4edda;
-    color: #155724;
+    background-color: var(--n-success-color-suppl);
+    color: var(--n-success-color);
     padding: 2px 8px;
     border-radius: 10px;
     font-size: 0.8rem;
@@ -3294,8 +3358,8 @@ border-radius: 3px;
 }
 
 .not-visualized-badge {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: var(--n-error-color-suppl);
+    color: var(--n-error-color);
     padding: 2px 8px;
     border-radius: 10px;
     font-size: 0.8rem;
@@ -3307,20 +3371,20 @@ border-radius: 3px;
   display: flex;
   align-items: center;
   padding: 10px;
-  background-color: #fff3cd;
-  border: 1px solid #ffeaa7;
+  background-color: var(--n-warning-color-suppl);
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
   margin: 15px 0;
-  color: #856404;
+  color: var(--n-warning-color);
 }
 
 .warning-message i {
   margin-right: 10px;
-  color: #f39c12;
+  color: var(--n-warning-color);
 }
 
 .error-details pre {
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
   padding: 10px;
   border-radius: 4px;
   overflow-x: auto;
@@ -3330,12 +3394,12 @@ border-radius: 3px;
 }
 
 .warning-text {
-  color: #e74c3c;
+  color: var(--n-error-color);
   font-weight: 500;
-  background-color: #fdedec;
+  background-color: var(--n-error-color-suppl);
   padding: 10px;
   border-radius: 4px;
-  border-left: 4px solid #e74c3c;
+  border-left: 4px solid var(--n-error-color);
 }
 
 .confirmation-input {
@@ -3345,52 +3409,52 @@ border-radius: 3px;
 .confirmation-field {
   width: 100%;
   padding: 10px;
-  border: 2px solid #ddd;
+  border: 2px solid var(--n-border-color);
   border-radius: 4px;
   font-size: 14px;
   margin-top: 5px;
 }
 
 .confirmation-field.error {
-  border-color: #e74c3c;
-  background-color: #fdedec;
+  border-color: var(--n-error-color);
+  background-color: var(--n-error-color-suppl);
 }
 
 .confirmation-field:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--n-primary-color);
 }
 
 .confirmation-input label {
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--n-text-color-1);
 }
 
 .confirmation-input label strong {
-  color: #e74c3c;
+  color: var(--n-error-color);
 }
 
 .error-message {
-  color: #e74c3c;
+  color: var(--n-error-color);
   font-size: 12px;
   margin-top: 5px;
 }
 
 /* 基因位点行样式 */
 .locus-row {
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
   font-weight: bold;
 }
 
 /* 等位基因子表格容器 */
 .alleles-subtable {
-  background-color: #f0f8ff;
+  background-color: var(--n-info-color-suppl);
 }
 
 .subtable-container {
   padding: 15px;
-  background-color: #fff;
-  border: 1px solid #dee2e6;
+  background-color: var(--n-color);
+  border: 1px solid var(--n-border-color);
   border-radius: 5px;
   margin: 10px 0;
 }
@@ -3402,24 +3466,24 @@ border-radius: 3px;
 }
 
 .subtable th {
-  background-color: #e9ecef;
+    background-color: var(--n-color-embedded);
 }
 
 .subtable tr:nth-child(even) {
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
 }
 
 /* 添加等位基因表单 */
 .add-allele-form {
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
   padding: 15px;
   border-radius: 5px;
-  border: 1px dashed #ced4da;
+  border: 1px dashed var(--n-border-color);
 }
 
 .add-allele-form h4 {
   margin-top: 0;
-  color: #495057;
+  color: var(--n-text-color-3);
 }
 
 .database-list {
@@ -3430,22 +3494,22 @@ border-radius: 3px;
 }
 
 .database-card {
-    background-color: #f8f9fa;
+    background-color: var(--n-color-embedded);
     border-radius: 8px;
     padding: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: var(--n-box-shadow-1);
     transition: all 0.3s ease;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--n-border-color);
 }
 
 .database-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    box-shadow: var(--n-box-shadow-2);
 }
 
 .database-card.current {
     border: 2px solid var(--primary);
-    background-color: #f0fff4;
+    background-color: var(--n-success-color-suppl);
 }
 
 .database-header {
@@ -3458,7 +3522,7 @@ border-radius: 3px;
 .database-name {
     font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: var(--n-text-color-1);
     cursor: pointer;
     padding: 4px;
     border-radius: 4px;
@@ -3466,7 +3530,7 @@ border-radius: 3px;
 }
 
 .database-name:hover {
-    background-color: #e3f2fd;
+    background-color: var(--n-info-color-suppl);
 }
 
 .info-value {
@@ -3493,23 +3557,23 @@ border-radius: 3px;
 }
 
 .status-badge.current {
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--n-success-color);
+    color: var(--n-base-color);
 }
 
 .status-badge.readonly {
-    background-color: #FF9800;
-    color: white;
+    background-color: var(--n-warning-color);
+    color: var(--n-base-color);
 }
 
 .status-badge.available {
-    background-color: #2196F3;
-    color: white;
+    background-color: var(--n-primary-color);
+    color: var(--n-base-color);
 }
 
 .status-badge.readonly-only {
-    background-color: #9E9E9E;
-    color: white;
+    background-color: var(--n-text-color-disabled);
+    color: var(--n-base-color);
 }
 
 .status-icon {
@@ -3526,13 +3590,13 @@ border-radius: 3px;
 
 .detail-label {
     font-size: 12px;
-    color: #666;
+    color: var(--n-text-color-3);
     margin-bottom: 2px;
 }
 
 .detail-value {
     font-size: 14px;
-    color: #333;
+    color: var(--n-text-color-1);
     cursor: pointer;
     padding: 2px 4px;
     border-radius: 3px;
@@ -3540,7 +3604,7 @@ border-radius: 3px;
 }
 
 .detail-value:hover {
-    background-color: #f5f5f5;
+    background-color: var(--n-hover-color);
 }
 
 .actions {
@@ -3550,25 +3614,25 @@ border-radius: 3px;
 }
 
 .action-btn.primary {
-    background-color: #2196F3;
-    color: white;
+    background-color: var(--n-primary-color);
+    color: var(--n-base-color);
 }
 
 .action-btn.secondary {
-    background-color: #e0e0e0;
-    color: #333;
+    background-color: var(--n-color-embedded);
+    color: var(--n-text-color-1);
 }
 
 .action-btn:disabled {
-    background-color: #f0f0f0;
-    color: #aaa;
+    background-color: var(--n-color-embedded);
+    color: var(--n-text-color-disabled);
     cursor: not-allowed;
 }
 
 .editing-input {
     width: 100%;
     padding: 4px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--n-border-color);
     border-radius: 4px;
     font-size: 14px;
 }
@@ -3579,13 +3643,13 @@ border-radius: 3px;
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--n-border-color);
 }
 
 .section-header h3 {
     font-size: 1.3rem;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     margin: 0;
 }
 
@@ -3600,10 +3664,10 @@ border-radius: 3px;
 }
 
 .rule-item {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--n-border-color);
     border-radius: 6px;
     margin-bottom: 15px;
-    background: #fafafa;
+    background: var(--n-color-embedded);
     width: 45%;
 }
 
@@ -3612,10 +3676,10 @@ border-radius: 3px;
     justify-content: space-between;
     align-items: center;
     padding: 12px 15px;
-    background: #e8f4fd;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--n-info-color-suppl);
+    border-bottom: 1px solid var(--n-border-color);
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
 }
 
 .rule-content {
@@ -3649,22 +3713,22 @@ border-radius: 3px;
 }
 
 .rule-detail {
-    background: white;
+    background: var(--n-color);
     padding: 12px 15px;
     border-radius: 4px;
-    border-left: 4px solid #3498db;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-left: 4px solid var(--n-primary-color);
+    box-shadow: var(--n-box-shadow-1);
 }
 
 .rule-type {
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     margin-bottom: 5px;
     font-size: 14px;
 }
 
 .rule-conditions {
-    color: #666;
+    color: var(--n-text-color-3);
     font-size: 13px;
     line-height: 1.4;
 }
@@ -3672,26 +3736,26 @@ border-radius: 3px;
 .no-rules {
     text-align: center;
     padding: 30px;
-    color: #7f8c8d;
-    background: #f9fafb;
+    color: var(--n-text-color-3);
+    background: var(--n-color-embedded);
     border-radius: 6px;
-    border: 1px dashed #ddd;
+    border: 1px dashed var(--n-border-color);
 }
 
 /* 测试区域样式 */
 .test-section {
-    background: #f8f9fa;
+    background: var(--n-color-embedded);
     padding: 15px;
     border-radius: 6px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--n-border-color);
 }
 
 .test-result {
     margin-top: 15px;
     padding: 15px;
-    background: white;
+    background: var(--n-color);
     border-radius: 4px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--n-border-color);
 }
 
 .result-indicator {
@@ -3705,15 +3769,15 @@ border-radius: 3px;
 }
 
 .result-indicator.success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background-color: var(--n-success-color-suppl);
+    color: var(--n-success-color);
+    border: 1px solid var(--n-border-color);
 }
 
 .result-indicator.error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background-color: var(--n-error-color-suppl);
+    color: var(--n-error-color);
+    border: 1px solid var(--n-border-color);
 }
 
 .result-indicator i {
@@ -3722,7 +3786,7 @@ border-radius: 3px;
 
 /* 分组表格样式增强 */
 .settings-table tr:hover .rule-detail {
-    background-color: #f0f7ff;
+    background-color: var(--n-info-color-suppl);
 }
 
 /* 动画效果 */
@@ -3746,10 +3810,10 @@ border-radius: 3px;
 }
 
 .subgroup-item {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--n-border-color);
     border-radius: 8px;
     margin-bottom: 20px;
-    background: #fafafa;
+    background: var(--n-color-embedded);
 }
 
 .subgroup-header {
@@ -3757,8 +3821,8 @@ border-radius: 3px;
     justify-content: space-between;
     align-items: center;
     padding: 15px;
-    background: #e8f4fd;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--n-info-color-suppl);
+    border-bottom: 1px solid var(--n-border-color);
 }
 
 .subgroup-title {
@@ -3769,13 +3833,13 @@ border-radius: 3px;
 
 .subgroup-title h5 {
     margin: 0;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     font-size: 16px;
 }
 
 .subgroup-name-input {
     padding: 8px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--n-border-color);
     border-radius: 4px;
     font-size: 14px;
     min-width: 200px;
@@ -3788,7 +3852,7 @@ border-radius: 3px;
 
 .subgroup-rules {
     padding: 15px;
-    background: white;
+    background: var(--n-color);
 }
 
 .add-subgroup-btn {
@@ -3804,8 +3868,8 @@ border-radius: 3px;
 }
 
 .subgroup-detail {
-    background: white;
-    border: 1px solid #e0e0e0;
+    background: var(--n-color);
+    border: 1px solid var(--n-border-color);
     border-radius: 6px;
     padding: 15px;
 }
@@ -3816,17 +3880,17 @@ border-radius: 3px;
     align-items: center;
     margin-bottom: 10px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--n-border-color);
 }
 
 .subgroup-header-detail h5 {
     margin: 0;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
 }
 
 .rule-count {
-    background: #3498db;
-    color: white;
+    background: var(--n-primary-color);
+    color: var(--n-base-color);
     padding: 4px 8px;
     border-radius: 12px;
     font-size: 12px;
@@ -3835,23 +3899,23 @@ border-radius: 3px;
 .no-subgroups {
     text-align: center;
     padding: 40px;
-    color: #7f8c8d;
-    background: #f9fafb;
+    color: var(--n-text-color-3);
+    background: var(--n-color-embedded);
     border-radius: 6px;
-    border: 1px dashed #ddd;
+    border: 1px dashed var(--n-border-color);
 }
 
 .matched-info {
-    background: #e8f5e8;
+    background: var(--n-success-color-suppl);
     padding: 10px;
     border-radius: 4px;
     margin: 10px 0;
-    border-left: 4px solid #4CAF50;
+    border-left: 4px solid var(--n-success-color);
 }
 
 .matched-info h5 {
     margin: 0;
-    color: #2e7d32;
+    color: var(--n-success-color-hover);
 }
 
 .group-type-selector {
@@ -3869,21 +3933,21 @@ border-radius: 3px;
 .radio-custom {
     width: 16px;
     height: 16px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--n-border-color);
     border-radius: 50%;
     display: inline-block;
     position: relative;
 }
 
 .radio-label input:checked + .radio-custom {
-    border-color: #3498db;
+    border-color: var(--n-primary-color);
 }
 
 .radio-label input:checked + .radio-custom::after {
     content: '';
     width: 8px;
     height: 8px;
-    background: #3498db;
+    background: var(--n-primary-color);
     border-radius: 50%;
     position: absolute;
     top: 2px;
@@ -3898,13 +3962,13 @@ border-radius: 3px;
 }
 
 .group-type-badge.rule-group {
-    background: #e3f2fd;
-    color: #1976d2;
+    background: var(--n-info-color-suppl);
+    color: var(--n-primary-color);
 }
 
 .group-type-badge.id-group {
-    background: #f3e5f5;
-    color: #7b1fa2;
+    background: var(--n-info-color-suppl);
+    color: var(--n-info-color);
 }
 
 .color-picker-container {
@@ -3924,18 +3988,18 @@ border-radius: 3px;
     background: none;
     border: none;
     cursor: pointer;
-    color: #666  !important;
+    color: var(--n-text-color-3) !important;
     padding: 2px;
 }
 
 .btn-remove:hover {
-    color: #ff4757;
+    color: var(--n-error-color);
 }
 
 .preview-section {
     margin-top: 20px;
     padding-top: 20px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--n-border-color);
     display: flex;
     gap: 10px;
 }
@@ -3949,10 +4013,10 @@ border-radius: 3px;
     width: 100%;
     padding: 10px 15px;
     border-radius: 8px;
-    border: 1px solid #c5e6e6;
-    background: rgb(255, 255, 255);
+    border: 1px solid var(--n-border-color);
+    background: var(--n-color);
     font-size: 1rem;
-    color: #020c17;
+    color: var(--n-text-color-1);
     appearance: none;
     background-position: right 15px center;
     background-size: 16px;
@@ -3965,7 +4029,7 @@ margin-bottom: 1rem;
 
 .form-section-rule {
     padding: 10px;
-    background: beige;
+    background: var(--n-color-embedded);
 }
 
 .action-btn:hover:not(:disabled) {
@@ -3979,14 +4043,14 @@ margin-bottom: 1rem;
 .column-category {
     margin-bottom: 20px;
     padding: 15px;
-    background-color: #f0f7ff;
+    background-color: var(--n-color-embedded);
     border-radius: 8px;
-    border-left: 4px solid var(--primary);
+    border-left: 4px solid var(--n-primary-color);
 }
 
 .column-category h4 {
     margin-bottom: 10px;
-    color: #2c3e50;
+    color: var(--n-text-color-1);
     font-weight: 600;
 }
 
@@ -4000,39 +4064,24 @@ margin-bottom: 1rem;
 .column-item {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 12px 15px;
-    background-color: gainsboro;
+    background-color: var(--n-color);
     border-radius: 6px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--n-border-color);
     user-select: none;
 }
 
 .column-item.seen{
-    background-color: #f8f9fa;
+    background-color: var(--n-hover-color);
 }
 
-.column-item label {
-    margin-left: 10px;
-    font-weight: 500;
+.column-item :deep(.n-checkbox) {
     flex: 1;
 }
 
-.column-item .material-icons {
-    color: #666;
-}
-
-.column-category {
-    margin-bottom: 20px;
-    padding: 15px;
-    background-color: #f0f7ff;
-    border-radius: 8px;
-    border-left: 4px solid var(--primary);
-}
-
-.column-category h4 {
-    margin-bottom: 10px;
-    color: #2c3e50;
-    font-weight: 600;
+.column-item .n-icon {
+    color: var(--n-text-color-3);
 }
 
 

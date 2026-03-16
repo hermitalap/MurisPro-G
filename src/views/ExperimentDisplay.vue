@@ -1,108 +1,105 @@
 <template>
 <div class="main-content">
-    <div class="content-header">
+    <n-space justify="space-between" align="center" class="content-header">
     <h1 class="page-title">实验数据管理 - {{ experimentName }}</h1>
-    </div>
+    </n-space>
 
     <!-- 标签页导航 -->
-    <div class="tabs">
-    <button 
-        class="tab-button" 
-        :class="{ active: activeTab === 'visualization' }"
-        @click="activeTab = 'visualization'"
-    >
-        <i class="material-icons">bar_chart</i>
-        可视化
-    </button>
-    <button 
-        class="tab-button" 
-        :class="{ active: activeTab === 'data' }"
-        @click="activeTab = 'data'"
-    >
-        <i class="material-icons">table_chart</i>
-        数据列表
-    </button>
-    </div>
-
-    <!-- 可视化标签页 -->
-    <div v-show="activeTab === 'visualization'" class="tab-content">
-    <div class="action-buttons">
-        <button class="btn btn-primary" @click="showGroupModal = true" :disabled="!allGroups.id">
-        <i class="material-icons">group</i>
-        修改分组
-        </button>
-        <button class="btn btn-primary" @click="generateChart">
-        <i class="material-icons">bar_chart</i>
-        生成图表
-        </button>
-    </div>
-    <!-- 数据展示区域 -->
-    <div v-if="hasData" class="chart-container" id="chart-container">
-        <canvas id="experimentChart"></canvas>
-    </div>
-    </div>
-
-    <!-- 数据列表标签页 -->
-    <div v-show="activeTab === 'data'" class="tab-content">
-    <div class="action-buttons">
-        <button class="btn btn-primary" @click="openRecordModal">
-        <i class="material-icons">note_add</i>
-        录入数据
-        </button>
-        <button class="btn btn-success" @click="exportData">
-        <i class="material-icons">download</i>
-        导出数据
-        </button>
-    </div>
-    
-    <!-- 数据表格 -->
-    <div class="data-table-container">
-        <!-- 搜索和筛选控件 -->
-        <div class="table-controls">
-            <div class="search-controls">
-                <input v-model="searchTerm" id="search-input" placeholder="搜索小鼠编号或数据..." @input="onSearchChange">
-                <button @click="resetFilters" class="reset-btn">
-                    <i class="material-icons">refresh</i>
-                </button>
-            </div>
-        
-            <!-- 列筛选 -->
-            <div class="column-filters">
-                <select v-model="groupFilter" id="group-filter" @change="onGroupFilterChange">
-                    <option value="">所有分组</option>
-                    <option v-for="group in groupNames" :key="group" :value="group">
-                        {{ group }}
-                    </option>
-                </select>
-            </div>
+        <n-tabs v-model:value="activeTab" type="line" class="experiment-tabs">
+            <n-tab-pane name="visualization">
+                <template #tab>
+                    <span class="tab-label"><AppIcon name="bar_chart" /> 可视化</span>
+                </template>
+                <div class="tab-content">
+                    <n-space class="action-buttons">
+              <n-button type="primary" @click="showGroupModal = true" :disabled="!allGroups.id">
+              <AppIcon  name="group" />
+              修改分组
+              </n-button>
+              <n-button type="primary" @click="generateChart">
+              <AppIcon  name="bar_chart" />
+              生成图表
+              </n-button>
+                    </n-space>
+          <!-- 数据展示区域 -->
+          <div v-if="hasData" class="chart-container" id="chart-container">
+              <canvas id="experimentChart"></canvas>
+          </div>
         </div>
-        
-        <!-- Tabulator 数据表格 -->
-        <div ref="tabulatorRef" class="tabulator-table"></div>
-    </div>
-    </div>
+      </n-tab-pane>
+
+            <n-tab-pane name="data">
+                <template #tab>
+                    <span class="tab-label"><AppIcon name="table_chart" /> 数据列表</span>
+                </template>
+                <div class="tab-content">
+                    <n-space class="action-buttons">
+              <n-button type="primary" @click="openRecordModal">
+              <AppIcon  name="note_add" />
+              录入数据
+              </n-button>
+              <n-button type="success" @click="exportData">
+              <AppIcon  name="download" />
+              导出数据
+              </n-button>
+                    </n-space>
+          
+          <!-- 数据表格 -->
+          <div class="data-table-container">
+              <!-- 搜索和筛选控件 -->
+              <n-space justify="space-between" align="center" class="table-controls">
+                  <n-space align="center" class="search-controls">
+                      <n-input
+                          v-model:value="searchTerm"
+                          id="search-input"
+                          class="search-input"
+                          placeholder="搜索小鼠编号或数据..."
+                          @update:value="onSearchChange"
+                      />
+                      <n-button @click="resetFilters" class="filter-reset-trigger" quaternary>
+                          <AppIcon  name="refresh" />
+                      </n-button>
+                  </n-space>
+              
+                  <!-- 列筛选 -->
+                  <div class="column-filters">
+                      <n-select
+                          id="group-filter"
+                          class="group-filter-select"
+                          v-model:value="groupFilter"
+                          :options="groupFilterOptions"
+                          @update:value="onGroupFilterChange"
+                      />
+                  </div>
+              </n-space>
+              
+              <!-- Tabulator 数据表格 -->
+              <div ref="tabulatorRef" class="tabulator-table"></div>
+          </div>
+        </div>
+      </n-tab-pane>
+    </n-tabs>
 
     <!-- 录入数据模态框 -->
-    <div v-if="showRecordModal" class="modal-backdrop" @click.self="closeRecordModal">
-    <div class="modal-container">
-        <div class="modal-header">
-            <h5 class="modal-title">录入实验数据</h5>
-            <button type="button" class="btn-close" @click="closeRecordModal">
-                <i class="material-icons">close</i>
-            </button>
-        </div>
+    <n-modal v-model:show="showRecordModal" preset="card" title="录入实验数据" style="width: 90%; max-width: 800px;" :mask-closable="true">
         <div class="modal-body">
             <div class="row mb-3">
                 <div class="col-md-6">
                 <div class="form-group">
                     <label for="recordDate" class="form-label">记录日期</label>
-                    <input type="date" class="form-control" id="recordDate" v-model="recordDate">
+                    <n-date-picker
+                        id="recordDate"
+                        class="record-date-picker"
+                        type="date"
+                        value-format="yyyy-MM-dd"
+                        v-model:formatted-value="recordDate"
+                    />
                 </div>
                 </div>
                 <div class="col-md-6">
                 <div class="form-group">
                     <label for="researcher" class="form-label">实验人员</label>
-                    <input type="text" class="form-control" id="researcher" v-model="researcher">
+                    <n-input type="text" class="researcher-input" id="researcher" v-model:value="researcher" />
                 </div>
                 </div>
             </div>
@@ -111,16 +108,15 @@
             <div ref="recordTabulatorRef" class="tabulator-table" style="height: 300px;"></div>
             
             <div class="d-grid mt-3">
-                <button class="btn btn-primary" @click="saveExperimentRecord" :disabled="isSubmitting">
-                <i class="material-icons">save</i> {{ isSubmitting? '保存中...' : '保存记录'}}
-                </button>
+                <n-button type="primary" block @click="saveExperimentRecord" :disabled="isSubmitting">
+                <AppIcon  name="save" /> {{ isSubmitting? '保存中...' : '保存记录'}}
+                </n-button>
             </div>
         </div>
-    </div>
-    </div>
+    </n-modal>
 
     <!-- ID分组 -->
-    <div v-if="showGroupModal" class="modal-backdrop" @click.self="showGroupModal=false">
+    <n-modal v-model:show="showGroupModal" style="width: 90%; max-width: 1240px;" :mask-closable="true" :show-icon="false">
         <IdGroupingManager
             :candidate-mice="candidateMice"
             :editing-group="allGroups"
@@ -128,7 +124,7 @@
             @update:editing-group="handleGroupUpdate"
             @save-group="saveGroup"
         />
-    </div>
+    </n-modal>
 </div>
 </template>
 
@@ -223,6 +219,10 @@ const isSubmitting = ref(false);
 
 const groupNames = computed(() => {
     return allGroups.value.rules.map(group => group.name)
+})
+
+const groupFilterOptions = computed(() => {
+    return [{ label: '所有分组', value: '' }, ...groupNames.value.map(group => ({ label: group, value: group }))]
 })
 
 var cellContextMenu = [
@@ -501,7 +501,7 @@ tabulatorInstance.value = new Tabulator(tabulatorRef.value, {
     clipboard: "copy",
     groupBy: 'group',
     groupHeader: (value, count) => {
-        return `${value} <span style='color:#666;'>(${count} 条记录)</span>`;
+        return `${value} <span style='color:var(--n-text-color-3);'>(${count} 条记录)</span>`;
     }
 });
 }
@@ -534,7 +534,7 @@ recordTabulatorInstance.value = new Tabulator(recordTabulatorRef.value, {
 
     groupBy: 'group',
     groupHeader: (value, count) => {
-        return `${value} <span style='color:#666;'>(${count} 条记录)</span>`;
+        return `${value} <span style='color:var(--n-text-color-3);'>(${count} 条记录)</span>`;
     }
 });
 }
@@ -547,6 +547,9 @@ function onSearchChange() {
 }
 
 function onGroupFilterChange() {
+    if (groupFilter.value === null) {
+        groupFilter.value = '';
+    }
     if (tabulatorInstance.value) {
         if (groupFilter.value) {
         // 单字段精确筛选
@@ -644,7 +647,7 @@ async function generateChart() {
         const noVizFields = document.createElement('div');
         noVizFields.className = 'no-data';
         noVizFields.innerHTML = `
-        <i class="material-icons">bar_chart</i>
+        <AppIcon  name="bar_chart" />
         <p>没有配置可视化字段，请在字段设置中指定x、y或column类型</p>
         `;
         chartContainer.appendChild(noVizFields);
@@ -674,11 +677,11 @@ async function generateChart() {
             canvas.className = 'chart-canvas';
             canvas.width = 400;
             canvas.height = 350;
-            canvas.style.backgroundColor = 'white';
-            canvas.style.border = '1px solid #e0e0e0';
+            canvas.style.backgroundColor = 'var(--n-color)';
+            canvas.style.border = '1px solid var(--n-border-color)';
             canvas.style.borderRadius = '8px';
             canvas.style.padding = '15px';
-            canvas.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+            canvas.style.boxShadow = '0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent)';
             chartCard.appendChild(canvas);
             chartContainer.appendChild(chartCard);
             
@@ -698,11 +701,11 @@ async function generateChart() {
         canvas.className = 'chart-canvas';
         canvas.width = 300;
         canvas.height = 350;
-        canvas.style.backgroundColor = 'white';
-        canvas.style.border = '1px solid #e0e0e0';
+        canvas.style.backgroundColor = 'var(--n-color)';
+        canvas.style.border = '1px solid var(--n-border-color)';
         canvas.style.borderRadius = '8px';
         canvas.style.padding = '15px';
-        canvas.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        canvas.style.boxShadow = '0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent)';
         chartCard.appendChild(canvas);
         chartContainer.appendChild(chartCard);
         
@@ -721,11 +724,11 @@ async function generateChart() {
         canvas.className = 'chart-canvas';
         canvas.width = 300;
         canvas.height = 350;
-        canvas.style.backgroundColor = 'white';
-        canvas.style.border = '1px solid #e0e0e0';
+        canvas.style.backgroundColor = 'var(--n-color)';
+        canvas.style.border = '1px solid var(--n-border-color)';
         canvas.style.borderRadius = '8px';
         canvas.style.padding = '15px';
-        canvas.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        canvas.style.boxShadow = '0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent)';
         chartCard.appendChild(canvas);
         chartContainer.appendChild(chartCard);
         
@@ -744,11 +747,11 @@ async function generateChart() {
         canvas.className = 'chart-canvas';
         canvas.width = 300;
         canvas.height = 350;
-        canvas.style.backgroundColor = 'white';
-        canvas.style.border = '1px solid #e0e0e0';
+        canvas.style.backgroundColor = 'var(--n-color)';
+        canvas.style.border = '1px solid var(--n-border-color)';
         canvas.style.borderRadius = '8px';
         canvas.style.padding = '15px';
-        canvas.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        canvas.style.boxShadow = '0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent)';
         chartCard.appendChild(canvas);
         chartContainer.appendChild(chartCard);
         
@@ -852,7 +855,7 @@ function createXYChart(canvas, xField, yField, groupedData) {
                     label: `${groupName}趋势线`,
                     data: fitPoints,
                     borderColor: color,
-                    backgroundColor: 'rgba(0,0,0,0)',
+                    backgroundColor: 'transparent',
                     pointRadius: 0,
                     borderWidth: 2,
                     showLine: true,
@@ -1005,7 +1008,7 @@ function createBoxPlotWithPoints(canvas, columnField, groupedData) {
                 label: groupName,  // 使用分组名称作为标签
                 data: scatterData,
                 backgroundColor: groupColor + 'AA',  // 使用分组颜色
-                borderColor: '#FFFFFF',
+                borderColor: 'var(--n-color)',
                 borderWidth: 1,
                 pointRadius: 4,
                 pointHoverRadius: 6
@@ -1018,7 +1021,7 @@ function createBoxPlotWithPoints(canvas, columnField, groupedData) {
                 label: groupName,
                 data: [],
                 backgroundColor: groupColor + 'AA',
-                borderColor: '#FFFFFF',
+                borderColor: 'var(--n-color)',
                 borderWidth: 1,
                 pointRadius: 4,
                 pointHoverRadius: 6
@@ -1458,6 +1461,7 @@ try {
 display: flex;
 gap: 10px;
 margin-bottom: 20px;
+flex-wrap: wrap;
 }
 
 .chart-container {
@@ -1476,59 +1480,22 @@ min-height: 500px;
 .chart-canvas {
 width: 300px;
 height: 400px;
-border: 1px solid #e0e0e0;
+border: 1px solid var(--n-border-color);
 border-radius: 8px;
 padding: 15px;
-background: white;
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+background: var(--n-color);
+box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
 .no-data {
 text-align: center;
 padding: 40px 0;
-color: #6c757d;
+color: var(--n-text-color-3);
 }
 
 .no-data i {
 font-size: 3rem;
 margin-bottom: 10px;
-}
-
-.modal-backdrop {
-position: fixed;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background-color: rgba(0, 0, 0, 0.5);
-z-index: 1000;
-display: flex;
-align-items: center;
-justify-content: center;
-}
-
-.modal-container {
-background-color: white;
-border-radius: 8px;
-width: 90%;
-max-width: 800px;
-max-height: 90vh;
-overflow: auto;
-}
-
-.modal-header {
-padding: 1rem;
-background-color: #3498db;
-color: white;
-border-radius: 8px 8px 0 0;
-display: flex;
-justify-content: space-between;
-align-items: center;
-}
-
-.modal-title {
-margin: 0;
-font-size: 1.25rem;
 }
 
 .modal-body {
@@ -1545,16 +1512,9 @@ margin-bottom: 0.5rem;
 font-weight: 500;
 }
 
-.form-control, .form-select {
-display: block;
-width: 100%;
-padding: 0.5rem;
-font-size: 1rem;
-line-height: 1.5;
-color: #495057;
-background-color: #fff;
-border: 1px solid #ced4da;
-border-radius: 4px;
+.record-date-picker,
+.researcher-input {
+ width: 100%;
 }
 
 .form-select-sm {
@@ -1587,34 +1547,14 @@ margin-top: 1rem;
 display: grid;
 }
 
-.tabs {
-display: flex;
-border-bottom: 1px solid #e0e0e0;
+.experiment-tabs {
 margin-bottom: 20px;
 }
 
-.tab-button {
-padding: 12px 24px;
-background: none;
-border: none;
-cursor: pointer;
-display: flex;
+.tab-label {
+display: inline-flex;
 align-items: center;
-gap: 8px;
-font-size: 16px;
-color: #666;
-border-bottom: 3px solid transparent;
-transition: all 0.3s;
-}
-
-.tab-button:hover {
-color: #3498db;
-}
-
-.tab-button.active {
-color: #3498db;
-border-bottom-color: #3498db;
-font-weight: 500;
+gap: 6px;
 }
 
 .tab-content {
@@ -1626,10 +1566,10 @@ max-width: 95%;
 }
 
 .data-table-container {
-background: white;
-border-radius: 8px;
+background: var(--n-color);
+border-radius: 12px;
 padding: 20px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+box-shadow: 0 6px 20px color-mix(in srgb, var(--n-text-color) 8%, transparent);
 max-width: 95%;
 max-height: 90%;
 overflow: auto;
@@ -1649,33 +1589,26 @@ flex-grow: 1;
 max-width: 400px;
 }
 
-.search-controls input {
+.search-input {
 flex-grow: 1;
-padding: 8px 12px;
-border: 1px solid #dcdfe6;
-border-radius: 4px;
-font-size: 14px;
 }
 
-.column-filters select {
-padding: 8px 12px;
-border: 1px solid #dcdfe6;
-border-radius: 4px;
-background: white;
+.group-filter-select {
+min-width: 160px;
 }
 
 .tabulator-table {
-background: white;
-border-radius: 8px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+background: var(--n-color);
+border-radius: 12px;
+box-shadow: 0 6px 20px color-mix(in srgb, var(--n-text-color) 8%, transparent);
 }
 
 .chart-card {
 flex: 0 0 calc(50% - 20px);
 margin-bottom: 20px;
-background: white;
+background: var(--n-color);
 border-radius: 8px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 padding: 15px;
 width: 330px; /* 400px + 左右padding */
 height: 430px; /* 最小宽度 */

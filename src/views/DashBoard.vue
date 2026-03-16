@@ -1,21 +1,21 @@
 <template>
   <div class="main-content">
-    <div class="content-header" id="contentHeader">
+    <n-space vertical size="large" class="content-header" id="contentHeader">
       <h1 class="page-title">笼位视图</h1>
       <!-- 搜索框 -->
       <div class="search-container">
         <div class="search-box">
-          <i class="material-icons">search</i>
-          <input 
-            type="text" 
-            v-model="searchTerm" 
-            placeholder="搜索小鼠ID..." 
-            @input="performSearch"
+          <AppIcon  name="search" />
+          <n-input
+            v-model:value="searchTerm"
+            placeholder="搜索小鼠ID..."
+            @update:value="performSearch"
             @keyup.enter="performSearch"
+            clearable
           />
-          <button v-if="searchTerm" @click="clearSearch" class="search-clear">
-            <i class="material-icons">close</i>
-          </button>
+          <n-button v-if="searchTerm" @click="clearSearch" class="search-clear" quaternary circle>
+            <AppIcon  name="close" />
+          </n-button>
         </div>
         
         <!-- 搜索结果下拉框 -->
@@ -23,12 +23,12 @@
           <div class="search-result-header">
             <span>找到 {{ searchResults.length }} 个结果</span>
             <div class="search-nav">
-              <button @click="navigateResults(-1)" :disabled="currentResultIndex <= 0">
-                <i class="material-icons">arrow_upward</i>
-              </button>
-              <button @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1">
-                <i class="material-icons">arrow_downward</i>
-              </button>
+              <n-button quaternary circle @click="navigateResults(-1)" :disabled="currentResultIndex <= 0">
+                <AppIcon  name="arrow_upward" />
+              </n-button>
+              <n-button quaternary circle @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1">
+                <AppIcon  name="arrow_downward" />
+              </n-button>
             </div>
           </div>
           
@@ -50,25 +50,25 @@
         </div>
       </div>
 
-      <div class="action-buttons">
-        <button class="btn btn-outline" @click="fetchCages">
-          <i class="material-icons btn-icon">refresh</i>
+      <n-space class="action-buttons">
+        <n-button secondary @click="fetchCages">
+          <AppIcon  class="btn-icon" name="refresh" />
           刷新数据
-        </button>
-        <button class="btn btn-outline" v-if="temporaryMice.length === 0" @click="showTemporaryArea=!showTemporaryArea">
-          <i class="material-icons btn-icon">view_sidebar</i>
+        </n-button>
+        <n-button secondary v-if="temporaryMice.length === 0" @click="showTemporaryArea=!showTemporaryArea">
+          <AppIcon  class="btn-icon" name="view_sidebar" />
           {{showTemporaryArea? "关闭临时区" : "打开临时区"}}
-        </button>
-        <button class="btn btn-outline" @click="exportToPDF">
-          <i class="material-icons btn-icon">picture_as_pdf</i>
+        </n-button>
+        <n-button secondary @click="exportToPDF">
+          <AppIcon  class="btn-icon" name="picture_as_pdf" />
           当前位置导出pdf
-        </button>
-        <button class="btn btn-primary" @click="openCageModal(null)">
-          <i class="material-icons btn-icon">add</i>
+        </n-button>
+        <n-button type="primary" @click="openCageModal(null)">
+          <AppIcon  class="btn-icon" name="add" />
           添加笼位
-        </button>
-      </div>
-    </div>
+        </n-button>
+      </n-space>
+    </n-space>
     
     <!-- Section标签页导航 -->
   <draggable 
@@ -85,7 +85,7 @@
         @click="activeSection = element.identifier"
       >
         <span class="drag-handle">
-          <i class="material-icons">drag_handle</i>
+          <AppIcon  name="drag_handle" />
         </span>
         {{ element.identifier }}
       </div>
@@ -155,7 +155,7 @@
       </div>
       <div v-else style="flex: 1;padding: 80px;background-color: white;">
         <div class="container">
-          <i class="material-icons" style="font-size: 120px; color: #cbd5e1;">error_outline</i>
+          <AppIcon style="font-size: 120px; color: var(--n-text-color-disabled);" name="error_outline" />
           <h1>未设定区域</h1>
           <p>请前往设置页面设定区域。</p>
         </div>
@@ -210,87 +210,93 @@
       :style="{ top: cageContextMenu.y + 'px', left: cageContextMenu.x + 'px' }">
       <ul>
           <li @click="openCageModal(cageContextMenu.cage)">
-              <i class="material-icons">edit</i> 编辑笼位信息
+              <AppIcon  name="edit" /> 编辑笼位信息
           </li>
           <li @click="exchangeCage(cageContextMenu.cage)">
-              <i class="material-icons">swap_horiz</i> 笼位排序互换
+              <AppIcon  name="swap_horiz" /> 笼位排序互换
           </li>
           <li @click="deleteCage(cageContextMenu.cage)">
-              <i class="material-icons">delete</i> 删除笼位
+              <AppIcon  name="delete" /> 删除笼位
           </li>
       </ul>
   </div>
 
   <!-- 统一笼位对话框 -->
-  <div v-if="cageModalVisible" class="dialog-overlay">
-    <div class="modal-backdrop" @click="closeCageModal"></div>
-    <div class="dialog-container cage-modal">
+  <n-modal v-model:show="cageModalVisible" :mask-closable="true" @mask-click="closeCageModal">
+    <n-card class="dialog-container cage-modal" :bordered="false" role="dialog" aria-modal="true">
       <h2>{{ isEditing ? '修改笼位信息' : '添加新笼位' }}</h2>
       <div class="form-group">
-        <label>笼位ID *</label>
-        <input type="text" v-model="currentCage.cage_id" placeholder="输入笼位ID">
+        <n-form-item label="笼位ID *" label-placement="top">
+          <n-input v-model:value="currentCage.cage_id" placeholder="输入笼位ID" />
+        </n-form-item>
       </div>
 
       <div class="form-group">
-        <label>位置</label>
-        <input type="text" v-model="currentCage.location" placeholder="输入位置">
+        <n-form-item label="位置" label-placement="top">
+          <n-input v-model:value="currentCage.location" placeholder="输入位置" />
+        </n-form-item>
       </div>
       <div class="form-group">
-        <label>区域 *</label>
-        <select v-model="currentCage.section">
-          <option v-for="section in locations" :key="section" :value="section.identifier">
-            {{ section.identifier }}
-          </option>
-        </select>
+        <n-form-item label="区域 *" label-placement="top">
+          <n-select
+            v-model:value="currentCage.section"
+            :options="sectionOptions"
+            placeholder="选择区域"
+          />
+        </n-form-item>
       </div>
-      <div class="dialog-buttons">
-        <button class="btn btn-outline" @click="closeCageModal">取消</button>
-        <button class="btn btn-primary" @click="isEditing ? updateCage() : addNewCage()" :disabled="isSaving">
+      <n-space justify="end" class="dialog-buttons">
+        <n-button secondary @click="closeCageModal">取消</n-button>
+        <n-button type="primary" @click="isEditing ? updateCage() : addNewCage()" :disabled="isSaving">
           <div v-if="isSaving">{{ isEditing ? '更新中' : '添加中' }}</div>
           <div v-else>{{ isEditing ? '更新' : '添加' }}</div>
-        </button>
-      </div>
+        </n-button>
+      </n-space>
       <div class="icon-hr">下面是用于标记的笼位信息</div>
       <div class="form-group">
-        <label>笼位类型</label>
-        <select v-model="currentCage.cage_type">
-          <option value="normal">普通笼</option>
-          <option value="breeding">繁殖笼</option>
-        </select>
+        <n-form-item label="笼位类型" label-placement="top">
+          <n-select
+            v-model:value="currentCage.cage_type"
+            :options="cageTypeOptions"
+            placeholder="选择笼位类型"
+          />
+        </n-form-item>
       </div>
       <div class="form-group">
-        <label>笼内小鼠出生日期</label>
-        <input type="date" v-model="currentCage.mice_birth_date">
+        <n-form-item label="笼内小鼠出生日期" label-placement="top">
+          <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="currentCage.mice_birth_date" />
+        </n-form-item>
       </div>
       <div class="form-group">
-        <label>笼内小鼠数量</label>
-        <input type="number" v-model.number="currentCage.mice_count" min="0">
+        <n-form-item label="笼内小鼠数量" label-placement="top">
+          <n-input-number v-model:value="currentCage.mice_count" :min="0" style="width: 100%;" />
+        </n-form-item>
       </div>
       <div class="form-group">
-        <label>笼内小鼠性别</label>
-        <select v-model="currentCage.mice_sex">
-          <option value="M">雄性</option>
-          <option value="F">雌性</option>
-          <option value="Mixed">混合</option>
-        </select>
+        <n-form-item label="笼内小鼠性别" label-placement="top">
+          <n-select
+            v-model:value="currentCage.mice_sex"
+            :options="miceSexOptions"
+            placeholder="选择性别"
+          />
+        </n-form-item>
       </div>
       <div class="form-group">
-        <label>笼内小鼠基因型</label>
-        <input type="text" v-model="currentCage.mice_genotype" placeholder="如: WT/KO/其他">
+        <n-form-item label="笼内小鼠基因型" label-placement="top">
+          <n-input v-model:value="currentCage.mice_genotype" placeholder="如: WT/KO/其他" />
+        </n-form-item>
       </div>
-    </div>
-  </div>
+    </n-card>
+  </n-modal>
   
   <!-- 在组件模板中添加弹窗 -->
-  <div v-if="swapStatus === 'select-target'" class="swap-modal">
-  <div class="modal-backdrop" @click="cancelSwap"></div>
-    <!-- 内容区 -->
-    <div class="modal-body">    
+  <n-modal :show="swapStatus === 'select-target'" :mask-closable="true" @mask-click="cancelSwap">
+    <n-card class="swap-dialog" :bordered="false" role="dialog" aria-modal="true">
       <div class="status-message">
         <p>确认交换以下笼位顺序：</p>
         <div class="cage-pair">
           <div class="selected-cage">
-            <i class="material-icons">cage</i>
+            <AppIcon  name="cage" />
             <div class="cage-info">
               <div class="cage-id">{{ sourceCage.cage_id }}</div>
               <div class="cage-location">{{ sourceCage.location }}</div>
@@ -298,11 +304,11 @@
           </div>
           
           <div class="swap-icon">
-            <i class="material-icons">swap_horiz</i>
+            <AppIcon  name="swap_horiz" />
           </div>
           
           <div class="selected-cage">
-            <i class="material-icons">cage</i>
+            <AppIcon  name="cage" />
             <div class="cage-info">
               <div class="cage-id">{{ targetCage.cage_id }}</div>
               <div class="cage-location">{{ targetCage.location }}</div>
@@ -312,16 +318,16 @@
 
           <!-- 底部按钮 -->
         <div class="modal-footer" v-if="swapStatus === 'select-target'">
-          <button @click="cancelSwap" class="btn btn-outline">
-            <i class="material-icons">cancel</i> 取消
-          </button>
-          <button @click="confirmSwap" class="btn btn-primary">
-            <i class="material-icons">check</i> 确认
-          </button>
+          <n-button @click="cancelSwap" secondary>
+            <AppIcon  name="cancel" /> 取消
+          </n-button>
+          <n-button @click="confirmSwap" type="primary">
+            <AppIcon  name="check" /> 确认
+          </n-button>
         </div>
       </div>
-    </div>
-  </div>
+    </n-card>
+  </n-modal>
 
   <!-- PDF渲染区域（隐藏） -->
   <div id="pdf-render-area" class="hidden-pdf-area"></div>
@@ -354,6 +360,18 @@ import { storeToRefs } from 'pinia'
 const cageStore = useCageStore()
 const {locations, activeSection, cages} = storeToRefs(cageStore)
 const {fetchCages} = cageStore
+const sectionOptions = computed(() =>
+  locations.value.map(section => ({ label: section.identifier, value: section.identifier }))
+)
+const cageTypeOptions = [
+  { label: '普通笼', value: 'normal' },
+  { label: '繁殖笼', value: 'breeding' }
+]
+const miceSexOptions = [
+  { label: '雄性', value: 'M' },
+  { label: '雌性', value: 'F' },
+  { label: '混合', value: 'Mixed' }
+]
 
 // 响应式状态
 const temporaryMice = ref([])
@@ -368,11 +386,17 @@ const currentCage = reactive({
   location: '',
   section: '',
   cage_type: 'normal',
-  mice_birth_date: '',
+  mice_birth_date: null,
   mice_count: null,
   mice_sex: '',
   mice_genotype: ''
 })
+
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
+const normalizeDateValue = (value) => {
+  if (typeof value !== 'string') return null
+  return DATE_ONLY_REGEX.test(value) ? value : null
+}
 const cageContextMenu = reactive({
   visible: false,
   x: 0,
@@ -512,6 +536,7 @@ function openCageModal(cage) {
   if (isEditing.value) {
     // 编辑模式：填充当前笼位数据
     Object.assign(currentCage, { ...cage })
+    currentCage.mice_birth_date = normalizeDateValue(currentCage.mice_birth_date)
   } else {
     // 添加模式：重置表单
     Object.assign(currentCage, {
@@ -520,7 +545,7 @@ function openCageModal(cage) {
       location: '',
       section: activeSection.value,
       cage_type: 'normal',
-      mice_birth_date: '',
+      mice_birth_date: null,
       mice_count: null,
       mice_sex: '',
       mice_genotype: ''
@@ -539,7 +564,7 @@ function closeCageModal(){
     location: '',
     section: activeSection.value,
     cage_type: 'normal',
-    mice_birth_date: '',
+    mice_birth_date: null,
     mice_count: null,
     mice_sex: '',
     mice_genotype: ''
@@ -1063,70 +1088,82 @@ function isCageHighlighted(cageId) {
 </script>
 
 <style scoped>
-@import '@material-design-icons/font/index.css';
-@import url('./styles/main.css');
 
 /* 主容器布局 */
+.main-content {
+  min-height: 100%;
+}
+
 .cage-view-container {
-  display: flex;
-  gap: 15px;
-  height: calc(100vh - var(--header-height) - var(--footer-height) - 140px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
 }
 
 /* 笼位网格容器 */
 .cage-grid {
-  flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   grid-auto-rows: 255px;
-  gap: 15px;
-  padding: 10px;
+  gap: 16px;
+  padding: 16px;
   overflow-y: auto;
-  background-color: white;
+  background-color: var(--n-color);
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   align-content: start;
+  min-width: 0;
+  min-height: 0;
 }
 
 /* 临时存放区容器 */
 .temporary-area {
-  width: 220px;
-  background-color: white;
+  width: auto;
+  min-width: 240px;
+  background-color: var(--n-color);
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   padding: 15px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* Section标签页样式 */
 .section-tabs {
   display: flex;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--n-border-color);
   margin-bottom: 15px;
-  padding: 0 10px;
+  padding: 0 4px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 .tab-item {
+  flex: 0 0 auto;
   padding: 8px 16px;
   cursor: pointer;
   margin-right: 5px;
   border-radius: 5px 5px 0 0;
   font-weight: 500;
-  color: #666;
+  color: var(--n-text-color-3);
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .tab-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--n-color-embedded);
 }
 
 .tab-item.active {
-  color: var(--primary);
-  background-color: rgba(25, 118, 210, 0.08);
-  border-bottom: 2px solid var(--primary);
+  color: var(--n-primary-color);
+  background-color: var(--n-info-color-suppl);
+  border-bottom: 2px solid var(--n-primary-color);
 }
 
 .drag-handle {
@@ -1168,9 +1205,9 @@ function isCageHighlighted(cageId) {
   overflow-y: auto;
   min-height: 100px;
   padding: 5px;
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
   border-radius: 6px;
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--n-border-color);
 }
 
 .mouse-card {
@@ -1178,9 +1215,9 @@ function isCageHighlighted(cageId) {
   align-items: center;
   padding: 8px;
   border-radius: 6px;
-  background-color: #fff8e1;
+  background-color: var(--n-color-embedded);
   margin-bottom: 8px;
-  border: 1px solid #ffe082;
+  border: 1px solid var(--n-warning-color-suppl);
   transition: all 0.3s;
   cursor: pointer;
 }
@@ -1189,8 +1226,10 @@ function isCageHighlighted(cageId) {
 .content-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .page-title {
@@ -1201,6 +1240,7 @@ function isCageHighlighted(cageId) {
 .action-buttons {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* 笼位卡片样式 */
@@ -1208,7 +1248,7 @@ function isCageHighlighted(cageId) {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 15px;
-  background-color: white;
+  background-color: var(--n-color);
   transition: all 0.2s;
   cursor: pointer;
   min-height: 250px;
@@ -1220,17 +1260,17 @@ function isCageHighlighted(cageId) {
 }
 
 .cage-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
   transform: translateY(-2px);
 }
 
 .cage-card.breeding {
-  background-color: rgba(255, 182, 193, 0.2);
-  border-left: 4px solid pink;
+  background-color: color-mix(in srgb, var(--n-error-color) 20%, var(--n-color));
+  border-left: 4px solid var(--n-error-color);
 }
 
 .cage-card.temporary {
-  background-color: rgba(255, 255, 0, 0.1);
+  background-color: var(--n-warning-color-suppl);
   border-left: 4px solid var(--warning);
 }
 
@@ -1242,7 +1282,7 @@ function isCageHighlighted(cageId) {
 
 .cage-location {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--n-text-color-3);
   margin-bottom: 10px;
 }
 
@@ -1252,7 +1292,7 @@ function isCageHighlighted(cageId) {
   margin-top: 8px;
   padding: 5px;
   border-radius: 4px;
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
 }
 
 .mouse-sex {
@@ -1272,11 +1312,11 @@ function isCageHighlighted(cageId) {
 }
 
 .sex-female {
-  background-color: #ff4081;
+  background-color: var(--n-error-color);
 }
 
 .sex-male {
-  background-color: #2196f3;
+  background-color: var(--n-info-color);
 }
 
 .mouse-info {
@@ -1290,14 +1330,14 @@ function isCageHighlighted(cageId) {
 
 .mouse-genotype {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--n-text-color-3);
   max-width: 70px;
   overflow: auto;
 }
 
 .mouse-days {
   font-size: 1rem;
-  color: #0a0a0a;
+  color: var(--n-text-color-1);
 }
 
 /* 添加悬停效果 */
@@ -1308,7 +1348,7 @@ function isCageHighlighted(cageId) {
 
 .cage-mouse:hover {
   transform: scale(1.02);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
 /* 对话框样式 */
@@ -1318,7 +1358,7 @@ function isCageHighlighted(cageId) {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: color-mix(in srgb, var(--n-text-color) 50%, transparent);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1327,14 +1367,14 @@ function isCageHighlighted(cageId) {
 
 .dialog-container {
   z-index: 2;
-  background-color: white;
+  background-color: var(--n-color);
   padding: 20px;
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--n-text-color) 20%, transparent);
 }
 
 .dialog-container h2 {
@@ -1355,7 +1395,7 @@ function isCageHighlighted(cageId) {
 .form-group input, .form-group select {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
   font-size: 14px;
   box-sizing: border-box;
@@ -1369,7 +1409,7 @@ function isCageHighlighted(cageId) {
 }
 
 .empty-cage {
-  color: #999;
+  color: var(--n-text-color-3);
   font-style: italic;
   text-align: center;
   padding: 20px 0;
@@ -1385,10 +1425,10 @@ function isCageHighlighted(cageId) {
 /* 右键菜单样式 */
 .context-menu {
     position: fixed;
-    background: white;
-    border: 1px solid #e0e0e0;
+  background: var(--n-color);
+  border: 1px solid var(--n-border-color);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--n-text-color) 15%, transparent);
     z-index: 1000;
     min-width: 180px;
 }
@@ -1409,34 +1449,34 @@ function isCageHighlighted(cageId) {
 }
 
 .context-menu li:hover {
-    background-color: #f1f5ff;
+  background-color: var(--n-info-color-suppl);
 }
 
 .context-menu li i {
     font-size: 18px;
-    color: #4a9bff;
+    color: var(--n-primary-color);
 }
 
 .cage-card.swap-source {
-    border-color: #4a9bff;
+    border-color: var(--n-primary-color);
     animation: pulse 1.5s infinite;
 }
 
 .cage-card.swap-target {
-    border-color: #10b981;
+  border-color: var(--n-success-color);
     animation: pulse-green 1.5s infinite;
 }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(74, 155, 255, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(74, 155, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(74, 155, 255, 0); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--n-primary-color) 40%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--n-primary-color) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--n-primary-color) 0%, transparent); }
 }
 
 @keyframes pulse-green {
-    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--n-success-color) 40%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--n-success-color) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--n-success-color) 0%, transparent); }
 }
 
 /* 弹窗样式 */
@@ -1459,17 +1499,17 @@ function isCageHighlighted(cageId) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, var(--n-text-color) 50%, transparent);
   backdrop-filter: blur(4px);
 }
 
-.modal-body {
+.swap-dialog {
   z-index: 2;
-  background: white;
+  background: var(--n-color);
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 25px color-mix(in srgb, var(--n-text-color) 20%, transparent);
   overflow: hidden;
   padding: 25px;
 }
@@ -1482,7 +1522,7 @@ function isCageHighlighted(cageId) {
 .status-message p {
   font-size: 1.1rem;
   margin-bottom: 15px;
-  color: #444;
+  color: var(--n-text-color-2);
 }
 
 .cage-pair {
@@ -1498,9 +1538,9 @@ function isCageHighlighted(cageId) {
   flex-direction: column;
   align-items: center;
   padding: 15px;
-  background: #f8fafc;
+  background: var(--n-color-embedded);
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--n-border-color);
 }
 
 .swap-icon {
@@ -1509,7 +1549,7 @@ function isCageHighlighted(cageId) {
 
 .swap-icon i {
   font-size: 36px;
-  color: #4a9bff;
+  color: var(--n-primary-color);
 }
 
 .cage-info {
@@ -1522,35 +1562,36 @@ function isCageHighlighted(cageId) {
   justify-content: flex-end;
   gap: 15px;
   padding: 15px 20px;
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
+  background: var(--n-color-embedded);
+  border-top: 1px solid var(--n-border-color);
 }
 
 /* 搜索相关样式 */
 .search-container {
   position: relative;
   flex: 1;
-  max-width: 300px;
-  margin: 0 20px;
+  min-width: min(100%, 260px);
+  max-width: 360px;
+  margin: 0;
 }
 
 .search-box {
   display: flex;
   align-items: center;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--n-color);
+  border: 1px solid var(--n-border-color);
   border-radius: 20px;
   padding: 5px 12px;
   transition: all 0.3s;
 }
 
 .search-box:focus-within {
-  border-color: #1976d2;
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+  border-color: var(--n-primary-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 25%, transparent);
 }
 
 .search-box i {
-  color: #666;
+  color: var(--n-text-color-3);
   margin-right: 8px;
 }
 
@@ -1565,7 +1606,7 @@ function isCageHighlighted(cageId) {
 .search-clear {
   background: none;
   border: none;
-  color: #999;
+  color: var(--n-text-color-3);
   cursor: pointer;
   padding: 2px;
   display: flex;
@@ -1574,7 +1615,7 @@ function isCageHighlighted(cageId) {
 }
 
 .search-clear:hover {
-  color: #666;
+  color: var(--n-text-color-2);
 }
 
 .search-results {
@@ -1582,10 +1623,10 @@ function isCageHighlighted(cageId) {
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--n-color);
+  border: 1px solid var(--n-border-color);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
   z-index: 1000;
   max-height: 300px;
   overflow-y: auto;
@@ -1597,10 +1638,10 @@ function isCageHighlighted(cageId) {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #eee;
+  background-color: var(--n-color-embedded);
+  border-bottom: 1px solid var(--n-border-color);
   font-size: 12px;
-  color: #666;
+  color: var(--n-text-color-3);
 }
 
 .search-nav {
@@ -1608,24 +1649,16 @@ function isCageHighlighted(cageId) {
   gap: 4px;
 }
 
-.search-nav button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.search-nav :deep(.n-button) {
+  display: inline-flex;
 }
 
-.search-nav button:disabled {
+.search-nav :deep(.n-button:disabled) {
   opacity: 0.5;
-  cursor: not-allowed;
 }
 
-.search-nav button:hover:not(:disabled) {
-  background-color: #e0e0e0;
+.search-nav :deep(.n-button:not(:disabled):hover) {
+  background-color: var(--n-color-embedded);
 }
 
 .search-result-item {
@@ -1633,7 +1666,7 @@ function isCageHighlighted(cageId) {
   align-items: center;
   padding: 8px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--n-color-embedded);
 }
 
 .search-result-item:last-child {
@@ -1641,11 +1674,11 @@ function isCageHighlighted(cageId) {
 }
 
 .search-result-item:hover {
-  background-color: #f0f6ff;
+  background-color: var(--n-info-color-suppl);
 }
 
 .search-result-item.active {
-  background-color: #e3f2fd;
+  background-color: color-mix(in srgb, var(--n-info-color) 18%, var(--n-color));
 }
 
 .search-result-item .mouse-sex {
@@ -1662,12 +1695,12 @@ function isCageHighlighted(cageId) {
 }
 
 .search-result-item .sex-female {
-  background-color: #ff4081;
+  background-color: var(--n-error-color);
   color: white;
 }
 
 .search-result-item .sex-male {
-  background-color: #2196f3;
+  background-color: var(--n-info-color);
   color: white;
 }
 
@@ -1684,20 +1717,20 @@ function isCageHighlighted(cageId) {
 
 .result-info .cage-info {
   font-size: 12px;
-  color: #666;
+  color: var(--n-text-color-3);
 }
 
 /* 添加笼位高亮样式 */
 .cage-card.search-highlight {
-  border: 2px solid #1976d2;
-  box-shadow: 0 0 10px rgba(25, 118, 210, 0.4);
+  border: 2px solid var(--n-primary-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--n-primary-color) 40%, transparent);
   animation: pulse-highlight 2s infinite;
 }
 
 @keyframes pulse-highlight {
-  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--n-primary-color) 40%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--n-primary-color) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--n-primary-color) 0%, transparent); }
 }
 
 /* 调整内容头部布局 */
@@ -1723,11 +1756,32 @@ function isCageHighlighted(cageId) {
   flex-wrap: wrap;
 }
 
+@media (max-width: 1200px) {
+  .cage-view-container {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .temporary-area {
+    min-width: 0;
+  }
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
   .content-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .cage-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-auto-rows: minmax(220px, auto);
+    padding: 12px;
+  }
+
+  .temporary-area {
+    padding: 12px;
   }
   
   .search-container {
@@ -1745,14 +1799,14 @@ function isCageHighlighted(cageId) {
   align-items: center;
   text-align: center;
   margin: 30px 0;
-  color: #7f8c8d;
+  color: var(--n-text-color-3);
 }
 
 .icon-hr::before,
 .icon-hr::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #bdc3c7;
+  border-bottom: 1px solid var(--n-border-color);
 }
 
 .icon-hr::before {
@@ -1767,17 +1821,17 @@ function isCageHighlighted(cageId) {
   width: 120px;
   height: 120px;
   margin: 0 auto 30px;
-  color: #cbd5e1;
+  color: var(--n-text-color-disabled);
 }
 h1 {
   font-size: 1.8rem;
-  color: #334155;
+  color: var(--n-text-color-1);
   margin-bottom: 12px;
   font-weight: 600;
 }
 
 p {
-  color: #64748b;
+  color: var(--n-text-color-3);
   font-size: 1.1rem;
   line-height: 1.5;
 }
@@ -1804,14 +1858,14 @@ p {
       padding: 15px;
       margin-bottom: 20px;
       background: white;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      box-shadow: 0 0 5px color-mix(in srgb, var(--n-text-color) 10%, transparent);
     }
     
     .pdf-header {
       text-align: center;
       margin-bottom: 20px;
       padding-bottom: 10px;
-      border-bottom: 2px solid #2c3e50;
+      border-bottom: 2px solid var(--n-text-color-1);
     }
     
     .pdf-cage-grid {
@@ -1822,7 +1876,7 @@ p {
     }
     
     .pdf-cage-card {
-      border: 1px solid #ccc;
+      border: 1px solid var(--n-border-color);
       border-radius: 4px;
       padding: 8px;
       width: 220px;
@@ -1837,7 +1891,7 @@ p {
       text-align: center;
       font-size: 14px;
       margin-bottom: 5px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--n-border-color);
       padding-bottom: 3px;
     }
     
@@ -1853,17 +1907,17 @@ p {
       gap: 1px;
       font-size: 11px;
       box-sizing: border-box;
-      background-color: #f8f9fa; /* 添加底纹 */
-      border: 1px solid #e9ecef;
+      background-color: var(--n-color-embedded); /* 添加底纹 */
+      border: 1px solid var(--n-color-embedded);
     }
 
     /* 添加斑马条纹效果 */
 .pdf-mouse-item:nth-child(odd) {
-  background-color: #f8f9fa;
+  background-color: var(--n-color-embedded);
 }
 
 .pdf-mouse-item:nth-child(even) {
-  background-color: #f1f3f5;
+  background-color: var(--n-color-embedded);
 }
     
     .pdf-mouse-sex {
@@ -1875,7 +1929,7 @@ p {
       justify-content: center;
       margin-right: 5px;
       font-size: 10px;
-      color: #121111;
+      color: var(--n-text-color-1);
       flex-shrink: 0;
     }
     
@@ -1895,7 +1949,7 @@ p {
     }
     
     .pdf-mouse-genotype {
-      color: #666;
+      color: var(--n-text-color-3);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1903,7 +1957,7 @@ p {
     
     .pdf-empty-cage {
       text-align: center;
-      color: #999;
+      color: var(--n-text-color-3);
       font-style: italic;
       margin-top: 20px;
     }
@@ -1914,7 +1968,7 @@ p {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(255, 255, 255, 0.8);
+      background: color-mix(in srgb, var(--n-color) 80%, transparent);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -1925,8 +1979,8 @@ p {
     .spinner {
       width: 50px;
       height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
+      border: 5px solid var(--n-color-embedded);
+      border-top: 5px solid var(--n-primary-color);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin-bottom: 15px;
