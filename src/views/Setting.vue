@@ -1043,7 +1043,7 @@
 
 <script setup>
 import { h, ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
-import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox } from 'naive-ui'
+import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, useDialog } from 'naive-ui'
 import axios from 'axios'
 import { toast } from 'vue3-toastify'
 import 'vue3-toastify/dist/index.css'
@@ -1056,6 +1056,7 @@ const geneStore = useGeneStore()
 const cageStore = useCageStore()
 const experimentStore = useExperimentStore()
 const settingStore = useSettingStore()
+const dialog = useDialog()
 
 const { genotypes, selectedGenes, alleleSuggestions, mice } = storeToRefs(geneStore)
 const { loadGenotypes, colors, onFormLocusChange, onFormAlleleChange, deleteGene, addGene, deleteGenes } = geneStore
@@ -1843,29 +1844,41 @@ const saveAllele = async () => {
 }
 
 const deleteGeneLocus = async (id) => {
-    if (!confirm('确定要删除这个基因位点吗？所有已经设定的该基因位点会消失')) return
-
-    try {
-        await axios.delete(`/api/gene/${id}`)
-        genotypes.value = genotypes.value.filter(g => g.id !== id)
-        toast.success('删除基因位点成功')
-    } catch (error) {
-        console.error('删除基因型失败:', error)
-        toast.error('删除基因型失败，请重试')
-    }
+    dialog.warning({
+        title: '确认删除',
+        content: '确定要删除这个基因位点吗？所有已经设定的该基因位点会消失',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await axios.delete(`/api/gene/${id}`)
+                genotypes.value = genotypes.value.filter(g => g.id !== id)
+                toast.success('删除基因位点成功')
+            } catch (error) {
+                console.error('删除基因型失败:', error)
+                toast.error('删除基因型失败，请重试')
+            }
+        }
+    })
 }
 
 const deleteAllele = async (id) => {
-    if (!confirm('确定要删除这个基因型吗？')) return
-
-    try {
-    await axios.delete(`/api/gene_allele/${id}`)
-    await loadGenotypes()
-    toast.success('删除基因位点编辑方式成功')
-    } catch (error) {
-    console.error('删除基因型失败:', error)
-    toast.error('删除基因型失败，请重试')
-    }
+    dialog.warning({
+        title: '确认删除',
+        content: '确定要删除这个基因型吗？',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await axios.delete(`/api/gene_allele/${id}`)
+                await loadGenotypes()
+                toast.success('删除基因位点编辑方式成功')
+            } catch (error) {
+                console.error('删除基因型失败:', error)
+                toast.error('删除基因型失败，请重试')
+            }
+        }
+    })
 }
 
 const addLocation = async () => {
@@ -1910,17 +1923,23 @@ const saveLocation = async () => {
 }
 
 const deleteLocation = async (id) => {
-    if (!confirm('确定要删除这个位置吗？')) return
-
-    try {
-        await axios.delete(`/api/locations/${id}`)
-        locations.value = locations.value.filter(l => l.id !== id)
-        section_key.value = true
-        await fetchCages()
-    } catch (error) {
-        console.error('删除位置失败:', error)
-        toast.error('删除位置失败，请重试')
-    }
+    dialog.warning({
+        title: '确认删除',
+        content: '确定要删除这个位置吗？',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await axios.delete(`/api/locations/${id}`)
+                locations.value = locations.value.filter(l => l.id !== id)
+                section_key.value = true
+                await fetchCages()
+            } catch (error) {
+                console.error('删除位置失败:', error)
+                toast.error('删除位置失败，请重试')
+            }
+        }
+    })
 }
 
 // 导出相关方法
@@ -2093,30 +2112,42 @@ const saveExperimentType = async () => {
     }
     }
 
-    if (editingExperimentType.id && !confirm('调整属性后，这个实验的分组不受影响，但已有数据会被删除（建议及时导出），是否继续？')) return
+    const doSave = async () => {
+        const url = editingExperimentType.id 
+        ? `/api/experiment-types/${editingExperimentType.id}`
+        : '/api/experiment-types'
 
-    const url = editingExperimentType.id 
-    ? `/api/experiment-types/${editingExperimentType.id}`
-    : '/api/experiment-types'
+        const method = editingExperimentType.id ? 'put' : 'post'
 
-    const method = editingExperimentType.id ? 'put' : 'post'
+        const dataToSend = {
+        ...editingExperimentType,
+        fields: editingExperimentType.fields.map((field, index) => ({
+            ...field,
+            display_order: field.display_order !== undefined ? field.display_order : index
+        }))
+        }
 
-    const dataToSend = {
-    ...editingExperimentType,
-    fields: editingExperimentType.fields.map((field, index) => ({
-        ...field,
-        display_order: field.display_order !== undefined ? field.display_order : index
-    }))
+        try {
+        await axios[method](url, dataToSend)
+        toast.success('实验设置保存成功，请前往分组预设中设置分组')
+        cancelEdit()
+        await fetchExperiments()
+        } catch (error) {
+        console.error('保存实验类型失败:', error)
+        toast.error(error.response?.data?.error || '保存实验类型失败')
+        }
     }
 
-    try {
-    await axios[method](url, dataToSend)
-    toast.success('实验设置保存成功，请前往分组预设中设置分组')
-    cancelEdit()
-    await fetchExperiments()
-    } catch (error) {
-    console.error('保存实验类型失败:', error)
-    toast.error(error.response?.data?.error || '保存实验类型失败')
+    if (editingExperimentType.id) {
+        dialog.warning({
+            title: '确认修改',
+            content: '调整属性后，这个实验的分组不受影响，但已有数据会被删除（建议及时导出），是否继续？',
+            positiveText: '继续',
+            negativeText: '取消',
+            onPositiveClick: doSave
+        })
+    } else {
+        await doSave()
     }
 }
 
@@ -2146,16 +2177,22 @@ editingExperimentType.fields = []
 }
 
 const deleteExperimentType = async (id) => {
-    if (!confirm('确定要删除这个实验类型吗？')) return
-
-    try {
-        await axios.delete(`/api/experiment-types/${id}`)
-        toast.success('删除成功')
-        await fetchExperiments()
-    } catch (error) {
-        console.error('删除实验类型失败:', error)
-        toast.error(error.response?.data?.error || '删除实验类型失败')
-    }
+    dialog.warning({
+        title: '确认删除',
+        content: '确定要删除这个实验类型吗？',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await axios.delete(`/api/experiment-types/${id}`)
+                toast.success('删除成功')
+                await fetchExperiments()
+            } catch (error) {
+                console.error('删除实验类型失败:', error)
+                toast.error(error.response?.data?.error || '删除实验类型失败')
+            }
+        }
+    })
 }
 
 const applyPreset = () => {
@@ -2438,28 +2475,32 @@ const clearDatabase = async () => {
         return
     }
     
-    if (!confirm('最后确认：这将永久删除所有数据，此操作不可逆！确定要继续吗？')) {
-        return
-    }
-    
-    isClearingDb.value = true
-    deleteConfirmationError.value = ''
-    
-    try {
-        const response = await axios.post('/api/database/clear')
-        toast.success('数据库清空成功')
-        deleteConfirmation.value = ''
-        
-        // 刷新数据库信息
-        await refreshDbInfo()
-        
-    } catch (error) {
-        console.error('清空数据库失败:', error)
-        const errorMsg = error.response?.data?.error || '清空数据库失败'
-        toast.error(errorMsg)
-    } finally {
-        isClearingDb.value = false
-    }
+    dialog.warning({
+        title: '最后确认',
+        content: '最后确认：这将永久删除所有数据，此操作不可逆！确定要继续吗？',
+        positiveText: '继续',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            isClearingDb.value = true
+            deleteConfirmationError.value = ''
+            
+            try {
+                const response = await axios.post('/api/database/clear')
+                toast.success('数据库清空成功')
+                deleteConfirmation.value = ''
+                
+                // 刷新数据库信息
+                await refreshDbInfo()
+                
+            } catch (error) {
+                console.error('清空数据库失败:', error)
+                const errorMsg = error.response?.data?.error || '清空数据库失败'
+                toast.error(errorMsg)
+            } finally {
+                isClearingDb.value = false
+            }
+        }
+    })
 }
 
 // 编辑状态
@@ -2585,7 +2626,18 @@ const toggleReadOnly = async (key) => {
                 ? "当前数据库正在使用中，确定要将其设为可写吗？" 
                 : "当前数据库正在使用中，确定要将其设为只读吗？设为只读后可能无法进行写操作。（功能尚未实装）"
             
-            if (!confirm(message)) return
+            dialog.warning({
+                title: '确认切换',
+                content: message,
+                positiveText: '确定',
+                negativeText: '取消',
+                onPositiveClick: async () => {
+                    db.readOnly = !db.readOnly
+                    const response = await axios.post(`/api/database/${key}`, db)
+                    toast.success(`数据库已设为${db.readOnly ? '只读' : '可写'}`)
+                }
+            })
+            return
         }
         
         db.readOnly = !db.readOnly
@@ -2601,11 +2653,17 @@ const deleteDatabase = async (key) => {
         return
     }
     
-    if (confirm('确定要删除这个数据库吗？此操作不可恢复！')) {
-        delete databases.value[key];
-        await axios.delete(`/api/database/${key}`)
-        toast.success('数据库删除成功')
-    }
+    dialog.warning({
+        title: '确认删除',
+        content: '确定要删除这个数据库吗？此操作不可恢复！',
+        positiveText: '删除',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            delete databases.value[key];
+            await axios.delete(`/api/database/${key}`)
+            toast.success('数据库删除成功')
+        }
+    })
 }
 
 const fetchDbInfo = async () => {
@@ -2796,17 +2854,23 @@ const cancelEditGroup = () => {
 }
 
 const deleteGroup = async (id) => {
-    if (!confirm('确定要删除这个分组吗？')) return
-
-    try {
-        await axios.delete(`/api/groups/predefined/${id}`)
-        toast.success('删除成功')
-        fetchPredefinedGroups()
-        cancelEditGroup()
-    } catch (error) {
-        console.error('删除分组失败:', error)
-        toast.error('删除分组失败')
-    }
+    dialog.warning({
+        title: '确认删除',
+        content: '确定要删除这个分组吗？',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await axios.delete(`/api/groups/predefined/${id}`)
+                toast.success('删除成功')
+                fetchPredefinedGroups()
+                cancelEditGroup()
+            } catch (error) {
+                console.error('删除分组失败:', error)
+                toast.error('删除分组失败')
+            }
+        }
+    })
 }
 
 const resetRuleValues = (rule) => {
@@ -2850,13 +2914,19 @@ const applyDisplayPreset = () => {
 
 // 确认重置
 const confirmReset = () => {
-    if (confirm('确定要重置所有显示设置吗？此操作不可撤销。')) {
-        Object.keys(settings.value).forEach(s => {
-            resetToDefault(s)
-            changeSettings(s)
-        })
-        toast.success("重置所有显示设置")
-    }
+    dialog.warning({
+        title: '确认重置',
+        content: '确定要重置所有显示设置吗？此操作不可撤销。',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: () => {
+            Object.keys(settings.value).forEach(s => {
+                resetToDefault(s)
+                changeSettings(s)
+            })
+            toast.success("重置所有显示设置")
+        }
+    })
 }
 
 // 初始化数据

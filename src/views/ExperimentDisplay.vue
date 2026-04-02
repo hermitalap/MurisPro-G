@@ -141,6 +141,7 @@ import regression from 'regression';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
+import { useDialog } from 'naive-ui'
 
 const geneStore = useGeneStore()
 const {mice} = storeToRefs(geneStore)
@@ -149,6 +150,7 @@ const {colors} = geneStore
 const experimentStore = useExperimentStore()
 const {experiments} = storeToRefs(experimentStore)
 const {fetchPredefinedGroups} = experimentStore
+const dialog = useDialog()
 
 
 //切换实验时
@@ -1371,15 +1373,22 @@ showRecordModal.value = false;
 
 async function deleteRecord() {
     if (!contextMenu.rowData?.experimentId) return;
-    if (!confirm('确定要删除这条记录吗？')) return;
-    try {
-        await axios.delete(`/api/experiments/${contextMenu.rowData.experimentId}`);
-        toast.success('记录删除成功');
-        await fetchData();
-    } catch (error) {
-        console.error('删除记录失败:', error);
-        toast.error('删除失败: ' + (error.response?.data?.error || error.message));
-    }
+    dialog.warning({
+        title: '确认删除',
+        content: '确定要删除这条记录吗？',
+        positiveText: '确定',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                await axios.delete(`/api/experiments/${contextMenu.rowData.experimentId}`);
+                toast.success('记录删除成功');
+                await fetchData();
+            } catch (error) {
+                console.error('删除记录失败:', error);
+                toast.error('删除失败: ' + (error.response?.data?.error || error.message));
+            }
+        }
+    })
 }
 
 async function saveExperimentRecord() {

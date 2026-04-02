@@ -122,7 +122,7 @@
 
 <script setup>
 import { h, ref, computed, onMounted, watch } from 'vue'
-import { NButton, NSpace } from 'naive-ui'
+import { NButton, NSpace, useDialog } from 'naive-ui'
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
 import axios from 'axios'
@@ -135,6 +135,7 @@ const saving = ref(false)
 const showAddModal = ref(false)
 const editingRecord = ref(null)
 const selectedMouse = ref(null)
+const dialog = useDialog()
 
 // 筛选和排序
 const filters = ref({
@@ -307,16 +308,22 @@ showAddModal.value = true
 }
 
 const deleteRecord = async (id) => {
-if (!confirm('确定要删除这条体重记录吗？')) return
-
-try {
-    await axios.delete(`/api/weight_records/${id}`)
-    toast.success('体重记录删除成功')
-    loadWeightRecords()
-} catch (error) {
-    console.error('删除体重记录失败:', error)
-    toast.error('删除体重记录失败')
-}
+  dialog.warning({
+    title: '确认删除',
+    content: '确定要删除这条体重记录吗？',
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await axios.delete(`/api/weight_records/${id}`)
+        toast.success('体重记录删除成功')
+        loadWeightRecords()
+      } catch (error) {
+        console.error('删除体重记录失败:', error)
+        toast.error('删除体重记录失败')
+      }
+    }
+  })
 }
 
 const closeModal = () => {

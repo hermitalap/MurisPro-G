@@ -5,6 +5,7 @@
   "author": "LanternX",
   "private": true,
   "scripts": {
+    "dev": "dev.bat",
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build"
   },

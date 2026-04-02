@@ -1,27 +1,15 @@
 <template>
   <div class="main-content">
-    <!-- 标题和小鼠列表 -->
     <div class="section">
-      <n-space vertical size="small" class="header-with-button">
-        <h2>小鼠管理</h2>
-        <h3>当前筛选小鼠为{{filteredMice.length}}只，其中雄性小鼠{{filteredMice.filter(m=>m.sex==='M').length}}只、雌性小鼠{{filteredMice.filter(m=>m.sex==='F').length}}只</h3>
-        <n-button @click="openModal('add')" class="add-button" type="primary">
-          <AppIcon  name="add" />
-          添加新小鼠
-        </n-button>
-      </n-space>
-      
-      <!-- 搜索控件 -->
-      <div class="search-controls" v-if="selectedMice.length === 0">
-        <n-input v-model:value="searchTerm" placeholder="搜索小鼠ID或基因型" @keyup.enter="applyFilters" clearable />
-        <n-button @click="applyFilters" type="primary">
-          <AppIcon  name="search" />
-          搜索
-        </n-button>
-        <n-button @click="resetSearch" secondary>
-          <AppIcon  name="refresh" />
-          重置
-        </n-button>
+      <!-- 顶部统计区 -->
+      <div class="header-bar">
+        <div class="header-left">
+          <h2>小鼠管理</h2>
+          <span class="stats-text">
+            共 <strong>{{filteredMice.length}}</strong> 只
+            （♂ {{filteredMice.filter(m=>m.sex==='M').length}} / ♀ {{filteredMice.filter(m=>m.sex==='F').length}}）
+          </span>
+        </div>
       </div>
       
       <!-- 加载状态 -->
@@ -29,53 +17,62 @@
         <div class="loading-spinner"></div>
         <span>加载中...</span>
       </div>
-
-      <!-- 选择信息栏 -->
-      <div class="selection-info" v-if="selectedMice.length > 0">
-          <span>已选择 {{ selectedMice.length }} 只小鼠</span>
-            <!-- 下拉选择框 -->
-            <div class="custom-select" :class="{ 'is-open': showTestsDoneDropdown }">
-              <div class="select-header" @click="toggleTestsDoneDropdown">
-                <div class="select-content">
-                <!-- 显示已选标签 -->
-                <div class="selected-tags">
-                  <span v-for="(experiment, index) in batchSelectedTests" :key="experiment.id" class="tag">
-                    {{ experiment.name }}
-                    <span class="tag-remove" @click="removeTest('batch', index)">×</span>
-                  </span>
-                </div>
-                <span class="placeholder" v-if="batchSelectedTests.length === 0">选择测试...</span>
-                </div>
-                <div class="select-arrow">▼</div>
-              </div>
-              
-              <div class="select-options" v-if="showTestsDoneDropdown">
-                <div 
-                  v-for="experiment in experiments" 
-                  :key="experiment.id" 
-                  class="select-option"
-                  :class="{is_show: experiment.is_show}"
-                  @click="selectTest('batch', experiment)"
-                >
-                  {{ experiment.id }}-{{ experiment.name }}
-                </div>
-              </div>
-            </div>
-          <n-button @click="batchAddExperiment('计划实验')" secondary type="primary">批量计划实验</n-button>
-          <n-button @click="batchAddExperiment('完成实验')" type="primary">批量完成实验</n-button>
-          <n-button @click="batchDeleteMice" type="error">批量删除小鼠</n-button>
-          <n-button @click="clearSelection" quaternary>取消选择</n-button>
-      </div>
       
-      <!-- 小鼠列表表格 -->
-      <div class="table-scroll">
-        <div class="filter-grid">
-          <div v-if="showColumns.id"><n-input v-model:value="filters.id" @update:value="applyFilters" placeholder="筛选ID" clearable /></div>
-          <div v-if="showColumns.genotype" class="genotype-filter">
+      <!-- 筛选区 -->
+      <div class="filter-section">
+        <!-- 第一行：核心搜索 -->
+        <div class="filter-row filter-row-search">
+          <n-button @click="openModal('add')" type="success">
+            <template #icon><AppIcon name="add" /></template>
+            添加新小鼠
+          </n-button>
+          <n-input 
+            v-model:value="searchTerm" 
+            placeholder="搜索小鼠ID或基因型" 
+            @keyup.enter="applyFilters" 
+            clearable 
+            class="search-input"
+          />
+          <n-button @click="applyFilters" type="primary">
+            <template #icon><AppIcon name="search" /></template>
+            搜索
+          </n-button>
+          <n-button @click="resetSearch" secondary>
+            <template #icon><AppIcon name="refresh" /></template>
+            重置
+          </n-button>
+        </div>
+
+        <!-- 第二行：基础属性 -->
+        <div class="filter-row filter-row-basic">
+          <div class="filter-item" v-if="showColumns.id">
+            <n-input v-model:value="filters.id" @update:value="applyFilters" placeholder="筛选ID" clearable />
+          </div>
+          <div class="filter-item filter-item-location" v-if="showColumns.cage">
+            <n-select
+              v-model:value="filters.location"
+              :options="[
+                { label: '所有区域', value: '' },
+                { label: '未分配', value: 'unassigned' },
+                ...locations.map(location => ({ label: location.identifier, value: location.identifier }))
+              ]"
+              @update:value="onLocationChange"
+              placeholder="选择区域"
+            />
+            <n-select
+              v-if="filters.location && filters.location !== 'unassigned'"
+              v-model:value="filters.cage"
+              :options="[{ label: '所有笼位', value: null }, ...locationCages.map(cage => ({ label: cage.cage_id, value: cage.id }))]"
+              @update:value="applyFilters"
+              placeholder="选择笼位"
+            />
+          </div>
+          <div class="filter-item filter-item-genotype" v-if="showColumns.genotype">
             <n-select
               v-model:value="filters.genotypeLocus"
               :options="[{ label: '所有位点', value: '' }, ...genotypes.map(locus => ({ label: locus.symbol, value: locus.symbol }))]"
               @update:value="onLocusChange"
+              placeholder="选择位点"
             />
             <n-select
               v-if="filters.genotypeLocus && filters.genotypeLocus !== 'WT'"
@@ -83,6 +80,7 @@
               :options="[{ label: '所有等位基因', value: '' }, ...filteredAlleles.map(allele => ({ label: allele.symbol, value: allele.symbol }))]"
               @update:value="onAlleleChange"
               :disabled="!filters.genotypeLocus"
+              placeholder="选择等位基因"
             />
             <n-select
               v-if="filters.genotypeLocus && filters.genotypeLocus !== 'WT' && filters.genotypeAllele"
@@ -94,35 +92,29 @@
               ]"
               @update:value="applyFilters"
               :disabled="!filters.genotypeLocus || !filters.genotypeAllele"
+              placeholder="选择形式"
             />
           </div>
-          <div v-if="showColumns.strain"><n-input v-model:value="filters.strain" @update:value="applyFilters" placeholder="筛选品系" clearable /></div>
-          <div v-if="showColumns.sex">
+          <div class="filter-item" v-if="showColumns.strain">
+            <n-input v-model:value="filters.strain" @update:value="applyFilters" placeholder="筛选品系" clearable />
+          </div>
+          <div class="filter-item" v-if="showColumns.sex">
             <n-select
               v-model:value="filters.sex"
               :options="[
-                { label: '全部', value: '' },
+                { label: '全部性别', value: '' },
                 { label: '雄性', value: 'M' },
                 { label: '雌性', value: 'F' }
               ]"
               @update:value="applyFilters"
+              placeholder="请选择"
             />
           </div>
-          <div v-if="showColumns.birth_date"><n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.birth_date" @update:formatted-value="applyFilters" /></div>
-          <div v-if="showColumns.death_date"><n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.death_date" @update:formatted-value="applyFilters" /></div>
-          <div v-if="showColumns.days_old">
-            <n-input-number v-model:value="filters.days_old_min" @update:value="applyFilters" placeholder="最小日龄" :min="0" style="width: 100%;" />
-            <n-input-number v-model:value="filters.days_old_max" @update:value="applyFilters" placeholder="最大日龄" :min="0" style="width: 100%;" />
-          </div>
-          <div v-if="showColumns.weeks_old">
-            <n-input-number v-model:value="filters.weeks_old_min" @update:value="applyFilters" placeholder="最小周龄" :min="0" style="width: 100%;" />
-            <n-input-number v-model:value="filters.weeks_old_max" @update:value="applyFilters" placeholder="最大周龄" :min="0" style="width: 100%;" />
-          </div>
-          <div v-if="showColumns.live_status">
+          <div class="filter-item" v-if="showColumns.live_status">
             <n-select
               v-model:value="filters.live_status"
               :options="[
-                { label: '全部', value: -1 },
+                { label: '全部状态', value: -1 },
                 { label: '存活', value: 1 },
                 { label: '死亡', value: 0 },
                 { label: '解剖', value: 2 },
@@ -130,33 +122,64 @@
                 { label: '丢弃', value: 4 }
               ]"
               @update:value="applyFilters"
+              placeholder="请选择"
             />
-          </div>
-          <div v-if="showColumns.cage">
-            <n-select
-              v-model:value="filters.location"
-              :options="[
-                { label: '所有区域', value: '' },
-                { label: '未分配', value: 'unassigned' },
-                ...locations.map(location => ({ label: location.identifier, value: location.identifier }))
-              ]"
-              @update:value="onLocationChange"
-            />
-            <n-select
-              v-if="filters.location !== 'unassigned'"
-              v-model:value="filters.cage"
-              :options="[{ label: '所有笼位', value: null }, ...locationCages.map(cage => ({ label: cage.cage_id, value: cage.id }))]"
-              @update:value="applyFilters"
-            />
-          </div>
-          <div v-if="showColumns.tests_planned">
-            <n-input-number v-model:value="filters.tests_planned" @update:value="applyFilters" placeholder="实验编号" :min="0" style="width: 100%;" />
-          </div>
-          <div v-if="showColumns.tests_done">
-            <n-input-number v-model:value="filters.tests_done" @update:value="applyFilters" placeholder="实验编号" :min="0" style="width: 100%;" />
           </div>
         </div>
+
+        <!-- 第三行：时间与年龄 -->
+        <div class="filter-row filter-row-time">
+          <div class="filter-item" v-if="showColumns.birth_date">
+            <n-date-picker 
+              type="date" 
+              value-format="yyyy-MM-dd" 
+              v-model:formatted-value="filters.birth_date" 
+              @update:formatted-value="applyFilters" 
+              placeholder="出生日期"
+              clearable
+            />
+          </div>
+          <div class="filter-item range-item" v-if="showColumns.days_old">
+            <n-input-number 
+              v-model:value="filters.days_old_min" 
+              @update:value="applyFilters" 
+              placeholder="最小日龄" 
+              :min="0" 
+              style="width: 100%;" 
+            />
+            <span class="range-separator">-</span>
+            <n-input-number 
+              v-model:value="filters.days_old_max" 
+              @update:value="applyFilters" 
+              placeholder="最大日龄" 
+              :min="0" 
+              style="width: 100%;" 
+            />
+          </div>
+          <div class="filter-item range-item" v-if="showColumns.weeks_old">
+            <n-input-number 
+              v-model:value="filters.weeks_old_min" 
+              @update:value="applyFilters" 
+              placeholder="最小周龄" 
+              :min="0" 
+              style="width: 100%;" 
+            />
+            <span class="range-separator">-</span>
+            <n-input-number 
+              v-model:value="filters.weeks_old_max" 
+              @update:value="applyFilters" 
+              placeholder="最大周龄" 
+              :min="0" 
+              style="width: 100%;" 
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 小鼠列表表格 -->
+      <div class="table-scroll">
         <n-data-table
+          ref="dataTableRef"
           :columns="miceColumns"
           :data="filteredMice"
           :pagination="false"
@@ -165,7 +188,57 @@
           :row-key="(row) => row.tid"
           :row-class-name="rowClassName"
           :row-props="rowProps"
+          @update:sorter="handleSorterChange"
+          :sorter="sorterState"
+          @update:checked-row-keys="handleCheckedRowKeysChange"
+          :checked-row-keys="checkedRowKeys"
         />
+      </div>
+      
+      <!-- 批量操作栏 -->
+      <div class="batch-actions" v-if="checkedRowKeys.length > 0">
+        <div class="batch-info">
+          <span>已选择 <strong>{{ checkedRowKeys.length }}</strong> 只小鼠</span>
+        </div>
+        <div class="batch-buttons">
+          <div class="custom-select" :class="{ 'is-open': showTestsDoneDropdown }">
+            <div class="select-header" @click="toggleTestsDoneDropdown">
+              <div class="select-content">
+                <div class="selected-tags">
+                  <span v-for="(experiment, index) in batchSelectedTests" :key="experiment.id" class="tag">
+                    {{ experiment.name }}
+                    <span class="tag-remove" @click.stop="removeTest('batch', index)">×</span>
+                  </span>
+                </div>
+                <span class="placeholder" v-if="batchSelectedTests.length === 0">选择要操作的实验...</span>
+              </div>
+              <div class="select-arrow">▼</div>
+            </div>
+            <div class="select-options" v-if="showTestsDoneDropdown">
+              <div 
+                v-for="experiment in experiments" 
+                :key="experiment.id" 
+                class="select-option"
+                :class="{is_show: experiment.is_show}"
+                @click="selectTest('batch', experiment)"
+              >
+                {{ experiment.id }}-{{ experiment.name }}
+              </div>
+            </div>
+          </div>
+          <n-button @click="batchAddExperiment('计划实验')" secondary type="primary" :disabled="batchSelectedTests.length === 0">
+            批量计划实验
+          </n-button>
+          <n-button @click="batchAddExperiment('完成实验')" type="primary" :disabled="batchSelectedTests.length === 0">
+            批量完成实验
+          </n-button>
+          <n-button @click="batchDeleteMice" type="error">
+            批量删除
+          </n-button>
+          <n-button @click="clearSelection" quaternary>
+            取消选择
+          </n-button>
+        </div>
       </div>
       
       <!-- 右键上下文菜单 -->
@@ -483,7 +556,7 @@
             </ul>
           </div>
         </div>
-        
+        </div>
         <n-space justify="end" class="button-group">
           <n-button @click="saveMouse" :disabled="saving" type="primary">
             <AppIcon  :name="modalMode === 'add' ? 'add' : 'save'" />
@@ -495,7 +568,6 @@
             取消
           </n-button>
         </n-space>
-        </div>
       </n-card>
     </n-modal>
 
@@ -587,7 +659,7 @@
           />
           <n-button attr-type="button" class="remove-btn" tertiary type="error" @click="removeField(index)">移除</n-button>
         </div>
-
+        </div>
         <n-space justify="end" class="button-group">
           <n-button @click="saveTemplateMice" :disabled="saving" type="primary">
             <AppIcon  name="save" />
@@ -599,7 +671,6 @@
             取消
           </n-button>
         </n-space>
-        </div>
       </n-card>
     </n-modal>
   </div>
@@ -613,6 +684,7 @@ import 'vue3-toastify/dist/index.css'
 import MouseDetailModal from './MouseDetailView.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
+import { useDialog } from 'naive-ui'
 
 const geneStore = useGeneStore()
 const { mice, loading, genotypes, selectedGenes, alleleSuggestions } = storeToRefs(geneStore)
@@ -626,6 +698,7 @@ const experimentStore = useExperimentStore()
 const { experiments } = storeToRefs(experimentStore)
 
 const settingStore = useSettingStore()
+const dialog = useDialog()
 const {showColumns} = storeToRefs(settingStore)
 
 
@@ -641,9 +714,16 @@ const contextMenu = reactive({
   y: 0,
   mouse: null
 })
-const selectedMice = ref([])
-const lastSelectedIndex = ref(-1)
+
+// Naive UI原生选择功能
+const dataTableRef = ref(null)
+const checkedRowKeys = ref([])
 const batchSelectedTests = ref([])
+
+// 处理选择变化
+const handleCheckedRowKeysChange = (keys) => {
+  checkedRowKeys.value = keys
+}
 
 // 模态框相关
 const showModal = ref(false)
@@ -676,23 +756,29 @@ const mouseCageMap = computed(() => {
   return map
 })
 
-let clickTimer = ref(null);
-const delay = 250;
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const normalizeDateValue = (value) => {
   if (typeof value !== 'string') return null
   return DATE_ONLY_REGEX.test(value) ? value : null
 }
 
-const getSortSuffix = (field) => {
-  if (sortField.value !== field) return ' ↕'
-  return sortDirection.value === 'asc' ? ' ↑' : ' ↓'
-}
+// Naive UI原生排序状态
+const sorterState = ref({
+  columnKey: 'birth_date',
+  order: 'descend'
+})
 
-const renderSortTitle = (label, field) => () => h('span', {
-  class: 'sortable-title',
-  onClick: () => sortBy(field)
-}, `${label}${getSortSuffix(field)}`)
+const handleSorterChange = (sorter) => {
+  sorterState.value = sorter
+  if (sorter.columnKey) {
+    sortField.value = sorter.columnKey
+    sortDirection.value = sorter.order === 'ascend' ? 'asc' : 'desc'
+  } else {
+    sortField.value = 'birth_date'
+    sortDirection.value = 'desc'
+  }
+  applyFilters()
+}
 
 const formatLiveStatus = (status) => {
   return status === 0 ? '死亡' :
@@ -703,80 +789,135 @@ const formatLiveStatus = (status) => {
     '未知状态'
 }
 
+// 渲染空值占位符
+const renderEmpty = (value) => value || '-'
+
 const miceColumns = computed(() => {
-  const columns = []
+  const columns = [
+    // 添加选择列
+    {
+      type: 'selection',
+      disabled: () => false,
+      options: ['all', 'none', 'page']
+    }
+  ]
   if (showColumns.value.id) {
-    columns.push({ title: renderSortTitle('小鼠ID', 'id'), key: 'id' })
+    columns.push({ 
+      title: '小鼠ID', 
+      key: 'id',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'id' ? sorterState.value.order : false
+    })
   }
   if (showColumns.value.genotype) {
     columns.push({
-      title: renderSortTitle('基因型', 'genotype'),
+      title: '基因型',
       key: 'genotype',
-      render: (row) => h('span', { innerHTML: row.genotype?.symbol || '' })
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'genotype' ? sorterState.value.order : false,
+      render: (row) => h('span', { innerHTML: row.genotype?.symbol || '-' })
     })
   }
   if (showColumns.value.strain) {
-    columns.push({ title: renderSortTitle('品系', 'strain'), key: 'strain' })
+    columns.push({ 
+      title: '品系', 
+      key: 'strain',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'strain' ? sorterState.value.order : false,
+      render: (row) => renderEmpty(row.strain)
+    })
   }
   if (showColumns.value.sex) {
     columns.push({
-      title: renderSortTitle('性别', 'sex'),
+      title: '性别',
       key: 'sex',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'sex' ? sorterState.value.order : false,
       render: (row) => h('div', {
         class: ['mouse-sex', row.sex === 'F' ? 'sex-female' : 'sex-male']
       }, row.sex === 'F' ? '♀' : '♂')
     })
   }
   if (showColumns.value.birth_date) {
-    columns.push({ title: renderSortTitle('出生日期', 'birth_date'), key: 'birth_date' })
+    columns.push({ 
+      title: '出生日期', 
+      key: 'birth_date',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'birth_date' ? sorterState.value.order : false,
+      className: 'col-align-right',
+      render: (row) => renderEmpty(row.birth_date)
+    })
   }
   if (showColumns.value.death_date) {
-    columns.push({ title: renderSortTitle('死亡日期', 'death_date'), key: 'death_date' })
+    columns.push({ 
+      title: '死亡日期', 
+      key: 'death_date',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'death_date' ? sorterState.value.order : false,
+      className: 'col-align-right',
+      render: (row) => renderEmpty(row.death_date)
+    })
   }
   if (showColumns.value.days_old) {
-    columns.push({ title: renderSortTitle('日龄', 'days_old'), key: 'days_old' })
+    columns.push({ 
+      title: '日龄', 
+      key: 'days_old',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'days_old' ? sorterState.value.order : false,
+      className: 'col-align-center',
+      render: (row) => row.days_old != null ? `${row.days_old}天` : '-'
+    })
   }
   if (showColumns.value.weeks_old) {
-    columns.push({ title: renderSortTitle('周龄', 'weeks_old'), key: 'weeks_old' })
+    columns.push({ 
+      title: '周龄', 
+      key: 'weeks_old',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'weeks_old' ? sorterState.value.order : false,
+      className: 'col-align-center',
+      render: (row) => row.weeks_old != null ? `${row.weeks_old}周` : '-'
+    })
   }
   if (showColumns.value.live_status) {
     columns.push({
-      title: renderSortTitle('存活状态', 'live_status'),
+      title: '存活状态',
       key: 'live_status',
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'live_status' ? sorterState.value.order : false,
       render: (row) => formatLiveStatus(row.live_status)
     })
   }
   if (showColumns.value.cage) {
     columns.push({
-      title: renderSortTitle('笼位', 'cage'),
+      title: '笼位',
       key: 'cage',
-      render: (row) => (mouseCageMap.value.get(row.tid) ? mouseCageMap.value.get(row.tid)[2] : '未分配')
+      sorter: true,
+      sortOrder: sorterState.value.columnKey === 'cage' ? sorterState.value.order : false,
+      render: (row) => (mouseCageMap.value.get(row.tid) ? mouseCageMap.value.get(row.tid)[2] : '-')
     })
   }
   if (showColumns.value.tests_planned) {
     columns.push({
-      title: renderSortTitle('计划实验', 'tests_planned'),
+      title: '计划实验',
       key: 'tests_planned',
-      render: (row) => (row.tests_planned?.length > 0 ? row.tests_planned.join(', ') : '无')
+      render: (row) => (row.tests_planned?.length > 0 ? row.tests_planned.join(', ') : '-')
     })
   }
   if (showColumns.value.tests_done) {
     columns.push({
-      title: renderSortTitle('完成实验', 'tests_done'),
+      title: '完成实验',
       key: 'tests_done',
-      render: (row) => (row.tests_done?.length > 0 ? row.tests_done.join(', ') : '无')
+      render: (row) => (row.tests_done?.length > 0 ? row.tests_done.join(', ') : '-')
     })
   }
   return columns
 })
 
 const rowClassName = (row) => {
-  if (!isSelected(row.tid)) return ''
-  return selectedMice.value.length > 1 ? 'selected-multiple' : 'selected'
+  return ''
 }
 
 const rowProps = (row, index) => ({
-  onClick: (event) => selectMice(row, event, index),
   onDblclick: () => openMouseDetail(row.tid),
   onContextmenu: (event) => {
     event.preventDefault()
@@ -1172,116 +1313,68 @@ const applyFilters = () => {
   filteredMice.value = result
 }
 
-const selectMice = (mouse, event, index) => {
-  clearTimeout(clickTimer.value);
-  if (!clickTimer.value) {
-    clickTimer.value = setTimeout(() => {
-      // 执行单击逻辑
-      if (event.ctrlKey || event.metaKey) {
-        // Ctrl+点击：切换选中状态
-        toggleMouseSelection(mouse.tid);
-        lastSelectedIndex.value = index;
-      } else if (event.shiftKey && lastSelectedIndex.value !== -1) {
-          // Shift+点击：选择范围
-          selectRange(lastSelectedIndex.value, index);
-      } else {
-        if (selectedMice.value.length === 1 && selectedMice.value[0] === mouse.tid) {
-          // 点击已选中的小鼠：取消选择
-          selectedMice.value = [];
-          lastSelectedIndex.value = -1;
-        } else {
-          // 普通点击：选中当前，取消其他
-          selectedMice.value = [mouse.tid];
-          lastSelectedIndex.value = index;
-        }
-      }
-      clickTimer.value = null;
-    }, delay);
-  } else {
-    clearTimeout(clickTimer.value);
-    clickTimer.value = null;
-  }
-
-}
-
-// 切换小鼠选中状态
-const toggleMouseSelection = (tid) => {
-    const index = selectedMice.value.indexOf(tid);
-    if (index === -1) {
-        selectedMice.value.push(tid);
-    } else {
-        selectedMice.value.splice(index, 1);
-    }
-}
-
-// 选择范围
-const selectRange = (startIndex, endIndex) => {
-    const start = Math.min(startIndex, endIndex);
-    const end = Math.max(startIndex, endIndex);
-    
-    const rangeTids = filteredMice.value
-        .slice(start, end + 1)
-        .map(mouse => mouse.tid);
-    
-    // 添加范围内的所有小鼠
-    selectedMice.value = [...new Set([...selectedMice.value, ...rangeTids])];
-}
-
-// 检查是否选中
-const isSelected = (tid) => {
-    return selectedMice.value.includes(tid);
-}
-
 // 清除选择
 const clearSelection = () => {
-    selectedMice.value = [];
-    lastSelectedIndex.value = -1;
+    checkedRowKeys.value = [];
     batchSelectedTests.value = [];
-    applyFilters()
 }
 
 const batchDeleteMice = async () => {
-    try {
-    if (!confirm(`确认要删除选中的 ${selectedMice.value.length} 只小鼠吗？注意删除后，小鼠无法恢复！`)) {
-      return
-    }
-    const api = createAxiosInstance()
-    await api.delete('/mice', {params: { miceIds: selectedMice.value }})
-    selectedMice.value.forEach(mid => {
-      const index = mice.value.findIndex(m => m.tid === mid)
-      if (index !== -1) {
-        mice.value.splice(index, 1)
+    dialog.warning({
+      title: '确认批量删除',
+      content: `确认要删除选中的 ${checkedRowKeys.value.length} 只小鼠吗？注意删除后，小鼠无法恢复！`,
+      positiveText: '删除',
+      negativeText: '取消',
+      onPositiveClick: async () => {
+        try {
+          const api = createAxiosInstance()
+          await api.delete('/mice', {params: { miceIds: checkedRowKeys.value }})
+          checkedRowKeys.value.forEach(mid => {
+            const index = mice.value.findIndex(m => m.tid === mid)
+            if (index !== -1) {
+              mice.value.splice(index, 1)
+            }
+          })
+          await fetchCages()
+          applyFilters()
+          toast.success(`批量删除${checkedRowKeys.value.length}只小鼠`)
+        } catch (error) {
+          console.error('批量删除小鼠失败:', error)
+        } finally {
+          clearSelection()
+        }
       }
     })
-    await fetchCages()
-    applyFilters()
-    toast.success(`批量删除${selectedMice.value.length}只小鼠`)
-  } catch (error) {
-    console.error('批量删除小鼠失败:', error)
-  } finally {
-    clearSelection()
-  }
 }
 
 const batchAddExperiment = async (batchTest) => {
-  try {
-    if (!confirm(`确认要为选中的 ${selectedMice.value.length} 只小鼠批量修改实验 ${batchTest} 吗？注意，未选择的实验会被清除！对应小鼠在其中的数据也会被清除！`)) {
-      return
-    }
-    const api = createAxiosInstance()
-    await api.put('/mice/experiments', {
-      batchTest: batchTest,
-      miceIds: selectedMice.value,
-      testIds: batchSelectedTests.value.map(e => e.id)
-    })
-    await loadMice()
-    applyFilters()
-    toast.success("批量修改" + batchTest +"成功")
-  } catch (error) {
-    console.error('批量修改实验小鼠失败:', error)
-  } finally {
-    clearSelection()
+  if (batchSelectedTests.value.length === 0) {
+    toast.warning('请先选择要操作的实验')
+    return
   }
+  dialog.warning({
+    title: '确认批量修改',
+    content: `确认要为选中的 ${checkedRowKeys.value.length} 只小鼠批量修改实验 ${batchTest} 吗？注意，未选择的实验会被清除！对应小鼠在其中的数据也会被清除！`,
+    positiveText: '继续',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const api = createAxiosInstance()
+        await api.put('/mice/experiments', {
+          batchTest: batchTest,
+          miceIds: checkedRowKeys.value,
+          testIds: batchSelectedTests.value.map(e => e.id)
+        })
+        await loadMice()
+        applyFilters()
+        toast.success("批量修改" + batchTest +"成功")
+      } catch (error) {
+        console.error('批量修改实验小鼠失败:', error)
+      } finally {
+        clearSelection()
+      }
+    }
+  })
 }
 
 const validateMouse = (mouse) => {
@@ -1736,84 +1829,147 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-/* 头部按钮 */
-.header-with-button {
+/* 顶部统计与操作区 */
+.header-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 12px;
 }
 
-.header-with-button h2 {
-  font-size: 1.8rem;
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.header-left h2 {
+  font-size: 1.6rem;
   font-weight: 600;
   color: var(--n-text-color-1);
   margin: 0;
 }
 
-.add-button {
+.stats-text {
+  font-size: 0.9rem;
+  color: var(--n-text-color-3);
+}
+
+.stats-text strong {
+  color: var(--n-text-color-1);
+  font-weight: 600;
+}
+
+/* 筛选区样式 */
+.filter-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--n-color-embedded);
+  border-radius: 10px;
+  border: 1px solid var(--n-border-color);
+}
+
+.filter-row {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 核心搜索行 */
+.filter-row-search {
+  grid-template-columns: auto 1fr auto auto;
+}
+
+.search-input {
+  min-width: 200px;
+}
+
+/* 基础属性行 */
+.filter-row-basic {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.filter-item {
+  min-width: 0;
+}
+
+.filter-item-genotype {
+  display: contents;
+}
+
+/* 时间与年龄行 */
+.filter-row-time {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.range-item {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* 搜索控件 */
-.search-controls {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 25px;
-  flex-wrap: wrap;
-  align-items: center;
+.range-item :deep(.n-input-number) {
+  flex: 1;
 }
 
-.search-controls input {
-  flex: 1 1 16rem;
-  padding: 10px 15px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 6px;
-  font-size: 1rem;
-  min-width: 0;
-  transition: border 0.3s;
+.range-separator {
+  color: var(--n-text-color-3);
+  flex-shrink: 0;
 }
 
-.search-controls input:focus {
-  border-color: var(--n-primary-color);
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 20%, transparent);
+.filter-item-location {
+  display: contents;
 }
 
 /* 表格样式 */
 .table-scroll {
   overflow: auto;
   border: 1px solid var(--n-border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--n-color);
 }
 
 .table-scroll :deep(.n-data-table) {
   min-width: 1200px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .table-scroll :deep(.n-data-table-th) {
   user-select: none;
+  font-weight: 600;
 }
 
-.sortable-title {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
+/* 表格列对齐 */
+.table-scroll :deep(.col-align-right) {
+  text-align: right;
 }
 
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+.table-scroll :deep(.col-align-center) {
+  text-align: center;
 }
 
+.table-scroll :deep(.col-align-right .n-data-table-td-text),
+.table-scroll :deep(.col-align-center .n-data-table-td-text) {
+  display: block;
+  text-align: inherit;
+}
+
+/* 空数据占位符样式 */
+.table-scroll :deep(td) {
+  color: var(--n-text-color-1);
+}
+
+.table-scroll :deep(td:has(span:only-child:not(.mouse-sex))) {
+  white-space: nowrap;
+}
+
+/* 选中行样式 */
 :deep(.n-data-table-tr.selected > td) {
   background-color: var(--n-info-color-suppl);
 }
@@ -1911,8 +2067,10 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 20px;
+  padding: 16px 20px;
   border-top: 1px solid var(--n-border-color);
+  flex-shrink: 0;
+  background: var(--n-color);
 }
 
 /* 加载状态 */
@@ -2240,17 +2398,39 @@ onMounted(async () => {
   background-color: var(--n-warning-color-suppl);
 }
 
-.selection-info {
-    margin: 10px 0;
-  padding: 14px;
-    background-color: var(--n-info-color-suppl);
+/* 批量操作栏样式 */
+.batch-actions {
+  margin: 16px 0;
+  padding: 16px;
+  background-color: var(--n-info-color-suppl);
   border-radius: 10px;
-    display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--n-info-color) 30%, transparent);
 }
+
+.batch-info {
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: var(--n-text-color-2);
+}
+
+.batch-info strong {
+  color: var(--n-info-color);
+  font-size: 1.1rem;
+}
+
+.batch-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.batch-buttons .custom-select {
+  flex: 1 1 260px;
+  min-width: 200px;
+  max-width: 400px;
+}
+
 .mouse-sex {
   width: 24px;
   height: 24px;
@@ -2262,9 +2442,9 @@ onMounted(async () => {
   font-size: 12px;
   color: white;
   font-weight: bold;
-  flex-shrink: 0; /* 防止在flex容器中缩小 */
-  overflow: hidden; /* 防止内容溢出导致变形 */
-  box-sizing: border-box; /* 确保内边距不影响尺寸 */
+  flex-shrink: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .sex-female {
@@ -2289,31 +2469,59 @@ onMounted(async () => {
 }
 
 @media (max-width: 992px) {
-  .selection-info {
+  .batch-actions {
+    padding: 12px;
+  }
+  
+  .batch-buttons {
     flex-direction: column;
     align-items: stretch;
   }
+  
+  .batch-buttons .custom-select {
+    max-width: none;
+  }
+}
 
-  .selection-info button {
-    margin-left: 0;
+@media (max-width: 992px) {
+  .filter-row-search {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filter-row-basic,
+  .filter-row-time {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
   .section {
-    padding: 18px;
+    padding: 16px;
   }
 
-  .header-with-button,
-  .search-controls {
+  .header-bar {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
   }
 
-  .search-controls input,
-  .add-button,
-  .custom-select {
-    width: 100%;
+  .filter-row-search {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-row-basic,
+  .filter-row-time {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-item-genotype,
+  .filter-item-location {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .range-item {
+    flex-wrap: wrap;
   }
 
   .table-scroll :deep(.n-data-table) {

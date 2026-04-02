@@ -55,10 +55,12 @@
           <AppIcon  class="btn-icon" name="refresh" />
           刷新数据
         </n-button>
-        <n-button secondary v-if="temporaryMice.length === 0" @click="showTemporaryArea=!showTemporaryArea">
-          <AppIcon  class="btn-icon" name="view_sidebar" />
-          {{showTemporaryArea? "关闭临时区" : "打开临时区"}}
-        </n-button>
+        <n-badge :value="temporaryMice.length" :max="99">
+          <n-button secondary @click="showTemporaryDrawer = true">
+            <AppIcon class="btn-icon" name="keyboard_arrow_up" />
+            打开临时区
+          </n-button>
+        </n-badge>
         <n-button secondary @click="exportToPDF">
           <AppIcon  class="btn-icon" name="picture_as_pdf" />
           当前位置导出pdf
@@ -71,88 +73,160 @@
     </n-space>
     
     <!-- Section标签页导航 -->
-  <draggable 
-    v-model="sortedSections" 
-    item-key="id"
-    handle=".drag-handle"
-    @end="onDragEnd"
-    class="section-tabs"
-  >
-    <template #item="{element}">
-      <div 
-        class="tab-item"
-        :class="{ active: activeSection === element.identifier }"
-        @click="activeSection = element.identifier"
-      >
-        <span class="drag-handle">
-          <AppIcon  name="drag_handle" />
-        </span>
-        {{ element.identifier }}
-      </div>
-    </template>
-  </draggable>
-    
-    <div class="cage-view-container">
-      <!-- 笼位网格区域 -->
-      <div v-if="locations.length > 0" class="cage-grid" id="cageGrid">
-        <div 
-          v-for="cage in cageStore.filteredCages" 
-          :key="cage.id" 
-          class="cage-card"
-          :data-cage-id="cage.id"
-          :class="{
-            'breeding': cage.cage_type === 'breeding',
-            'swap-source': cage.id === sourceCage?.id,
-            'swap-target': cage.id === targetCage?.id,
-            'search-highlight': isCageHighlighted(cage.id)
-            }"
-          @dragover.prevent
-          @drop="handleDrop($event, cage.id)"
-          @contextmenu.prevent="openCageContextMenu($event, cage)"
-          @click="handleCageClick(cage)"
+    <div class="section-tabs">
+      <n-tabs v-model:value="activeSection" type="segment" animated>
+        <n-tab-pane
+          v-for="(element, index) in sortedSections"
+          :key="element.id"
+          :name="element.identifier"
         >
-          <div class="cage-id">{{ cage.cage_id }}</div>
-          <div class="cage-location">{{ cage.location }}</div>
-          <div class="cage-meta">
-            <div class="cage-meta-row" v-if="cage.mice_birth_date">
-              <span class="meta-label">DOB:</span>
-              <span class="meta-value">{{ cage.mice_birth_date }}</span>
+          <template #tab>
+            <div
+              class="segment-tab-label"
+              @contextmenu.prevent="openSectionContextMenu($event, element, index)"
+            >
+              {{ element.identifier }}
             </div>
-            <div class="cage-meta-row" v-if="cage.mice_count || cage.mice_sex">
-              <span class="meta-label">数量/性别:</span>
-              <span class="meta-value">{{ cage.mice_count || 'NA' }} / {{ cage.mice_sex || 'NA' }}</span>
+          </template>
+        </n-tab-pane>
+      </n-tabs>
+    </div>
+
+    <div
+      v-if="sectionContextMenu.visible"
+      class="section-context-menu"
+      :style="{ top: sectionContextMenu.y + 'px', left: sectionContextMenu.x + 'px' }"
+    >
+      <ul>
+        <li
+          :class="{ disabled: sectionContextMenu.index <= 0 }"
+          @click="moveSection(-1)"
+        >
+          <AppIcon name="chevron_left" /> 向左移
+        </li>
+        <li
+          :class="{ disabled: sectionContextMenu.index >= sortedSections.length - 1 }"
+          @click="moveSection(1)"
+        >
+          <AppIcon name="chevron_right" /> 向右移
+        </li>
+      </ul>
+    </div>
+    
+    <div class="matrix-toolbar">
+      <n-space align="center" size="small">
+        <span class="matrix-label">矩阵布局</span>
+        <n-input-number v-model:value="matrixRows" :min="1" size="small" />
+        <span>x</span>
+        <n-input-number v-model:value="matrixCols" :min="1" size="small" />
+      </n-space>
+    </div>
+
+    <div class="cage-view-container">
+      <div v-if="locations.length > 0" class="cage-matrix-scroll" id="cageGrid">
+        <div class="cage-matrix" :style="matrixGridStyle">
+          <div v-for="(cage, index) in matrixCells" :key="`matrix-cell-${index}`" class="matrix-cell">
+            <div
+              v-if="cage"
+              class="cage-card"
+              :data-cage-id="cage.id"
+              :class="{
+                breeding: cage.cage_type === 'breeding',
+                'swap-source': cage.id === sourceCage?.id,
+                'swap-target': cage.id === targetCage?.id,
+                'search-highlight': isCageHighlighted(cage.id)
+              }"
+              @dragover.prevent
+              @drop="handleDrop($event, cage.id)"
+              @contextmenu.prevent="openCageContextMenu($event, cage)"
+              @click="handleCageClick(cage)"
+            >
+              <n-card size="small" :bordered="true" class="cage-card-body">
+                <div class="cage-card-actions">
+                  <n-dropdown
+                    trigger="click"
+                    :options="cageActionOptions"
+                    @select="(key) => handleCageActionSelect(key, cage)"
+                  >
+                    <n-button quaternary circle size="small" class="drag-dot-btn">
+                      <span class="dot-glyph">...</span>
+                    </n-button>
+                  </n-dropdown>
+                </div>
+
+                <div class="cage-header" @click.stop="openCageModal(cage)">
+                  <div class="cage-header-left">
+                    <span class="cage-header-type">{{ resolveCageSexMark(cage) }}</span>
+                  </div>
+                  <div class="cage-header-center">
+                    <div class="cage-header-main">{{ cage.cage_id || '-' }}</div>
+                    <n-tag 
+                      size="small" 
+                      :type="getGenotypeTagType(cage.mice_genotype)" 
+                      round
+                      class="cage-genotype-badge"
+                    >
+                      {{ cage.mice_genotype || '-' }}
+                    </n-tag>
+                  </div>
+                  <div class="cage-header-right">
+                    <n-tag 
+                      size="tiny" 
+                      :type="getCageCountType(cage)" 
+                      round
+                    >
+                      {{ cage.mice?.length ?? cage.mice_count ?? 0 }}
+                    </n-tag>
+                  </div>
+                </div>
+
+                <div class="cage-mice-table-wrapper" v-if="(cage.mice?.length ?? 0) > 0">
+                  <table class="cage-mice-table">
+                    <thead>
+                      <tr>
+                        <th>性别</th>
+                        <th>小鼠ID</th>
+                        <th>年龄</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="(row, rowIndex) in getCageDisplayRows(cage)"
+                        :key="`${cage.id}-${rowIndex}`"
+                        class="mouse-row"
+                        :class="{
+                          'placeholder-row': row.type === 'placeholder'
+                        }"
+                        :draggable="row.type === 'mouse'"
+                        @dragstart="row.type === 'mouse' && handleDragStart($event, row.mouse.tid, cage.id)"
+                        @dblclick="row.type === 'mouse' && openMouseDetail(row.mouse.tid)"
+                      >
+                        <td v-if="row.type === 'mouse'">
+                          <n-tag size="small" :type="row.mouse.sex === 'F' ? 'error' : 'info'" round>
+                            {{ row.mouse.sex === 'F' ? '♀' : '♂' }}
+                          </n-tag>
+                        </td>
+                        <td v-if="row.type === 'mouse'">{{ row.mouse.id }}</td>
+                        <td v-if="row.type === 'mouse'">{{ !row.mouse.days || row.mouse.days === 'none' ? 'NA' : `${row.mouse.days}天` }}</td>
+                        <td v-if="row.type === 'placeholder'" colspan="3">&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="cage-empty-state">
+                  <AppIcon name="inbox" class="empty-icon" />
+                  <span>当前笼位为空</span>
+                </div>
+              </n-card>
             </div>
-            <div class="cage-meta-row" v-if="cage.mice_genotype">
-              <span class="meta-label">基因型:</span>
-              <span class="meta-value">{{ cage.mice_genotype }}</span>
-            </div>
+
+            <n-card v-else size="small" class="cage-slot-empty" :bordered="true">
+              空位
+            </n-card>
           </div>
-          <div class="cage-mice-container">
-            <template v-if="cage.mice && cage.mice.length > 0">
-              <div 
-                v-for="mouse in cage.mice" 
-                :key="mouse.tid" 
-                class="cage-mouse" 
-                draggable="true"
-                @dragstart="handleDragStart($event, mouse.tid, cage.id)"
-                @dblclick="openMouseDetail(mouse.tid)"
-              >
-                <div class="mouse-sex" :class="mouse.sex === 'F' ? 'sex-female' : 'sex-male'">
-                  {{ mouse.sex === 'F' ? '♀' : '♂' }}
-                </div>
-                <div class="mouse-info">
-                  <div class="mouse-id">{{ mouse.id }}</div>
-                  <div class="mouse-genotype" v-html="mouse.genotype"></div>
-                </div>
-                <div class="mouse-info">
-                  <div class="mouse-days">{{ !mouse.days || mouse.days === 'none' ? 'NA天数' : `当前${mouse.days}天` }}</div>
-                </div>
-              </div>
-            </template>
-            <div v-else class="empty-cage">空笼位</div>
-        </div>
         </div>
       </div>
+
       <div v-else style="flex: 1;padding: 80px;background-color: white;">
         <div class="container">
           <AppIcon style="font-size: 120px; color: var(--n-text-color-disabled);" name="error_outline" />
@@ -160,41 +234,44 @@
           <p>请前往设置页面设定区域。</p>
         </div>
       </div>
-      
-      <!-- 临时存放区（右侧） -->
-      <div class="temporary-area" v-if="temporaryMice.length !== 0 || showTemporaryArea">
-        <div class="temporary-header">
-          <h2 class="temporary-title">临时区</h2>
-          <span class="counter">{{ temporaryMice.length }}只</span>
-        </div>
-        
-        <div 
-          class="mouse-list"
-          @dragover.prevent
-          @drop="handleDrop($event, -1)"
-        >
-          <div 
-            v-for="mouse in temporaryMice" 
-            :key="mouse.id" 
-            class="mouse-card"
-            draggable="true"
-            @dragstart="handleDragStart($event, mouse.tid, -1)"
-            @dblclick="openMouseDetail(mouse.tid)"
-          >
-            <div class="mouse-sex" :class="mouse.sex === 'F' ? 'sex-female' : 'sex-male'">
-              {{ mouse.sex === 'F' ? '♀' : '♂' }}
+    </div>
+
+    <n-drawer v-model:show="showTemporaryDrawer" placement="bottom" :height="360" resizable>
+      <n-drawer-content title="临时区" closable>
+        <div class="temporary-drawer-content">
+          <n-space justify="space-between" align="center" class="temporary-drawer-header">
+            <span>拖拽小鼠到此进行暂存</span>
+            <n-tag type="warning" round>{{ temporaryMice.length }}只</n-tag>
+          </n-space>
+
+          <div class="temporary-drop-zone" @dragover.prevent @drop="handleDrop($event, -1)">
+            <div v-if="temporaryMice.length > 0" class="temporary-mouse-grid">
+              <n-card
+                v-for="mouse in temporaryMice"
+                :key="mouse.id"
+                size="small"
+                class="temporary-mouse-item"
+                draggable="true"
+                @dragstart="handleDragStart($event, mouse.tid, -1)"
+                @dblclick="openMouseDetail(mouse.tid)"
+              >
+                <div class="temporary-mouse-content">
+                  <div class="mouse-sex" :class="mouse.sex === 'F' ? 'sex-female' : 'sex-male'">
+                    {{ mouse.sex === 'F' ? '♀' : '♂' }}
+                  </div>
+                  <div class="mouse-info">
+                    <div class="mouse-id">{{ mouse.id }}</div>
+                    <div class="mouse-genotype" v-html="mouse.genotype"></div>
+                  </div>
+                  <div class="mouse-days">{{ !mouse.days || mouse.days === 'none' ? 'NA天数' : `${mouse.days}天` }}</div>
+                </div>
+              </n-card>
             </div>
-            <div class="mouse-info">
-              <div class="mouse-id">{{ mouse.id }}</div>
-              <div class="mouse-genotype" v-html="mouse.genotype"></div>
-            </div>
-            <div class="mouse-info">
-              <div class="mouse-days">{{ !mouse.days || mouse.days === 'none' ? 'NA天数' : `当前${mouse.days}天` }}</div>
-            </div>
+            <n-empty v-else description="临时区为空" size="small" />
           </div>
         </div>
-      </div>
-    </div>
+      </n-drawer-content>
+    </n-drawer>
     
     <!-- 小鼠详细视图 -->
     <MouseDetailModal 
@@ -291,9 +368,8 @@
   
   <!-- 在组件模板中添加弹窗 -->
   <n-modal :show="swapStatus === 'select-target'" :mask-closable="true" @mask-click="cancelSwap">
-    <n-card class="swap-dialog" :bordered="false" role="dialog" aria-modal="true">
-      <div class="status-message">
-        <p>确认交换以下笼位顺序：</p>
+    <n-card v-if="sourceCage && targetCage" class="swap-dialog" :bordered="false" role="dialog" aria-modal="true">
+        <p class="swap-title">确认交换以下笼位顺序：</p>
         <div class="cage-pair">
           <div class="selected-cage">
             <AppIcon  name="cage" />
@@ -302,11 +378,11 @@
               <div class="cage-location">{{ sourceCage.location }}</div>
             </div>
           </div>
-          
+
           <div class="swap-icon">
             <AppIcon  name="swap_horiz" />
           </div>
-          
+
           <div class="selected-cage">
             <AppIcon  name="cage" />
             <div class="cage-info">
@@ -316,16 +392,10 @@
           </div>
         </div>
 
-          <!-- 底部按钮 -->
-        <div class="modal-footer" v-if="swapStatus === 'select-target'">
-          <n-button @click="cancelSwap" secondary>
-            <AppIcon  name="cancel" /> 取消
-          </n-button>
-          <n-button @click="confirmSwap" type="primary">
-            <AppIcon  name="check" /> 确认
-          </n-button>
+        <div class="modal-footer">
+          <n-button @click="cancelSwap" secondary>取消</n-button>
+          <n-button @click="confirmSwap" type="primary">确认交换</n-button>
         </div>
-      </div>
     </n-card>
   </n-modal>
 
@@ -345,9 +415,9 @@ import axios from 'axios'
 import MouseDetailModal from './MouseDetailView.vue'
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
-import draggable from 'vuedraggable'
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { useDialog } from 'naive-ui';
 
 // 设置组件名称
 defineOptions({
@@ -360,6 +430,7 @@ import { storeToRefs } from 'pinia'
 const cageStore = useCageStore()
 const {locations, activeSection, cages} = storeToRefs(cageStore)
 const {fetchCages} = cageStore
+const dialog = useDialog()
 const sectionOptions = computed(() =>
   locations.value.map(section => ({ label: section.identifier, value: section.identifier }))
 )
@@ -403,6 +474,13 @@ const cageContextMenu = reactive({
   y: 0,
   cage: null
 })
+const sectionContextMenu = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  sectionId: null,
+  index: -1
+})
 const isSaving = ref(false)
 
 // 搜索相关状态
@@ -415,8 +493,16 @@ const highlightedCageId = ref(null)
 const swapStatus = ref(null)
 const sourceCage = ref(null)
 const targetCage = ref(null)
+const matrixRows = ref(4)
+const matrixCols = ref(5)
 
-const showTemporaryArea = ref(false)
+const showTemporaryDrawer = ref(false)
+
+const cageActionOptions = [
+  { label: '编辑笼位信息', key: 'edit' },
+  { label: '笼位排序互换', key: 'swap' },
+  { label: '删除笼位', key: 'delete' }
+]
 
 // 监听搜索词变化
 watch(searchTerm, (newVal) => {
@@ -426,17 +512,29 @@ watch(searchTerm, (newVal) => {
 })
 
 // 计算属性 - 按 order 排序后的部分
-const sortedSections = computed({
-  get: () => [...locations.value],
-  set: (value) => {
-    // 更新本地顺序（不直接修改原始数据）
-    const updated = value.map((section, index) => ({
-      ...section,
-      order: index
-    }))
-    locations.value = updated
-  }
+const sortedSections = computed(() => {
+  return [...locations.value].sort((a, b) => {
+    const orderA = typeof a.order === 'number' ? a.order : Number.MAX_SAFE_INTEGER
+    const orderB = typeof b.order === 'number' ? b.order : Number.MAX_SAFE_INTEGER
+    return orderA - orderB
+  })
 })
+
+const filteredSectionCages = computed(() => cageStore.filteredCages || [])
+const effectiveMatrixCols = computed(() => Math.max(1, Number(matrixCols.value) || 1))
+const effectiveMatrixRows = computed(() => {
+  const requestedRows = Math.max(1, Number(matrixRows.value) || 1)
+  const neededRows = Math.ceil(filteredSectionCages.value.length / effectiveMatrixCols.value)
+  return Math.max(requestedRows, neededRows || 1)
+})
+const matrixCells = computed(() => {
+  const total = effectiveMatrixRows.value * effectiveMatrixCols.value
+  return Array.from({ length: total }, (_, index) => filteredSectionCages.value[index] || null)
+})
+const matrixGridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(${effectiveMatrixCols.value}, var(--cage-card-width))`,
+  gridTemplateRows: `repeat(${effectiveMatrixRows.value}, var(--cage-card-height))`
+}))
 
 // 生命周期钩子
 onMounted(async () => {
@@ -630,6 +728,140 @@ function closeContextMenu() {
   document.removeEventListener('click', closeContextMenu)
 }
 
+function handleCageActionSelect(key, cage) {
+  if (key === 'edit') {
+    openCageModal(cage)
+    return
+  }
+  if (key === 'swap') {
+    exchangeCage(cage)
+    return
+  }
+  if (key === 'delete') {
+    deleteCage(cage)
+  }
+}
+
+function resolveCageSexMark(cage) {
+  if (cage?.mice_sex === 'F') return '♀'
+  if (cage?.mice_sex === 'M') return '♂'
+  if (cage?.mice_sex === 'Mixed') return '♂♀'
+  return cage?.cage_type === 'breeding' ? '♂♀' : '○'
+}
+
+function getGenotypeTagType(genotype) {
+  if (!genotype) return 'default'
+  const lower = genotype.toLowerCase()
+  if (lower.includes('ko') || lower.includes('knockout') || lower.includes('-/-')) return 'error'
+  if (lower.includes('wt') || lower.includes('wild') || lower.includes('+/+')) return 'success'
+  if (lower.includes('het') || lower.includes('+/-')) return 'warning'
+  return 'info'
+}
+
+function getCageCountType(cage) {
+  const count = cage.mice?.length ?? cage.mice_count ?? 0
+  if (count === 0) return 'default'
+  if (count >= 5) return 'warning'
+  return 'success'
+}
+
+function getCageDisplayRows(cage) {
+  const mice = Array.isArray(cage?.mice) ? cage.mice : []
+  const minRows = 4
+
+  const rows = mice.map(mouse => ({ type: 'mouse', mouse }))
+  while (rows.length < minRows) {
+    rows.push({ type: 'placeholder' })
+  }
+  return rows
+}
+
+// 打开 section 右键菜单
+function openSectionContextMenu(event, section, index) {
+  sectionContextMenu.visible = true
+  sectionContextMenu.x = event.clientX
+  sectionContextMenu.y = event.clientY
+  sectionContextMenu.sectionId = section.id
+  sectionContextMenu.index = index
+
+  document.addEventListener('click', closeSectionContextMenu)
+
+  nextTick(() => {
+    const menu = document.querySelector('.section-context-menu')
+    if (menu) {
+      const rect = menu.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const viewportWidth = window.innerWidth
+
+      if (event.pageY + rect.height > viewportHeight) {
+        sectionContextMenu.y = event.pageY - rect.height
+      }
+
+      if (event.pageX + rect.width > viewportWidth) {
+        sectionContextMenu.x = event.pageX - rect.width
+      }
+    }
+  })
+}
+
+function closeSectionContextMenu() {
+  sectionContextMenu.visible = false
+  sectionContextMenu.sectionId = null
+  sectionContextMenu.index = -1
+  document.removeEventListener('click', closeSectionContextMenu)
+}
+
+async function moveSection(direction) {
+  if (sectionContextMenu.sectionId === null) return
+
+  const orderedSections = [...sortedSections.value]
+  const currentIndex = orderedSections.findIndex(section => section.id === sectionContextMenu.sectionId)
+  if (currentIndex === -1) {
+    closeSectionContextMenu()
+    return
+  }
+
+  const targetIndex = currentIndex + direction
+  if (targetIndex < 0) {
+    toast.info('已经在最左侧')
+    closeSectionContextMenu()
+    return
+  }
+  if (targetIndex >= orderedSections.length) {
+    toast.info('已经在最右侧')
+    closeSectionContextMenu()
+    return
+  }
+
+  const previousSections = [...locations.value]
+  const temp = orderedSections[currentIndex]
+  orderedSections[currentIndex] = orderedSections[targetIndex]
+  orderedSections[targetIndex] = temp
+
+  const updatedSections = orderedSections.map((section, index) => ({
+    ...section,
+    order: index
+  }))
+
+  locations.value = updatedSections
+
+  try {
+    await axios.put('/api/locations/order', {
+      order: updatedSections.map(section => ({
+        id: section.id,
+        order: section.order
+      }))
+    })
+    toast.success('标签页顺序更新成功')
+  } catch (error) {
+    locations.value = previousSections
+    console.error('更新标签页顺序失败:', error)
+    toast.error('更新标签页顺序失败，请重试')
+  } finally {
+    closeSectionContextMenu()
+  }
+}
+
 // 更新笼位信息
 async function updateCage() {
   if (!currentCage.section) {
@@ -672,24 +904,30 @@ async function updateCage() {
 
 // 删除笼位
 async function deleteCage(cage) {
-  if (!confirm(`确定要删除笼位 ${cage.cage_id} 吗？`)) return
-  
-  try {
-    await axios.delete(`/api/cages/${cage.id}`)
-    // 更新本地数据
-    const index = cages.value.findIndex(c => c.id === cage.id)
-    if (index !== -1) {
-      cage.mice.forEach(m=> {
-        temporaryMice.value.push(m)
-      })
-      cages.value.splice(index, 1)
+  dialog.warning({
+    title: '确认删除',
+    content: `确定要删除笼位 ${cage.cage_id} 吗？`,
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await axios.delete(`/api/cages/${cage.id}`)
+        // 更新本地数据
+        const index = cages.value.findIndex(c => c.id === cage.id)
+        if (index !== -1) {
+          cage.mice.forEach(m=> {
+            temporaryMice.value.push(m)
+          })
+          cages.value.splice(index, 1)
+        }
+        closeContextMenu()
+        toast.success('成功删除笼位')
+      } catch (error) {
+        console.error('删除笼位失败:', error)
+        toast.error('删除笼位失败，请重试')
+      }
     }
-    closeContextMenu()
-    toast.success('成功删除笼位')
-  } catch (error) {
-    console.error('删除笼位失败:', error)
-    toast.error('删除笼位失败，请重试')
-  }
+  })
 }
 
 let timeoutId = null
@@ -752,23 +990,6 @@ async function updateCageOrder(cage_from_id, cage_to_id) {
     const temp = cages.value[indexI];
     cages.value[indexI] = cages.value[indexJ];
     cages.value[indexJ] = temp;
-  }
-}
-
-// 拖动结束事件
-async function onDragEnd() {
-  // 获取更新后的顺序
-  const newOrder = sortedSections.value.map(section => ({
-    id: section.id,
-    order: section.order
-  })) 
-  // 发送更新请求
-  try {
-    await axios.put('/api/locations/order', { order: newOrder })
-    toast.success("位置顺序更新成功")
-    console.log('部分顺序更新成功')
-  } catch (error) {
-    console.error('更新顺序失败:', error)
   }
 }
 
@@ -1065,7 +1286,7 @@ function highlightSearchResult(result) {
   
   // 如果结果在临时区，确保临时区可见
   if (result.cage.id === -1) {
-    showTemporaryArea.value = true
+    showTemporaryDrawer.value = true
   } else {
     // 切换到正确的section
     activeSection.value = result.cage.section
@@ -1094,132 +1315,77 @@ function isCageHighlighted(cageId) {
   min-height: 100%;
 }
 
+.matrix-toolbar {
+  margin-bottom: 12px;
+}
+
+.matrix-label {
+  color: var(--n-text-color-2);
+  font-size: 13px;
+}
+
 .cage-view-container {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
-  gap: 16px;
+  --cage-card-width: 360px;
+  --cage-card-min-height: 320px;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
 }
 
-/* 笼位网格容器 */
-.cage-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  grid-auto-rows: 255px;
-  gap: 16px;
-  padding: 16px;
-  overflow-y: auto;
+.cage-matrix-scroll {
+  width: 100%;
+  height: calc(100vh - 300px);
+  min-height: 500px;
+  overflow: auto;
   background-color: var(--n-color);
-  border-radius: 8px;
+  border: 1px solid var(--n-border-color);
+  border-radius: 10px;
   box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 5%, transparent);
-  align-content: start;
-  min-width: 0;
-  min-height: 0;
+  padding: 16px;
 }
 
-/* 临时存放区容器 */
-.temporary-area {
-  width: auto;
-  min-width: 240px;
-  background-color: var(--n-color);
-  border-radius: 8px;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 5%, transparent);
-  padding: 15px;
+.cage-matrix {
+  display: grid;
+  gap: 16px;
+  width: max-content;
+  min-width: 100%;
+  align-items: start;
+}
+
+.matrix-cell {
+  width: var(--cage-card-width);
+  min-height: var(--cage-card-min-height);
+}
+
+.cage-slot-empty {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--n-border-color);
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--n-text-color-disabled);
 }
 
 /* Section标签页样式 */
 .section-tabs {
-  display: flex;
   border-bottom: 1px solid var(--n-border-color);
   margin-bottom: 15px;
   padding: 0 4px 8px;
+}
+
+.section-tabs :deep(.n-tabs-nav) {
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
 }
 
-.tab-item {
-  flex: 0 0 auto;
-  padding: 8px 16px;
-  cursor: pointer;
-  margin-right: 5px;
-  border-radius: 5px 5px 0 0;
-  font-weight: 500;
-  color: var(--n-text-color-3);
-  transition: all 0.2s ease;
+.section-tabs :deep(.n-tabs-wrapper) {
+  width: 100%;
+}
+
+.segment-tab-label {
+  user-select: none;
   white-space: nowrap;
-}
-
-.tab-item:hover {
-  background-color: var(--n-color-embedded);
-}
-
-.tab-item.active {
-  color: var(--n-primary-color);
-  background-color: var(--n-info-color-suppl);
-  border-bottom: 2px solid var(--n-primary-color);
-}
-
-.drag-handle {
-  cursor: grab;
-  margin-right: 8px;
-  opacity: 0.5;
-  transition: opacity 0.3s;
-}
-
-.tab-item:hover .drag-handle {
-  opacity: 1;
-}
-
-/* 调整临时区标题布局 */
-.temporary-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.temporary-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 5px;
-}
-
-.counter {
-  background-color: var(--warning);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-}
-
-/* 调整临时区鼠标卡片布局 */
-.mouse-list {
-  flex-grow: 1;
-  overflow-y: auto;
-  min-height: 100px;
-  padding: 5px;
-  background-color: var(--n-color-embedded);
-  border-radius: 6px;
-  border: 1px dashed var(--n-border-color);
-}
-
-.mouse-card {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  border-radius: 6px;
-  background-color: var(--n-color-embedded);
-  margin-bottom: 8px;
-  border: 1px solid var(--n-warning-color-suppl);
-  transition: all 0.3s;
-  cursor: pointer;
 }
 
 /* 保持其他样式不变 */
@@ -1245,18 +1411,16 @@ function isCageHighlighted(cageId) {
 
 /* 笼位卡片样式 */
 .cage-card {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 15px;
-  background-color: var(--n-color);
-  transition: all 0.2s;
-  cursor: pointer;
-  min-height: 250px;
-  max-height: 250px;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
   position: relative;
-  display: flex;
-  flex-direction: column;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.cage-card-body {
+  width: 100%;
+  height: 100%;
 }
 
 .cage-card:hover {
@@ -1264,35 +1428,174 @@ function isCageHighlighted(cageId) {
   transform: translateY(-2px);
 }
 
+.cage-card :deep(.n-card) {
+  height: 100%;
+}
+
+.cage-card :deep(.n-card__content) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 28px;
+}
+
 .cage-card.breeding {
-  background-color: color-mix(in srgb, var(--n-error-color) 20%, var(--n-color));
-  border-left: 4px solid var(--n-error-color);
+  outline: 2px solid color-mix(in srgb, var(--n-error-color) 40%, transparent);
 }
 
-.cage-card.temporary {
-  background-color: var(--n-warning-color-suppl);
-  border-left: 4px solid var(--warning);
+.cage-card-actions {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
 }
 
-.cage-id {
-  font-weight: 600;
-  font-size: 1.1rem;
-  margin-bottom: 5px;
+.drag-dot-btn {
+  width: 26px;
+  height: 26px;
 }
 
-.cage-location {
-  font-size: 0.85rem;
-  color: var(--n-text-color-3);
-  margin-bottom: 10px;
+.dot-glyph {
+  font-size: 16px;
+  letter-spacing: 1px;
+  line-height: 1;
+  color: var(--n-text-color-2);
 }
 
-.cage-mouse {
+.cage-header {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--n-color-embedded);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cage-header:hover {
+  background: color-mix(in srgb, var(--n-color-embedded) 80%, var(--n-primary-color));
+}
+
+.cage-header-left {
   display: flex;
   align-items: center;
-  margin-top: 8px;
-  padding: 5px;
-  border-radius: 4px;
-  background-color: var(--n-color-embedded);
+  justify-content: center;
+}
+
+.cage-header-type {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.cage-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cage-header-main {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cage-genotype-badge {
+  max-width: 100%;
+}
+
+.cage-genotype-badge :deep(.n-tag__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cage-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.cage-mice-table-wrapper {
+  border: 1px solid var(--n-border-color);
+  border-radius: 8px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.cage-mice-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.cage-mice-table th,
+.cage-mice-table td {
+  border-bottom: 1px solid var(--n-border-color);
+  text-align: center;
+  padding: 8px 6px;
+  font-size: 13px;
+}
+
+.cage-mice-table th {
+  position: sticky;
+  top: 0;
+  background: var(--n-color-embedded);
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--n-text-color-2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cage-mice-table tr:last-child td {
+  border-bottom: none;
+}
+
+.mouse-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mouse-row:hover {
+  background: var(--n-info-color-suppl);
+}
+
+.placeholder-row td {
+  color: transparent;
+  border-bottom-color: transparent;
+}
+
+.cage-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--n-text-color-3);
+  gap: 8px;
+  padding: 20px;
+  min-height: 120px;
+}
+
+.cage-empty-state .empty-icon {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.cage-empty-state span {
+  font-size: 13px;
 }
 
 .mouse-sex {
@@ -1306,9 +1609,9 @@ function isCageHighlighted(cageId) {
   font-size: 12px;
   color: white;
   font-weight: bold;
-  flex-shrink: 0; /* 防止在flex容器中缩小 */
-  overflow: hidden; /* 防止内容溢出导致变形 */
-  box-sizing: border-box; /* 确保内边距不影响尺寸 */
+  flex-shrink: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .sex-female {
@@ -1316,7 +1619,7 @@ function isCageHighlighted(cageId) {
 }
 
 .sex-male {
-  background-color: var(--n-info-color);
+  background-color: color-mix(in srgb, var(--n-info-color) 90%, white);
 }
 
 .mouse-info {
@@ -1325,7 +1628,7 @@ function isCageHighlighted(cageId) {
 
 .mouse-id {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .mouse-genotype {
@@ -1340,15 +1643,45 @@ function isCageHighlighted(cageId) {
   color: var(--n-text-color-1);
 }
 
-/* 添加悬停效果 */
-.cage-mouse {
-  cursor: pointer;
-  transition: transform 0.2s;
+.temporary-drawer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
 }
 
-.cage-mouse:hover {
-  transform: scale(1.02);
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--n-text-color) 10%, transparent);
+.temporary-drawer-header {
+  margin-bottom: 4px;
+}
+
+.temporary-drop-zone {
+  border: 1px dashed var(--n-border-color);
+  border-radius: 10px;
+  background: var(--n-color-embedded);
+  padding: 12px;
+  overflow: auto;
+  min-height: 230px;
+}
+
+.temporary-mouse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.temporary-mouse-item {
+  cursor: grab;
+}
+
+.temporary-mouse-content {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.temporary-mouse-content .mouse-days {
+  white-space: nowrap;
 }
 
 /* 对话框样式 */
@@ -1408,20 +1741,6 @@ function isCageHighlighted(cageId) {
   margin-top: 20px;
 }
 
-.empty-cage {
-  color: var(--n-text-color-3);
-  font-style: italic;
-  text-align: center;
-  padding: 20px 0;
-}
-
-.cage-mice-container {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 5px;
-  max-height: calc(250px - 60px);
-}
-
 /* 右键菜单样式 */
 .context-menu {
     position: fixed;
@@ -1450,6 +1769,44 @@ function isCageHighlighted(cageId) {
 
 .context-menu li:hover {
   background-color: var(--n-info-color-suppl);
+}
+
+.section-context-menu {
+  position: fixed;
+  background: var(--n-color);
+  border: 1px solid var(--n-border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--n-text-color) 15%, transparent);
+  z-index: 1001;
+  min-width: 140px;
+}
+
+.section-context-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 5px 0;
+}
+
+.section-context-menu li {
+  padding: 8px 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.section-context-menu li:hover {
+  background-color: var(--n-info-color-suppl);
+}
+
+.section-context-menu li.disabled {
+  color: var(--n-text-color-disabled);
+  cursor: not-allowed;
+}
+
+.section-context-menu li.disabled:hover {
+  background-color: transparent;
 }
 
 .context-menu li i {
@@ -1514,14 +1871,10 @@ function isCageHighlighted(cageId) {
   padding: 25px;
 }
 
-.status-message {
+.swap-title {
   text-align: center;
-  margin-bottom: 20px;
-}
-
-.status-message p {
   font-size: 1.1rem;
-  margin-bottom: 15px;
+  margin: 0 0 20px;
   color: var(--n-text-color-2);
 }
 
@@ -1529,7 +1882,6 @@ function isCageHighlighted(cageId) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 20px;
 }
 
 .selected-cage {
@@ -1559,11 +1911,9 @@ function isCageHighlighted(cageId) {
 
 .modal-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-  padding: 15px 20px;
-  background: var(--n-color-embedded);
-  border-top: 1px solid var(--n-border-color);
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 /* 搜索相关样式 */
@@ -1758,12 +2108,8 @@ function isCageHighlighted(cageId) {
 
 @media (max-width: 1200px) {
   .cage-view-container {
-    grid-template-columns: 1fr;
-    overflow: visible;
-  }
-
-  .temporary-area {
-    min-width: 0;
+    --cage-card-width: 320px;
+    --cage-card-min-height: 280px;
   }
 }
 
@@ -1774,14 +2120,24 @@ function isCageHighlighted(cageId) {
     align-items: stretch;
   }
 
-  .cage-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    grid-auto-rows: minmax(220px, auto);
+  .cage-matrix-scroll {
+    height: calc(100vh - 360px);
     padding: 12px;
   }
 
-  .temporary-area {
-    padding: 12px;
+  .cage-view-container {
+    --cage-card-width: 280px;
+    --cage-card-min-height: 260px;
+  }
+
+  .cage-header-main {
+    font-size: 18px;
+  }
+
+  .cage-mice-table th,
+  .cage-mice-table td {
+    font-size: 12px;
+    padding: 6px 4px;
   }
   
   .search-container {
