@@ -1043,10 +1043,8 @@
 
 <script setup>
 import { h, ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
-import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, useDialog } from 'naive-ui'
+import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, useDialog, useMessage } from 'naive-ui'
 import axios from 'axios'
-import { toast } from 'vue3-toastify'
-import 'vue3-toastify/dist/index.css'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
 
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
@@ -1057,6 +1055,7 @@ const cageStore = useCageStore()
 const experimentStore = useExperimentStore()
 const settingStore = useSettingStore()
 const dialog = useDialog()
+const message = useMessage()
 
 const { genotypes, selectedGenes, alleleSuggestions, mice } = storeToRefs(geneStore)
 const { loadGenotypes, colors, onFormLocusChange, onFormAlleleChange, deleteGene, addGene, deleteGenes } = geneStore
@@ -1774,7 +1773,7 @@ const groupDetailColumns = (groupType) => [
 
 const addGeneLocus = async () => {
     if (!newGeneLocus.symbol) {
-    toast.info('请填写基因位点名称')
+    message.info('请填写基因位点名称')
     return
     }
 
@@ -1783,16 +1782,16 @@ const addGeneLocus = async () => {
     genotypes.value.push(response.data)
     newGeneLocus.symbol = ''
     newGeneLocus.description = ''
-    toast.success('添加基因位点成功')
+    message.success('添加基因位点成功')
     } catch (error) {
     console.error('添加基因位点失败:', error)
-    toast.error('添加基因位点失败，请重试')
+    message.error('添加基因位点失败，请重试')
     }
 }
 
 const addAllele = async (locus_id) => {
     if (!newAllele.symbol) {
-    toast.info('请填写基因位点修饰名称')
+    message.info('请填写基因位点修饰名称')
     return
     }
 
@@ -1802,10 +1801,10 @@ const addAllele = async (locus_id) => {
     newAllele.symbol = ''
     newAllele.description = ''
     newAllele.is_wildtype = false
-    toast.success('添加基因位点编辑方式成功')
+    message.success('添加基因位点编辑方式成功')
     } catch (error) {
     console.error('添加基因位点修饰失败:', error)
-    toast.error('添加基因位点修饰失败，请重试')
+    message.error('添加基因位点修饰失败，请重试')
     }
 }
 
@@ -1824,10 +1823,10 @@ const saveGeneLocus = async () => {
         await axios.put(`/api/gene/${editingLocus.id}`, editingLocus)
         await loadGenotypes()
         editLocusDialogVisible.value = false
-        toast.success('修改基因位点成功')
+        message.success('修改基因位点成功')
     } catch (error) {
         console.error('更新基因位点失败:', error)
-        toast.error('更新基因位点失败，请重试')
+        message.error('更新基因位点失败，请重试')
     }
 }
 
@@ -1836,10 +1835,10 @@ const saveAllele = async () => {
         await axios.put(`/api/gene_allele/${editingAllele.id}`, editingAllele)
         await loadGenotypes()
         editAlleleDialogVisible.value = false
-        toast.success('修改基因位点编辑方式成功')
+        message.success('修改基因位点编辑方式成功')
     } catch (error) {
         console.error('更新等位基因失败:', error)
-        toast.error('更新等位基因失败，请重试')
+        message.error('更新等位基因失败，请重试')
     }
 }
 
@@ -1853,10 +1852,10 @@ const deleteGeneLocus = async (id) => {
             try {
                 await axios.delete(`/api/gene/${id}`)
                 genotypes.value = genotypes.value.filter(g => g.id !== id)
-                toast.success('删除基因位点成功')
+                message.success('删除基因位点成功')
             } catch (error) {
                 console.error('删除基因型失败:', error)
-                toast.error('删除基因型失败，请重试')
+                message.error('删除基因型失败，请重试')
             }
         }
     })
@@ -1872,10 +1871,10 @@ const deleteAllele = async (id) => {
             try {
                 await axios.delete(`/api/gene_allele/${id}`)
                 await loadGenotypes()
-                toast.success('删除基因位点编辑方式成功')
+                message.success('删除基因位点编辑方式成功')
             } catch (error) {
                 console.error('删除基因型失败:', error)
-                toast.error('删除基因型失败，请重试')
+                message.error('删除基因型失败，请重试')
             }
         }
     })
@@ -1883,7 +1882,7 @@ const deleteAllele = async (id) => {
 
 const addLocation = async () => {
     if (!newLocation.identifier) {
-        toast.info('请填写位置标识')
+        message.info('请填写位置标识')
         return
     }
 
@@ -1896,7 +1895,7 @@ const addLocation = async () => {
         await fetchCages()
     } catch (error) {
         console.error('添加位置失败:', error)
-        toast.error('添加位置失败，请重试')
+        message.error('添加位置失败，请重试')
     }
 }
 
@@ -1912,13 +1911,13 @@ const saveLocation = async () => {
     if (index !== -1) {
         locations.value[index] = response.data
     }
-    toast.success("区域编辑成功")
+    message.success("区域编辑成功")
     editLocationDialogVisible.value = false
     section_key.value = true
     await fetchCages()
     } catch (error) {
         console.error('更新位置失败:', error)
-        toast.error('更新位置失败，请重试')
+        message.error('更新位置失败，请重试')
     }
 }
 
@@ -1936,7 +1935,7 @@ const deleteLocation = async (id) => {
                 await fetchCages()
             } catch (error) {
                 console.error('删除位置失败:', error)
-                toast.error('删除位置失败，请重试')
+                message.error('删除位置失败，请重试')
             }
         }
     })
@@ -1980,9 +1979,9 @@ const confirmExport = async () => {
             const dataArray = Array.from(uint8array)
             const state = await window.pywebview.api.save_file_dialog(dataArray, filename)
             if(state.success){
-                toast.success(`导出成功，文件路径：${state.path}`)
+                message.success(`导出成功，文件路径：${state.path}`)
             } else {
-                toast.info(state.message || "导出失败")
+                message.info(state.message || "导出失败")
             }
         } else {
             const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -1992,11 +1991,11 @@ const confirmExport = async () => {
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
-            toast.success("导出成功")
+            message.success("导出成功")
         }
     } catch (error) {
         console.error('导出数据失败:', error)
-        toast.error('导出数据失败，请重试')
+        message.error('导出数据失败，请重试')
     } finally {
         exportOptionsVisible.value = false
         currentExportType.value = ""
@@ -2040,7 +2039,7 @@ const formatFileSize = (bytes) => {
 
 const importData = async () => {
     if (!selectedFile.value) {
-        toast.info('请选择要导入的文件')
+        message.info('请选择要导入的文件')
         return
     }
 
@@ -2065,7 +2064,7 @@ const importData = async () => {
         }
     } catch (error) {
         console.error('导入失败:', error)
-        toast.error(`导入失败: ${error.response?.data?.error || '服务器错误'}`)
+        message.error(`导入失败: ${error.response?.data?.error || '服务器错误'}`)
     } finally {
         isImporting.value = false
     }
@@ -2088,12 +2087,12 @@ const removeField = (index) => {
 
 const saveExperimentType = async () => {
     if (!editingExperimentType.name) {
-    toast.info('请填写实验类型名称')
+    message.info('请填写实验类型名称')
     return
     }
 
     if (editingExperimentType.fields.length === 0) {
-    toast.info('请至少添加一个字段')
+    message.info('请至少添加一个字段')
     return
     }
 
@@ -2103,11 +2102,11 @@ const saveExperimentType = async () => {
     for (let i = 0; i < editingExperimentType.fields.length; i++) {
     const field = editingExperimentType.fields[i]
     if (!field.field_name) {
-        toast.info(`第${i + 1}个字段缺少名称`)
+        message.info(`第${i + 1}个字段缺少名称`)
         return
     }
     if (!field.data_type) {
-        toast.info(`字段"${field.field_name}"缺少数据类型`)
+        message.info(`字段"${field.field_name}"缺少数据类型`)
         return
     }
     }
@@ -2129,12 +2128,12 @@ const saveExperimentType = async () => {
 
         try {
         await axios[method](url, dataToSend)
-        toast.success('实验设置保存成功，请前往分组预设中设置分组')
+        message.success('实验设置保存成功，请前往分组预设中设置分组')
         cancelEdit()
         await fetchExperiments()
         } catch (error) {
         console.error('保存实验类型失败:', error)
-        toast.error(error.response?.data?.error || '保存实验类型失败')
+        message.error(error.response?.data?.error || '保存实验类型失败')
         }
     }
 
@@ -2185,11 +2184,11 @@ const deleteExperimentType = async (id) => {
         onPositiveClick: async () => {
             try {
                 await axios.delete(`/api/experiment-types/${id}`)
-                toast.success('删除成功')
+                message.success('删除成功')
                 await fetchExperiments()
             } catch (error) {
                 console.error('删除实验类型失败:', error)
-                toast.error(error.response?.data?.error || '删除实验类型失败')
+                message.error(error.response?.data?.error || '删除实验类型失败')
             }
         }
     })
@@ -2301,7 +2300,7 @@ const handleNaiveDbFileChange = ({ file }) => {
         if (file.file.name.endsWith('.db')) {
             selectedDbFile.value = file.file
         } else {
-            toast.error('请选择.db格式的数据库文件')
+            message.error('请选择.db格式的数据库文件')
         }
     }
 }
@@ -2315,7 +2314,7 @@ const handleDbDrop = (event) => {
     if (file.name.endsWith('.db')) {
       selectedDbFile.value = file
     } else {
-      toast.error('请选择.db格式的数据库文件')
+      message.error('请选择.db格式的数据库文件')
     }
   }
 }
@@ -2350,7 +2349,7 @@ const cancelImportDatabase = () => {
 
 const handleDbImportComplete = async () => {
     if (!selectedDbFile.value) {
-        toast.info('请选择要导入的数据库文件')
+        message.info('请选择要导入的数据库文件')
         return
     }
     dbImportResultDialogVisible.value = false
@@ -2365,10 +2364,10 @@ const handleDbImportComplete = async () => {
         }
         })
         
-        toast.success('数据库导入成功，请重启软件')
+        message.success('数据库导入成功，请重启软件')
     } catch (error) {
         console.error('数据库导入失败:', error)
-        toast.error('数据库导入失败')
+        message.error('数据库导入失败')
     }
     selectedDbFile.value = null
 }
@@ -2390,9 +2389,9 @@ const exportDatabase = async (key) => {
         const dataArray = Array.from(uint8array)
         const state = await window.pywebview.api.save_file_dialog(dataArray, filename)
         if(state.success){
-            toast.success(`数据库导出成功，文件路径：${state.path}`)
+            message.success(`数据库导出成功，文件路径：${state.path}`)
         } else {
-            toast.info(state.message || "导出失败")
+            message.info(state.message || "导出失败")
         }
     } else {
         const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -2402,11 +2401,11 @@ const exportDatabase = async (key) => {
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-        toast.success("数据库导出成功")
+        message.success("数据库导出成功")
     }
     } catch (error) {
         console.error('导出数据库失败:', error)
-        toast.error('导出数据库失败，请重试')
+        message.error('导出数据库失败，请重试')
     }
 }
 
@@ -2426,9 +2425,9 @@ const exportLogFile = async () => {
             const dataArray = Array.from(uint8array)
             const state = await window.pywebview.api.save_file_dialog(dataArray, filename)
             if(state.success){
-                toast.success(`日志文件导出成功，文件路径：${state.path}`)
+                message.success(`日志文件导出成功，文件路径：${state.path}`)
             } else {
-                toast.info(state.message || "导出失败")
+                message.info(state.message || "导出失败")
             }
         } else {
             const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -2438,11 +2437,11 @@ const exportLogFile = async () => {
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
-            toast.success("日志文件导出成功")
+            message.success("日志文件导出成功")
         }
     } catch (error) {
         console.error('导出日志文件失败:', error)
-        toast.error('导出日志文件失败，请重试')
+        message.error('导出日志文件失败，请重试')
     } finally {
         isExportingLog.value = false
     }
@@ -2464,7 +2463,7 @@ const refreshDbInfo = async () => {
         }
     } catch (error) {
         console.error('获取数据库信息失败:', error)
-        toast.error('获取数据库信息失败')
+        message.error('获取数据库信息失败')
     }
 }
 
@@ -2486,7 +2485,7 @@ const clearDatabase = async () => {
             
             try {
                 const response = await axios.post('/api/database/clear')
-                toast.success('数据库清空成功')
+                message.success('数据库清空成功')
                 deleteConfirmation.value = ''
                 
                 // 刷新数据库信息
@@ -2495,7 +2494,7 @@ const clearDatabase = async () => {
             } catch (error) {
                 console.error('清空数据库失败:', error)
                 const errorMsg = error.response?.data?.error || '清空数据库失败'
-                toast.error(errorMsg)
+                message.error(errorMsg)
             } finally {
                 isClearingDb.value = false
             }
@@ -2535,9 +2534,9 @@ const createDatabase = async () => {
             const updatedDatabases = { ...databases.value }
             updatedDatabases[response.data.key] = response.data.database
             databases.value = updatedDatabases
-            toast.success(response.data.message || '数据库创建成功')
+            message.success(response.data.message || '数据库创建成功')
         } else {
-            toast.error('服务器返回的数据格式不正确')
+            message.error('服务器返回的数据格式不正确')
         }
     }
     addingDatabase.value = false
@@ -2574,7 +2573,7 @@ const saveEdit = async (index) => {
         }
         const response = await axios.post(`/api/database/${index}`, databases.value[index])
         resetEdit()
-        toast.success('修改成功')
+        message.success('修改成功')
     }
 }
 
@@ -2613,7 +2612,7 @@ const selectDatabase = async (key) => {
     trueCurrentDatabase.value = currentDatabase.value
     currentDatabase.value = key
     await axios.put(`/api/database/${key}`)
-    toast.success('数据库切换成功，重新启动应用后生效')
+    message.success('数据库切换成功，重新启动应用后生效')
     databaseNotChanged.value = false
 }
 
@@ -2634,7 +2633,7 @@ const toggleReadOnly = async (key) => {
                 onPositiveClick: async () => {
                     db.readOnly = !db.readOnly
                     const response = await axios.post(`/api/database/${key}`, db)
-                    toast.success(`数据库已设为${db.readOnly ? '只读' : '可写'}`)
+                    message.success(`数据库已设为${db.readOnly ? '只读' : '可写'}`)
                 }
             })
             return
@@ -2642,14 +2641,14 @@ const toggleReadOnly = async (key) => {
         
         db.readOnly = !db.readOnly
         const response = await axios.post(`/api/database/${key}`, db)
-        toast.success(`数据库已设为${db.readOnly ? '只读' : '可写'}`)
+        message.success(`数据库已设为${db.readOnly ? '只读' : '可写'}`)
     }
 }
 
 // 删除数据库
 const deleteDatabase = async (key) => {
     if (currentDatabase.value === key) {
-        toast.error('不能删除当前正在使用的数据库')
+        message.error('不能删除当前正在使用的数据库')
         return
     }
     
@@ -2661,7 +2660,7 @@ const deleteDatabase = async (key) => {
         onPositiveClick: async () => {
             delete databases.value[key];
             await axios.delete(`/api/database/${key}`)
-            toast.success('数据库删除成功')
+            message.success('数据库删除成功')
         }
     })
 }
@@ -2683,7 +2682,7 @@ const fetchDbInfo = async () => {
         currentDatabase.value = response.data.current_database
     } catch (error) {
         console.error('获取数据库列表失败:', error)
-        toast.error('获取数据库列表失败')
+        message.error('获取数据库列表失败')
     }
 }
 
@@ -2753,7 +2752,7 @@ const addGenotype = (subgroupIndex, ruleIndex) => {
 
 const saveGenes = (subgroupIndex, ruleIndex, index) => {
     if (selectedGenes.value.some(g=> !g.locus)) {
-        toast.info("请完善基因型")
+        message.info("请完善基因型")
         return
     }
     editingGroup.rules[subgroupIndex].rules[ruleIndex].genes[index] = {
@@ -2768,7 +2767,7 @@ const saveGenes = (subgroupIndex, ruleIndex, index) => {
 const reviewRules = async () => {
     candidateMice.value = mice.value
     if (editingGroup.rules.length === 0) {
-        toast.info("预览前请设定组别")
+        message.info("预览前请设定组别")
         return 
     }
     const response = await axios.post(`/api/groups/predefined/review`, { editing : editingGroup, candidate: candidateMice.value.map(m => m.tid)})
@@ -2788,17 +2787,17 @@ const reviewRulesClose = () => {
 
 const saveGroup = async () => {
     if (selectedGenes.value && selectedGenes.value.length !== 0) {
-        toast.info('请完成基因选择')
+        message.info('请完成基因选择')
         return
     }
 
     if (!editingGroup.name) {
-        toast.info('请填写预设分组名称')
+        message.info('请填写预设分组名称')
         return
     }
 
     if(!editingGroup.id && predefinedGroups.value.some(g => g.name == editingGroup.name)) {
-        toast.info('预设分组不能重名')
+        message.info('预设分组不能重名')
         return
     }
 
@@ -2806,7 +2805,7 @@ const saveGroup = async () => {
         if (g?.experiment_id) {
             g?.experiment_id == editingGroup?.experiment_id
         }}) ?? false) {
-        toast.info('同一实验只能有一个预设分组')
+        message.info('同一实验只能有一个预设分组')
         return
     }
 
@@ -2820,16 +2819,16 @@ const saveGroup = async () => {
     try {
         if (editingGroup.Gtype === 'id') {
             await axios[method](url, editingGroup)
-            toast.success('预设ID分组保存成功')
+            message.success('预设ID分组保存成功')
         } else {
             await axios[method](url, editingGroup)
-            toast.success('预设规则分组保存成功')
+            message.success('预设规则分组保存成功')
         }
         cancelEditGroup()
         fetchPredefinedGroups()
     } catch (error) {
         console.error('保存分组失败:', error)
-        toast.error(error.response?.data?.error || '保存分组失败')
+        message.error(error.response?.data?.error || '保存分组失败')
     } finally {
         isSaving.value = false
     }
@@ -2862,12 +2861,12 @@ const deleteGroup = async (id) => {
         onPositiveClick: async () => {
             try {
                 await axios.delete(`/api/groups/predefined/${id}`)
-                toast.success('删除成功')
+                message.success('删除成功')
                 fetchPredefinedGroups()
                 cancelEditGroup()
             } catch (error) {
                 console.error('删除分组失败:', error)
-                toast.error('删除分组失败')
+                message.error('删除分组失败')
             }
         }
     })
@@ -2903,7 +2902,7 @@ const toggleGroupDetails = (groupId) => {
 // 保存显示设置
 const saveDisplaySettings = () => {
     changeSettings(selectedSetting.value)
-    toast.success('设置保存成功')
+    message.success('设置保存成功')
 }
 
 const applyDisplayPreset = () => {
@@ -2924,7 +2923,7 @@ const confirmReset = () => {
                 resetToDefault(s)
                 changeSettings(s)
             })
-            toast.success("重置所有显示设置")
+            message.success("重置所有显示设置")
         }
     })
 }

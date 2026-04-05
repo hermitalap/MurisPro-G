@@ -227,7 +227,7 @@
         </div>
       </div>
 
-      <div v-else style="flex: 1;padding: 80px;background-color: white;">
+      <div v-else style="flex: 1;padding: 80px;background-color: var(--n-color);">
         <div class="container">
           <AppIcon style="font-size: 120px; color: var(--n-text-color-disabled);" name="error_outline" />
           <h1>未设定区域</h1>
@@ -413,11 +413,9 @@
 import { ref, reactive, nextTick, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import MouseDetailModal from './MouseDetailView.vue'
-import { toast } from 'vue3-toastify';
-import 'vue3-toastify/dist/index.css';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { useDialog } from 'naive-ui';
+import { useDialog, useMessage } from 'naive-ui';
 
 // 设置组件名称
 defineOptions({
@@ -431,6 +429,7 @@ const cageStore = useCageStore()
 const {locations, activeSection, cages} = storeToRefs(cageStore)
 const {fetchCages} = cageStore
 const dialog = useDialog()
+const message = useMessage()
 const sectionOptions = computed(() =>
   locations.value.map(section => ({ label: section.identifier, value: section.identifier }))
 )
@@ -577,7 +576,7 @@ async function handleDrop(event, targetCageId) {
       addMouseToTarget(mouse, targetCageId)
     } catch (error) {
       console.error('移动小鼠失败:', error)
-      toast.error('移动小鼠失败，请重试')
+      message.error('移动小鼠失败，请重试')
     }
     
     dragData.value = null
@@ -672,7 +671,7 @@ function closeCageModal(){
 // 添加新笼位
 async function addNewCage() {
   if (!currentCage.cage_id || !currentCage.section) {
-    toast.info('请填写笼位ID和区域')
+    message.info('请填写笼位ID和区域')
     return
   }
   isSaving.value = true
@@ -684,10 +683,10 @@ async function addNewCage() {
       'id': responseId.data.id
     })
     closeCageModal()
-    toast.success('添加笼位成功')
+    message.success('添加笼位成功')
   } catch (error) {
     console.error('添加笼位失败:', error)
-    toast.error('添加笼位失败，请重试')
+    message.error('添加笼位失败，请重试')
   } finally {
     isSaving.value = false
   }
@@ -823,12 +822,12 @@ async function moveSection(direction) {
 
   const targetIndex = currentIndex + direction
   if (targetIndex < 0) {
-    toast.info('已经在最左侧')
+    message.info('已经在最左侧')
     closeSectionContextMenu()
     return
   }
   if (targetIndex >= orderedSections.length) {
-    toast.info('已经在最右侧')
+    message.info('已经在最右侧')
     closeSectionContextMenu()
     return
   }
@@ -852,11 +851,11 @@ async function moveSection(direction) {
         order: section.order
       }))
     })
-    toast.success('标签页顺序更新成功')
+    message.success('标签页顺序更新成功')
   } catch (error) {
     locations.value = previousSections
     console.error('更新标签页顺序失败:', error)
-    toast.error('更新标签页顺序失败，请重试')
+    message.error('更新标签页顺序失败，请重试')
   } finally {
     closeSectionContextMenu()
   }
@@ -865,7 +864,7 @@ async function moveSection(direction) {
 // 更新笼位信息
 async function updateCage() {
   if (!currentCage.section) {
-    toast.info("未填写区域")
+    message.info("未填写区域")
     return
   }
   isSaving.value = true
@@ -892,11 +891,11 @@ async function updateCage() {
       cages.value[index].mice_sex = currentCage.mice_sex
       cages.value[index].mice_genotype = currentCage.mice_genotype
     }
-    toast.success("笼位更新成功")
+    message.success("笼位更新成功")
     closeCageModal()
   } catch (error) {
     console.error('修改笼位失败:', error)
-    toast.error('修改笼位失败，请重试')
+    message.error('修改笼位失败，请重试')
   } finally {
     isSaving.value = false
   }
@@ -921,10 +920,10 @@ async function deleteCage(cage) {
           cages.value.splice(index, 1)
         }
         closeContextMenu()
-        toast.success('成功删除笼位')
+        message.success('成功删除笼位')
       } catch (error) {
         console.error('删除笼位失败:', error)
-        toast.error('删除笼位失败，请重试')
+        message.error('删除笼位失败，请重试')
       }
     }
   })
@@ -946,7 +945,7 @@ async function exchangeCage(cage) {
 function handleCageClick(cage) {
   if (swapStatus.value === "select-source") {
     if (sourceCage.value.id === cage.id) {
-      toast.warning("不能选择同一个笼位进行互换")
+      message.warning("不能选择同一个笼位进行互换")
       return
     }
     
@@ -962,7 +961,7 @@ function confirmSwap() {
   // 更新笼位列表（在实际应用中应调用API更新数据库）
   updateCageOrder(sourceCage.value.id, targetCage.value.id)
   
-  toast.success(`笼位 ${sourceCage.value.cage_id} 和 ${targetCage.value.cage_id} 位置已互换`)
+  message.success(`笼位 ${sourceCage.value.cage_id} 和 ${targetCage.value.cage_id} 位置已互换`)
   clearTimeout(timeoutId)
   // 重置状态
   resetSwapState()
@@ -970,7 +969,7 @@ function confirmSwap() {
 
 // 取消互换操作
 function cancelSwap() {
-  toast.error("已取消笼位互换操作")
+  message.error("已取消笼位互换操作")
   resetSwapState()
 }
 
@@ -1009,7 +1008,7 @@ const exportToPDF = async () => {
     );
     
     if (sectionCages.length === 0) {
-      toast.info("本区域无笼位，无法导出pdf")
+      message.info("本区域无笼位，无法导出pdf")
       return
     }
     // 渲染PDF内容
@@ -1026,9 +1025,9 @@ const exportToPDF = async () => {
       const dataArray = Array.from(uint8array)
       const state = await window.pywebview.api.save_file_dialog(dataArray, filename)
       if(state.success){
-        toast.success(`导出成功，文件路径：${state.path}`)
+        message.success(`导出成功，文件路径：${state.path}`)
       } else {
-        toast.info(state.message || "导出失败")
+        message.info(state.message || "导出失败")
       }
     } else {
       const arrayBuffer = await generatePDFAsArrayBuffer();
@@ -1040,11 +1039,11 @@ const exportToPDF = async () => {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      toast.success('PDF导出成功');
+      message.success('PDF导出成功');
     }
   } catch (error) {
     console.error('导出PDF失败:', error);
-    toast.error('导出PDF失败，请重试');
+    message.error('导出PDF失败，请重试');
   } finally {
     isGeneratingPDF.value = false;
   }
@@ -1607,7 +1606,7 @@ function isCageHighlighted(cageId) {
   justify-content: center;
   margin-right: 8px;
   font-size: 12px;
-  color: white;
+  color: var(--n-color);
   font-weight: bold;
   flex-shrink: 0;
   overflow: hidden;
@@ -1619,7 +1618,7 @@ function isCageHighlighted(cageId) {
 }
 
 .sex-male {
-  background-color: color-mix(in srgb, var(--n-info-color) 90%, white);
+  background-color: color-mix(in srgb, var(--n-info-color) 90%, var(--n-color));
 }
 
 .mouse-info {
@@ -1685,19 +1684,6 @@ function isCageHighlighted(cageId) {
 }
 
 /* 对话框样式 */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: color-mix(in srgb, var(--n-text-color) 50%, transparent);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
 .dialog-container {
   z-index: 2;
   background-color: var(--n-color);
@@ -1723,15 +1709,6 @@ function isCageHighlighted(cageId) {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-}
-
-.form-group input, .form-group select {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
 }
 
 .dialog-buttons {

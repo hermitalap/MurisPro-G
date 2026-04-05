@@ -203,11 +203,9 @@
 
 <script setup>
 import { h, ref, computed, nextTick } from 'vue';
-import { NTag } from 'naive-ui'
+import { NTag, useMessage } from 'naive-ui'
 import axios from 'axios';
 import Chart from 'chart.js/auto';
-import { toast } from 'vue3-toastify';
-import 'vue3-toastify/dist/index.css';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 
@@ -225,6 +223,7 @@ const predefinedGroupOptions = computed(() =>
   predefinedGroups.value.map(group => ({ label: group.name, value: group.id }))
 )
 const { getPredefinedGroups } = experimentStore
+const message = useMessage()
 
 // 响应式数据
 const groups = ref([]);
@@ -289,19 +288,19 @@ const fetchData = async (groupType) => {
     let groupData = []
     if (groupType === 'temp') {
       if (tempGroups.value.length === 0) {
-        toast.info('请至少添加一个分组');
+        message.info('请至少添加一个分组');
         return;
       }
       groupData = await getTempGroups()
     } else if (groupType === 'pred') {
       if (!selectedPredefinedGroupId.value) {
-        toast.info('请选择预设分组');
+        message.info('请选择预设分组');
         return;
       }
       groupData = await getPredefinedGroups()
     }
     if (groupData.length === 0) {
-      toast.info('预设分组暂无信息');
+      message.info('预设分组暂无信息');
       return;
     }
     const response = await axios.post('/api/survival-analysis', {
@@ -325,11 +324,11 @@ const fetchData = async (groupType) => {
       // 使用后端准备好的图表数据
       renderChart();
     } else {
-      toast.error(response.data.error || '分析失败');
+      message.error(response.data.error || '分析失败');
     }
   } catch (error) {
     console.error('获取生存数据失败:', error);
-    toast.error(`获取数据失败：${error}`);
+    message.error(`获取数据失败：${error}`);
   }
 };
 
@@ -528,7 +527,7 @@ const displayedMice = computed(() => {
   margin-bottom: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
-  background-color: white;
+  background-color: var(--n-color);
   overflow: hidden;
 }
 
@@ -763,54 +762,6 @@ const displayedMice = computed(() => {
   color: var(--n-text-color-3);
 }
 
-.table-responsive {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  
-}
-
-.table th {
-  background-color: var(--n-color-embedded);
-  color: var(--n-text-color-3);
-  font-weight: 600;
-  padding: 15px 12px;
-  text-align: left;
-  position: sticky;
-  top: 0;
-}
-
-.table td {
-  padding: 12px;
-  border-bottom: 1px solid var(--n-border-color);
-}
-
-.table tr:nth-child(even) {
-  background-color: var(--n-color-embedded);
-}
-
-.table-hover tbody tr:hover {
-  background-color: var(--n-info-color-suppl);
-}
-
-.badge {
-  padding: 0.4em 0.6em;
-  border-radius: 0.5rem;
-  color: white;
-  font-weight: 500;
-}
-
-.text-success {
-  color: var(--n-success-color);
-}
-
-.text-danger {
-  color: var(--n-error-color);
-}
-
 .text-muted {
   color: var(--n-text-color-3);
 }
@@ -820,132 +771,8 @@ const displayedMice = computed(() => {
   margin-right: 0.5rem;
 }
 
-.mx-3 {
-  margin-left: 1rem;
-  margin-right: 1rem;
-}
-
 .text-center {
   text-align: center;
-}
-
-.option-item {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    /* 自动换行设置 */
-    white-space: normal;
-    word-wrap: break-word;
-}
-
-/* 斑马纹效果 - 行间色差 */
-.option-item:nth-child(odd) {
-    background-color: var(--n-color);
-}
-
-.option-item:nth-child(even) {
-    background-color: var(--n-color-embedded);
-}
-
-.option-item:hover {
-  background-color: var(--n-info-color-suppl);
-}
-
-.option-item.selected {
-    background-color: var(--n-primary-color);
-    color: white;
-}
-
-/* 分页容器样式 */
-.pagination {
-    margin: 1.5rem 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-/* 分页项基础样式 */
-.page-item {
-    display: inline-block;
-    margin: 0 4px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 5px color-mix(in srgb, var(--n-text-color) 10%, transparent);
-}
-
-.page-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px color-mix(in srgb, var(--n-text-color) 15%, transparent);
-}
-
-/* 分页链接样式 */
-.page-link {
-    display: block;
-    min-width: 42px;
-    height: 42px;
-    line-height: 42px;
-    padding: 0 12px;
-    text-align: center;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 1rem;
-    color: var(--n-text-color-2);
-    background: linear-gradient(135deg, var(--n-color-embedded) 0%, var(--n-color-embedded) 100%);
-    border: 1px solid var(--n-border-color);
-    border-radius: 6px;
-    transition: all 0.25s ease;
-    cursor: pointer;
-}
-
-.page-link:hover {
-    color: var(--n-text-color-1);
-    background: linear-gradient(135deg, var(--n-color-embedded) 0%, var(--n-border-color) 100%);
-  border-color: var(--n-border-color);
-}
-
-/* 活动状态分页项 */
-.page-item.active .page-link {
-    color: white;
-    background: linear-gradient(135deg, var(--n-primary-color) 0%, var(--n-info-color) 100%);
-    border-color: var(--n-primary-color);
-    box-shadow: 0 4px 10px color-mix(in srgb, var(--n-primary-color) 30%, transparent);
-}
-
-.page-item.active .page-link:hover {
-    background: linear-gradient(135deg, var(--n-primary-color-hover) 0%, var(--n-info-color-hover) 100%);
-}
-
-/* 禁用状态分页项 */
-.page-item.disabled .page-link {
-    color: var(--n-text-color-disabled);
-  background: linear-gradient(135deg, var(--n-color-embedded) 0%, var(--n-color-embedded) 100%);
-    border-color: var(--n-border-color);
-    cursor: not-allowed;
-    opacity: 0.7;
-    pointer-events: none;
-}
-
-.page-item.disabled:hover {
-    transform: none;
-  box-shadow: 0 2px 5px color-mix(in srgb, var(--n-text-color) 10%, transparent);
-}
-
-/* 响应式设计 */
-@media (max-width: 576px) {
-    .page-link {
-        min-width: 36px;
-        height: 36px;
-        line-height: 36px;
-        padding: 0 8px;
-        font-size: 0.9rem;
-    }
-    
-    .page-item {
-        margin: 0 2px;
-    }
-}
-
-/* 焦点状态（可访问性） */
-.page-link:focus {
-    outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--n-primary-color) 25%, transparent);
 }
 
 .genotype-tree {

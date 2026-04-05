@@ -679,12 +679,10 @@
 <script setup>
 import { h, ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import axios from 'axios'
-import { toast } from 'vue3-toastify'
-import 'vue3-toastify/dist/index.css'
 import MouseDetailModal from './MouseDetailView.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
-import { useDialog } from 'naive-ui'
+import { useDialog, useMessage } from 'naive-ui'
 
 const geneStore = useGeneStore()
 const { mice, loading, genotypes, selectedGenes, alleleSuggestions } = storeToRefs(geneStore)
@@ -699,6 +697,7 @@ const { experiments } = storeToRefs(experimentStore)
 
 const settingStore = useSettingStore()
 const dialog = useDialog()
+const message = useMessage()
 const {showColumns} = storeToRefs(settingStore)
 
 
@@ -1337,7 +1336,7 @@ const batchDeleteMice = async () => {
           })
           await fetchCages()
           applyFilters()
-          toast.success(`批量删除${checkedRowKeys.value.length}只小鼠`)
+          message.success(`批量删除${checkedRowKeys.value.length}只小鼠`)
         } catch (error) {
           console.error('批量删除小鼠失败:', error)
         } finally {
@@ -1349,7 +1348,7 @@ const batchDeleteMice = async () => {
 
 const batchAddExperiment = async (batchTest) => {
   if (batchSelectedTests.value.length === 0) {
-    toast.warning('请先选择要操作的实验')
+    message.warning('请先选择要操作的实验')
     return
   }
   dialog.warning({
@@ -1367,7 +1366,7 @@ const batchAddExperiment = async (batchTest) => {
         })
         await loadMice()
         applyFilters()
-        toast.success("批量修改" + batchTest +"成功")
+        message.success("批量修改" + batchTest +"成功")
       } catch (error) {
         console.error('批量修改实验小鼠失败:', error)
       } finally {
@@ -1379,7 +1378,7 @@ const batchAddExperiment = async (batchTest) => {
 
 const validateMouse = (mouse) => {
   if (!mouse.id && modalMode.value === 'add') {
-    toast.warning('小鼠编号不能为空')
+    message.warning('小鼠编号不能为空')
     return false
   }
   return true
@@ -1487,7 +1486,7 @@ const saveMouse = async () => {
   if (!validateMouse(formData)) return
   
   if (selectedGenes.value.length > 1 && selectedGenes.value.some(g => g.locus === "WT")) {
-    toast.error("野生型不能添加基因型")
+    message.error("野生型不能添加基因型")
     return
   }
 
@@ -1495,14 +1494,14 @@ const saveMouse = async () => {
   // 检查必填字段
   for (const gene of selectedGenes.value) {
     if (existingLocus.includes(gene.locus)) {
-      toast.error(`基因位点 ${gene.locus} 出现重复`)
+      message.error(`基因位点 ${gene.locus} 出现重复`)
       return false
     } else {
       existingLocus.push(gene.locus)
     }
     if (gene.locus && gene.locus !== "WT") {
       if (!gene.allele1 || !gene.allele2) {
-        toast.error(`基因 ${gene.locus} 的等位基因必须完整`)
+        message.error(`基因 ${gene.locus} 的等位基因必须完整`)
         return false
       }
     }
@@ -1524,11 +1523,11 @@ const saveMouse = async () => {
     if (modalMode.value === 'add') {
       const response = await api.post('/mice', submitData)
       mice.value.push(response.data)
-      toast.success(`小鼠 ${submitData.id} 添加成功！`)
+      message.success(`小鼠 ${submitData.id} 添加成功！`)
     } else if (modalMode.value === 'edit') {
       await api.put(`/mice/${formData.tid}`, submitData)
       await loadMice()
-      toast.success(`小鼠 ${formData.id} 信息已更新！`)
+      message.success(`小鼠 ${formData.id} 信息已更新！`)
     }
     applyFilters()
     closeModal()
@@ -1538,14 +1537,14 @@ const saveMouse = async () => {
     
     if (error.response) {
       if (error.response.status === 400) {
-        toast.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
+        message.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
       } else if (error.response.status === 500) {
-        toast.error('服务器内部错误，请稍后再试')
+        message.error('服务器内部错误，请稍后再试')
       } else {
-        toast.error(`保存失败: ${error.response.data.error || '未知错误'}`)
+        message.error(`保存失败: ${error.response.data.error || '未知错误'}`)
       }
     } else {
-      toast.error(`保存失败: ${error.message || '网络错误'}`)
+      message.error(`保存失败: ${error.message || '网络错误'}`)
     }
   } finally {
     saving.value = false
@@ -1566,7 +1565,7 @@ const deleteMouse = async (mouseId) => {
     // 更新本地数据
     const index = mice.value.findIndex(m => m.tid === mouseId)
     if (index !== -1) {
-      toast.success(`小鼠 ${mice.value[index].id} 已删除！`)
+      message.success(`小鼠 ${mice.value[index].id} 已删除！`)
       mice.value.splice(index, 1)
       applyFilters()
     }
@@ -1581,12 +1580,12 @@ const deleteMouse = async (mouseId) => {
     
     if (error.response) {
       if (error.response.status === 404) {
-        toast.error('未找到该小鼠记录')
+        message.error('未找到该小鼠记录')
       } else {
-        toast.error(`删除失败: ${error.response.data.error || '服务器错误'}`)
+        message.error(`删除失败: ${error.response.data.error || '服务器错误'}`)
       }
     } else {
-      toast.error(`删除失败: ${error.message || '网络错误'}`)
+      message.error(`删除失败: ${error.message || '网络错误'}`)
     }
   }
 }
@@ -1666,7 +1665,7 @@ const selectTest = (type, experiment) => {
   } else if (type === 'batch') {
     const index = batchSelectedTests.value.findIndex(p => p.id === experiment.id)
     if (index !== -1) {
-      toast.info("请勿选择重复实验")
+      message.info("请勿选择重复实验")
       return
     }
     batchSelectedTests.value.push(experiment)
@@ -1768,7 +1767,7 @@ const saveTemplateMice = async () => {
   })
 
   if (hasEmptyId) {
-    toast.error("存在ID为空的小鼠")
+    message.error("存在ID为空的小鼠")
     return
   }
   
@@ -1777,7 +1776,7 @@ const saveTemplateMice = async () => {
     const api = createAxiosInstance()
     await api.post(`/mice/${templateMouse.value.tid}`, newMice.value)
     
-    toast.success(`按模板添加${newMice.value.length}只小鼠！`)
+    message.success(`按模板添加${newMice.value.length}只小鼠！`)
     await loadMice()
     applyFilters()
     if (templateMouse.value.cage_id) {
@@ -1791,14 +1790,14 @@ const saveTemplateMice = async () => {
     
     if (error.response) {
       if (error.response.status === 404) {
-        toast.error('未找到该小鼠记录')
+        message.error('未找到该小鼠记录')
       } else if (error.response.status === 400) {
-        toast.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
+        message.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
       } else {
-        toast.error(`添加失败: ${error.response.data.error || '服务器错误'}`)
+        message.error(`添加失败: ${error.response.data.error || '服务器错误'}`)
       }
     } else {
-      toast.error(`添加失败: ${error.message || '网络错误'}`)
+      message.error(`添加失败: ${error.message || '网络错误'}`)
     }
   } finally {
     saving.value = false
@@ -2032,37 +2031,6 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--n-text-color-2);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: all 0.3s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: var(--n-primary-color);
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 20%, transparent);
-}
-
-.form-group textarea {
-  min-height: 100px;
-  resize: vertical;
-}
-
 .button-group {
   display: flex;
   justify-content: flex-end;
@@ -2123,7 +2091,7 @@ onMounted(async () => {
 .empty-state button {
   padding: 10px 20px;
   background: var(--n-primary-color);
-  color: white;
+  color: var(--n-color);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -2440,7 +2408,7 @@ onMounted(async () => {
   justify-content: center;
   margin-right: 8px;
   font-size: 12px;
-  color: white;
+  color: var(--n-color);
   font-weight: bold;
   flex-shrink: 0;
   overflow: hidden;
@@ -2453,14 +2421,6 @@ onMounted(async () => {
 
 .sex-male {
   background-color: var(--n-info-color);
-}
-
-.genotype-filter {
-  display: contents;
-  gap: 5px;
-  margin-bottom: 20px;
-  background-color: var(--n-color-embedded);
-  border-radius: 8px;
 }
 
 .custom-select {

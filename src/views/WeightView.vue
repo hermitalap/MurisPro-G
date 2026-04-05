@@ -122,9 +122,7 @@
 
 <script setup>
 import { h, ref, computed, onMounted, watch } from 'vue'
-import { NButton, NSpace, useDialog } from 'naive-ui'
-import { toast } from 'vue3-toastify';
-import 'vue3-toastify/dist/index.css';
+import { NButton, NSpace, useDialog, useMessage } from 'naive-ui'
 import axios from 'axios'
 
 // 状态管理
@@ -136,6 +134,7 @@ const showAddModal = ref(false)
 const editingRecord = ref(null)
 const selectedMouse = ref(null)
 const dialog = useDialog()
+const message = useMessage()
 
 // 筛选和排序
 const filters = ref({
@@ -252,7 +251,7 @@ try {
     applySorting()
 } catch (error) {
     console.error('加载体重记录失败:', error)
-    toast.error('加载体重记录失败')
+    message.error('加载体重记录失败')
 } finally {
     loading.value = false
 }
@@ -263,26 +262,26 @@ try {
     saving.value = true
     
     if (!newRecord.value.weight || parseFloat(newRecord.value.weight) <= 0) {
-    toast.error('请输入有效的体重值')
+    message.error('请输入有效的体重值')
     return
     }
     if (!newRecord.value.record_date) {
-    toast.error('请输入记录时间')
+    message.error('请输入记录时间')
     return
     }
     
     if (editingRecord.value) {
         // 更新记录
         await axios.put(`/api/weight_records/${editingRecord.value.id}`, newRecord.value)
-        toast.success('体重记录更新成功')
+        message.success('体重记录更新成功')
     } else {
         // 添加新记录
         await axios.post('/api/weight_records', newRecord.value)
-        toast.success('体重记录添加成功')
+        message.success('体重记录添加成功')
     }
     } catch (error) {
         console.error('保存体重记录失败:', error)
-        toast.error('保存体重记录失败')
+        message.error('保存体重记录失败')
     } finally {
         saving.value = false
     }
@@ -316,11 +315,11 @@ const deleteRecord = async (id) => {
     onPositiveClick: async () => {
       try {
         await axios.delete(`/api/weight_records/${id}`)
-        toast.success('体重记录删除成功')
+        message.success('体重记录删除成功')
         loadWeightRecords()
       } catch (error) {
         console.error('删除体重记录失败:', error)
-        toast.error('删除体重记录失败')
+        message.error('删除体重记录失败')
       }
     }
   })
@@ -472,12 +471,6 @@ margin-top: 20px;
 gap: 15px;
 }
 
-.actions-cell {
-display: flex;
-align-items: center;
-gap: 6px;
-}
-
 /* 响应式设计 */
 @media (max-width: 1200px) {
 .search-controls {
@@ -488,11 +481,6 @@ gap: 6px;
 .filter-group {
     margin-bottom: 10px;
     width: 100%;
-}
-
-.filter-group input,
-.filter-group select {
-    flex-grow: 1;
 }
 }
 
@@ -506,39 +494,6 @@ gap: 6px;
     margin-bottom: 15px;
 }
 
-.mouse-table {
-    font-size: 14px;
-}
-
-.mouse-table th,
-.mouse-table td {
-    padding: 8px 6px;
-}
-}
-
-.mouse-table {
-  width: 100%;
-  min-width: 760px;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--n-text-color) 5%, transparent);
-  cursor: pointer;
-  position: relative;
-  user-select: none;
-}
-
-.mouse-table th {
-  background: var(--n-color-embedded);
-  color: var(--n-text-color-3);
-  font-weight: 600;
-  text-align: left;
-  padding: 14px 12px;
-  border-bottom: 2px solid var(--n-border-color);
-}
-
-.mouse-table td {
-  padding: 12px;
-  border-bottom: 1px solid var(--n-border-color);
 }
 
 .modal-content {
@@ -685,28 +640,6 @@ border: 1px solid var(--n-border-color);
 border-radius: 12px;
 }
 
-.filter-group label {
-margin-right: 8px;
-font-weight: 500;
-white-space: nowrap;
-}
-
-.filter-group input {
-  flex: 1 1 150px;
-  padding: 10px 15px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 6px;
-  font-size: 1rem;
-  min-width: 0;
-  transition: border 0.3s;
-}
-
-.filter-group input:focus {
-  border-color: var(--n-primary-color);
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 20%, transparent);
-}
-
 @media (max-width: 768px) {
 .section {
   padding: 18px;
@@ -714,19 +647,6 @@ white-space: nowrap;
 
 .filter-group {
   padding: 12px;
-}
-
-.filter-group label {
-  width: 100%;
-  margin-right: 0;
-}
-
-.filter-group input {
-  width: 100%;
-}
-
-.mouse-table {
-  min-width: 680px;
 }
 }
 </style>

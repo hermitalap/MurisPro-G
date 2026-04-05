@@ -55,7 +55,7 @@
               <div class="mouse-details">{{ mouse.sex }} · {{ mouse.strain }} · {{ mouse.birth_date }}</div>
             </div>
           </div>
-          <div v-if="filteredMice.length === 0" style="color:gray;">
+          <div v-if="filteredMice.length === 0" style="color: var(--n-text-color-disabled);">
             暂无可选小鼠，请在小鼠页面为小鼠添加"完成实验"
           </div>
         </div>

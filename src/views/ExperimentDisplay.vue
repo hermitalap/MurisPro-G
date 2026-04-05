@@ -132,8 +132,6 @@
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
 import { useRoute, onBeforeRouteUpdate } from 'vue-router';
 import axios from 'axios';
-import { toast } from 'vue3-toastify';
-import 'vue3-toastify/dist/index.css';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
 import { Chart } from 'chart.js/auto';
@@ -141,7 +139,7 @@ import regression from 'regression';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
-import { useDialog } from 'naive-ui'
+import { useDialog, useMessage } from 'naive-ui'
 
 const geneStore = useGeneStore()
 const {mice} = storeToRefs(geneStore)
@@ -151,6 +149,7 @@ const experimentStore = useExperimentStore()
 const {experiments} = storeToRefs(experimentStore)
 const {fetchPredefinedGroups} = experimentStore
 const dialog = useDialog()
+const message = useMessage()
 
 
 //切换实验时
@@ -232,7 +231,7 @@ var cellContextMenu = [
         label: "编辑记录",
         action: (e, cell) => {
             if (!cell) {
-                toast.info('未选中单元格');
+                message.info('未选中单元格');
                 return;
             }
             const table = cell.getTable()
@@ -258,10 +257,10 @@ var cellContextMenu = [
                     }
                     try {
                         await axios.patch(`/api/experiments/${rowData.__experimentId}`, updateData);
-                        toast.success('记录更新成功');
+                        message.success('记录更新成功');
                     } catch (error) {
                         console.error('更新记录失败:', error);
-                        toast.error('更新失败: ' + (error.response?.data?.error || error.message));
+                        message.error('更新失败: ' + (error.response?.data?.error || error.message));
                         // 恢复原始值
                         cell.restoreOldValue();
                     } finally {
@@ -298,7 +297,7 @@ var cellContextMenu = [
         label: "删除记录",
         action: (e, cell) => {
             if (!cell) {
-                toast.info('未选中单元格');
+                message.info('未选中单元格');
                 return;
             }
             const rowData = cell.getRow().getData();
@@ -423,7 +422,7 @@ const fetchGroups = async () => {
 try {
     const response = await axios.get(`/api/experiments/${experimentId.value}/grouped_mice`, {cancelToken: currentRequestToken.token});
     if (response.data.error) {
-        toast.info("请在设置页面为本实验设置预设分组")
+        message.info("请在设置页面为本实验设置预设分组")
         return
     }
     allGroups.value = response.data;
@@ -433,7 +432,7 @@ try {
     await generateChart()
 } catch (error) {
     console.error('获取小鼠错误:', error);
-    toast.error('获取小鼠错误: ' + error.message);
+    message.error('获取小鼠错误: ' + error.message);
 }
 }
 
@@ -444,12 +443,12 @@ const handleGroupUpdate = (updatedGroup) => {
 const saveGroup = async () => {
     try {
         await axios.put(`/api/groups/predefined/${allGroups.value.id}`, allGroups.value)
-        toast.success('预设ID分组保存成功')
+        message.success('预设ID分组保存成功')
         fetchPredefinedGroups()
         showGroupModal.value = false
     } catch (error) {
         console.error('保存分组失败:', error)
-        toast.error(error.response?.data?.error || '保存分组失败')
+        message.error(error.response?.data?.error || '保存分组失败')
     }
 }
 
@@ -478,7 +477,7 @@ try {
 } catch (error) {
     if (!axios.isCancel(error)) {
         console.error('初始化失败:', error);
-        toast.error('初始化失败: ' + error.message);
+        message.error('初始化失败: ' + error.message);
     }
 }
 }
@@ -589,9 +588,9 @@ async function exportData () {
             const dataArray = Array.from(uint8array)
             const state = await window.pywebview.api.save_file_dialog(dataArray, filename)
             if(state.success){
-                toast.success(`导出成功，文件路径：${state.path}`)
+                message.success(`导出成功，文件路径：${state.path}`)
             } else {
-                toast.info(state.message || "导出失败")
+                message.info(state.message || "导出失败")
             }
         } else {
             const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -601,7 +600,7 @@ async function exportData () {
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
-            toast.success("导出成功")
+            message.success("导出成功")
         }
     }
 }
@@ -613,7 +612,7 @@ try {
     hasData.value = experimentData.value.length > 0;
 } catch (error) {
     console.error('获取数据:', error);
-    toast.error('获取数据: ' + error.message);
+    message.error('获取数据: ' + error.message);
 }
 }
 
@@ -623,13 +622,13 @@ try{
     candidateMice.value = miceExperiment.data
 } catch (error) {
     console.error('获取数据:', error);
-    toast.error('获取数据: ' + error.message);
+    message.error('获取数据: ' + error.message);
 }
 }
 
 async function generateChart() {
     if (!hasData.value) {
-        toast.info('暂无实验数据，无法生成图表');
+        message.info('暂无实验数据，无法生成图表');
         return;
     }
     // 清空图表容器
@@ -1363,7 +1362,7 @@ try {
     });
 } catch (error) {
     console.error('打开录入模态框失败:', error);
-    toast.error('打开录入模态框失败: ' + error.message);
+    message.error('打开录入模态框失败: ' + error.message);
 }
 }
 
@@ -1381,11 +1380,11 @@ async function deleteRecord() {
         onPositiveClick: async () => {
             try {
                 await axios.delete(`/api/experiments/${contextMenu.rowData.experimentId}`);
-                toast.success('记录删除成功');
+                message.success('记录删除成功');
                 await fetchData();
             } catch (error) {
                 console.error('删除记录失败:', error);
-                toast.error('删除失败: ' + (error.response?.data?.error || error.message));
+                message.error('删除失败: ' + (error.response?.data?.error || error.message));
             }
         }
     })
@@ -1394,18 +1393,18 @@ async function deleteRecord() {
 async function saveExperimentRecord() {
 try {
     if (!recordTabulatorInstance.value) {
-        toast.error('表格未初始化');
+        message.error('表格未初始化');
         return;
     }
     
     const allRows = recordTabulatorInstance.value.getData();
     
     if (allRows.length === 0) {
-        toast.info('请填写数据');
+        message.info('请填写数据');
         return;
     }
     if (recordDate.value === '') {
-        toast.info('请填写记录日期');
+        message.info('请填写记录日期');
         return;
     }
     isSubmitting.value = true;
@@ -1430,7 +1429,7 @@ try {
                 }
             }
             if (!is_integrated) {
-                toast.info(`小鼠 ${row.mouse_id} 的字段 ${lack_field} 是必填的`);
+                message.info(`小鼠 ${row.mouse_id} 的字段 ${lack_field} 是必填的`);
                 return;
             } else {
                 continue; // 跳过未填写的行
@@ -1451,14 +1450,14 @@ try {
     };
     
     const response = await axios.post('/api/experiments', requestData);
-    toast.success(response.data.message);
+    message.success(response.data.message);
     
     showRecordModal.value = false;
     await fetchData();
     generateChart()
 } catch (error) {
     console.error('保存实验记录失败:', error);
-    toast.error('保存失败: ' + (error.response?.data?.error || error.message));
+    message.error('保存失败: ' + (error.response?.data?.error || error.message));
 } finally {
     isSubmitting.value = false;
 }
@@ -1524,28 +1523,6 @@ font-weight: 500;
 .record-date-picker,
 .researcher-input {
  width: 100%;
-}
-
-.form-select-sm {
-width: auto;
-padding: 0.25rem 0.5rem;
-font-size: 0.875rem;
-}
-
-.d-flex {
-display: flex;
-}
-
-.justify-content-between {
-justify-content: space-between;
-}
-
-.mb-4 {
-margin-bottom: 1.5rem;
-}
-
-.me-2 {
-margin-right: 0.5rem;
 }
 
 .mt-3 {

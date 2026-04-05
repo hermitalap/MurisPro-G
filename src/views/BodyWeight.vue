@@ -245,12 +245,10 @@
 
 <script setup>
 import { h, ref, computed, nextTick, onMounted, watch } from 'vue'
-import { NInputNumber } from 'naive-ui'
+import { NInputNumber, useMessage } from 'naive-ui'
 import axios from 'axios'
 import Chart from 'chart.js/auto'
 import regression from 'regression'
-import { toast } from 'vue3-toastify'
-import 'vue3-toastify/dist/index.css'
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 
@@ -260,6 +258,7 @@ const { addGroup, removeGroup, clearGroups, getTempGroups, onLocusSelect, onComb
 const experimentStore = useExperimentStore()
 const { predefinedGroups, selectedPredefinedGroupId, showChartType } = storeToRefs(experimentStore)
 const { getPredefinedGroups } = experimentStore
+const message = useMessage()
 const chartTypeOptions = [
     { label: '使用预设分组', value: 'pred' },
     { label: '使用临时分组', value: 'temp' }
@@ -398,7 +397,7 @@ const handleSaveWeight = () => {
     })
 
     if (records.length === 0) {
-        toast.error('请至少填写一条有效的记录')
+        message.error('请至少填写一条有效的记录')
         return
     }
 
@@ -426,7 +425,7 @@ const confirmSave = async () => {
     try {
         // 发送批量请求
         await axios.post('/api/weight', { records })
-        toast.success(`成功保存 ${records.length} 条记录！`)
+        message.success(`成功保存 ${records.length} 条记录！`)
         weightValues.value = {}
         showModal.value = false
         
@@ -435,7 +434,7 @@ const confirmSave = async () => {
         weightRecords.value = recordsResponse.data
     } catch (error) {
         console.error('保存体重记录失败:', error)
-        toast.error('保存失败: ' + (error.response?.data?.error || error.message))
+        message.error('保存失败: ' + (error.response?.data?.error || error.message))
     } finally {
         confirmRecordCount.value = 0
         confirmDate.value = null
@@ -454,25 +453,25 @@ const cancelConfirm = () => {
 const showChart = async (groupType) => {
     try {
         if (weightRecords.value.length === 0) {
-        toast.info('没有可用的体重记录数据')
+        message.info('没有可用的体重记录数据')
         return
         }
         let groups = []
         if (groupType === 'temp') {
             if (tempGroups.value.length === 0) {
-                toast.info('请至少添加一个分组');
+                message.info('请至少添加一个分组');
                 return;
             }  
             groups = await getTempGroups()
         } else if (groupType === 'pred') {
             if (!selectedPredefinedGroupId.value) {
-                toast.info('请选择预设分组');
+                message.info('请选择预设分组');
                 return;
             }
             groups = await getPredefinedGroups()
         }
         if (groups.length === 0) {
-            toast.info('预设分组暂无信息');
+            message.info('预设分组暂无信息');
             return;
         }
         hasData.value = true
@@ -480,7 +479,7 @@ const showChart = async (groupType) => {
         generateChart(weightRecords.value, groups)
     } catch (error) {
         console.error('生成图表失败:', error)
-        toast.error('生成图表失败: ' + error.message)
+        message.error('生成图表失败: ' + error.message)
     }
 }
 
@@ -502,11 +501,11 @@ try {
     // 处理数据
     groups.forEach(group => {
         const groupName = group.name || '暂无名称'
-        const color = group.color || 'black'
+        const color = group.color || '#555'
         const groupMice = group.mice || []
 
     if (groupMice.length === 0){
-        toast.info("所选组别无小鼠！")
+        message.info("所选组别无小鼠！")
     }
     
     // 获取这些小鼠的体重记录
@@ -515,7 +514,7 @@ try {
     )
     
     if (groupRecords.length === 0){
-        toast.info("所选组别无数据！")
+        message.info("所选组别无数据！")
     }
     // 1. 散点图数据集（显示所有数据点）
     const scatterData = []
@@ -909,7 +908,7 @@ init()
 margin-bottom: 1.5rem;
 border-radius: 8px;
 box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
-background-color: white;
+background-color: var(--n-color);
 overflow: hidden;
 }
 
@@ -937,11 +936,6 @@ font-weight: 600;
 margin: 0;
 }
 
-.action-buttons {
-display: flex;
-gap: 10px;
-}
-
 .form-group {
 margin-bottom: 1rem;
 }
@@ -950,19 +944,6 @@ margin-bottom: 1rem;
 display: block;
 margin-bottom: 0.5rem;
 font-weight: 500;
-}
-
-.form-control {
-display: block;
-width: 100%;
-padding: 0.5rem;
-font-size: 1rem;
-line-height: 1.5;
-color: var(--n-text-color-2);
-background-color: var(--n-color);
-border: 1px solid var(--n-border-color);
-border-radius: 4px;
-transition: border-color 0.15s;
 }
 
 .dialog-container {
@@ -978,7 +959,7 @@ box-shadow: 0 4px 20px color-mix(in srgb, var(--n-text-color) 20%, transparent);
 .modal-header {
 padding: 1rem;
 background-color: var(--primary);
-color: white;
+color: var(--n-color);
 border-radius: 8px 8px 0 0;
 display: flex;
 justify-content: space-between;
@@ -1000,28 +981,6 @@ margin-top: 1rem;
 
 .table-wrapper {
 overflow-x: auto;
-}
-
-.table {
-width: 100%;
-border-collapse: collapse;
-margin-bottom: 1rem;
-}
-
-.table th, 
-.table td {
-padding: 0.75rem;
-border: 1px solid var(--n-border-color);
-text-align: left;
-}
-
-.table th {
-background-color: var(--n-color-embedded);
-font-weight: 600;
-}
-
-.table tbody tr:hover {
-background-color: var(--n-hover-color);
 }
 
 .weight-input {
@@ -1048,10 +1007,6 @@ width: 100%;
 
 .mb-4 {
 margin-bottom: 1.5rem;
-}
-
-.me-2 {
-margin-right: 0.5rem;
 }
 
 /* 图表控制区域 */

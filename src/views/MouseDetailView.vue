@@ -134,12 +134,13 @@
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import * as d3 from 'd3'
 import { Chart, registerables } from 'chart.js'
-import { toast } from 'vue3-toastify';
+import { useMessage } from 'naive-ui';
 import { useGeneStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 
 const geneStore = useGeneStore()
 const { mice } = storeToRefs(geneStore)
+const message = useMessage()
 
 Chart.register(...registerables)
 
@@ -247,12 +248,12 @@ const saveNewRecord = async () => {
       body: JSON.stringify(recordToSave)
     })
     showAddRecordForm.value = false
-    toast.success('状态记录已添加')
+    message.success('状态记录已添加')
     // 刷新数据
     await fetchMouseData()
   } catch (error) {
     console.error('添加记录失败:', error)
-    toast.error('添加记录失败，请重试')
+    message.error('添加记录失败，请重试')
   }
 }
     
@@ -869,7 +870,7 @@ position: relative;
 }
 
 .status-item.deleting {
-background-color: var(--n-color)5f5;
+background-color: color-mix(in srgb, var(--n-error-color) 15%, var(--n-color));
 border-color: var(--n-error-color-suppl);
 box-shadow: 0 0 0 1px var(--n-error-color-suppl);
 }
@@ -904,10 +905,6 @@ font-size: 16px;
 font-weight: 600;
 padding-bottom: 10px;
 border-bottom: 1px solid var(--n-border-color);
-}
-
-.info-content {
-flex: 1;
 }
 
 .info-row {
@@ -1012,26 +1009,6 @@ height: 100% !important;
 display: block;
 }
 
-.action-buttons {
-display: flex;
-justify-content: flex-end;
-gap: 15px;
-margin-top: 25px;
-padding-top: 20px;
-border-top: 1px solid var(--n-border-color);
-}
-
-.btn {
-padding: 10px 20px;
-border-radius: 6px;
-font-size: 14px;
-display: flex;
-align-items: center;
-gap: 8px;
-cursor: pointer;
-transition: all 0.2s;
-}
-
 /* 响应式设计 */
 @media (max-width: 1200px) {
 .mouse-detail-modal {
@@ -1067,12 +1044,6 @@ transition: all 0.2s;
 .weight-chart {
     grid-column: 1;
     grid-row: 4;
-}
-
-.action-buttons {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
 }
 }
 
@@ -1124,65 +1095,6 @@ transition: all 0.2s;
 transform: translateY(-1px);
 }
 
-.modal-content {
-background: var(--n-color);
-border-radius: 12px;
-width: 90%;
-max-width: 500px;
-box-shadow: 0 10px 30px color-mix(in srgb, var(--n-text-color) 20%, transparent);
-animation: modalIn 0.3s ease;
-}
-
-@keyframes modalIn {
-from { opacity: 0; transform: translateY(-20px); }
-to { opacity: 1; transform: translateY(0); }
-}
-
-.modal-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-padding: 20px;
-border-bottom: 1px solid var(--n-border-color);
-}
-
-.modal-header h3 {
-margin: 0;
-color: var(--n-text-color-1);
-}
-
-.close-button {
-background: none;
-border: none;
-cursor: pointer;
-color: var(--n-text-color-3);
-font-size: 24px;
-padding: 5px;
-}
-
-.close-button:hover {
-color: var(--n-text-color-1);
-}
-
-.btn-cancel {
-background: var(--n-color-embedded);
-color: var(--n-text-color-2);
-border: 1px solid var(--n-border-color);
-}
-
-.btn-cancel:hover {
-background: var(--n-border-color);
-}
-
-.btn-confirm {
-background: var(--n-primary-color);
-color: white;
-}
-
-.btn-confirm:hover {
-background: var(--n-primary-color-hover);
-}
-
 .add-record-form {
   background-color: var(--n-color-embedded);
   border-radius: 6px;
@@ -1200,22 +1112,6 @@ background: var(--n-primary-color-hover);
   font-weight: 500;
   color: var(--n-text-color-2);
   margin-bottom: 5px;
-}
-
-.add-record-form input[type="date"] {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 4px;
-}
-
-.add-record-form textarea {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 4px;
-  resize: vertical;
-  min-height: 60px;
 }
 
 .form-buttons {

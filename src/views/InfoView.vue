@@ -40,18 +40,15 @@
       </div>
     </main>
     <!-- 二维码弹窗 -->
-    <div v-if="showQrModal" class="modal-overlay" @click="showQrModal = false">
-      <div class="qr-modal" @click.stop>
-        <n-button quaternary circle class="close-btn" @click="showQrModal = false">
-          <AppIcon  name="close" />
-        </n-button>
+    <n-modal v-model:show="showQrModal" preset="card" :show-icon="false" style="width: 520px;">
+      <div class="qr-modal-content">
         <h3>扫码联系</h3>
         <n-space justify="center" class="qr-code-container">
           <img src="@/assets/qrcode.png" alt="qrcode" style="max-height: 450px;">
         </n-space>
         <p class="qr-tip">使用手机QQ扫描二维码</p>
       </div>
-    </div>
+    </n-modal>
   </div>
 </template>
 
@@ -128,54 +125,12 @@ const showQrModal = ref(false)
 .promo-button.qr-button i { color: var(--n-success-color); }
 
 /* 二维码弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: color-mix(in srgb, var(--n-text-color) 70%, transparent);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(5px);
-}
-
-.qr-modal {
-  background: var(--n-color);
-  border-radius: 20px;
-  padding: 2rem;
+.qr-modal-content {
   text-align: center;
-  position: relative;
-  max-height: 700px;
-  box-shadow: 0 20px 60px color-mix(in srgb, var(--n-text-color) 30%, transparent);
-  animation: modalAppear 0.3s ease-out;
+  padding: 1rem 0;
 }
 
-@keyframes modalAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.8) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.close-btn {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  transition: background 0.3s;
-}
-
-.close-btn:hover {
-  background: var(--n-color-embedded);
-}
-
-.qr-modal h3 {
+.qr-modal-content h3 {
   margin-bottom: 1.5rem;
   color: var(--n-text-color-1);
   font-size: 1.5rem;
