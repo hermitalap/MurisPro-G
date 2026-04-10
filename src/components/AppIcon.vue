@@ -57,7 +57,10 @@ import {
   TrashBinOutline,
   TrashOutline,
   TrendingDownOutline,
-  WarningOutline
+  WarningOutline,
+  MaleOutline,
+  FemaleOutline,
+  MaleFemaleOutline
 } from '@vicons/ionicons5'
 
 const props = defineProps({
@@ -131,7 +134,10 @@ const iconMap = {
   visibility: EyeOutline,
   visibility_off: EyeOffOutline,
   warning: WarningOutline,
-  arrow_forward: ArrowForwardOutline
+  arrow_forward: ArrowForwardOutline,
+  male: MaleOutline,
+  female: FemaleOutline,
+  male_female: MaleFemaleOutline
 }
 
 const resolvedIcon = computed(() => {

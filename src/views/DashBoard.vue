@@ -142,41 +142,43 @@
               @click="handleCageClick(cage)"
             >
               <n-card size="small" :bordered="true" class="cage-card-body">
-                <div class="cage-card-actions">
-                  <n-dropdown
-                    trigger="click"
-                    :options="cageActionOptions"
-                    @select="(key) => handleCageActionSelect(key, cage)"
-                  >
-                    <n-button quaternary circle size="small" class="drag-dot-btn">
-                      <span class="dot-glyph">...</span>
-                    </n-button>
-                  </n-dropdown>
-                </div>
-
                 <div class="cage-header" @click.stop="openCageModal(cage)">
-                  <div class="cage-header-left">
-                    <span class="cage-header-type">{{ resolveCageSexMark(cage) }}</span>
-                  </div>
-                  <div class="cage-header-center">
-                    <div class="cage-header-main">{{ cage.cage_id || '-' }}</div>
-                    <n-tag 
-                      size="small" 
-                      :type="getGenotypeTagType(cage.mice_genotype)" 
-                      round
-                      class="cage-genotype-badge"
-                    >
-                      {{ cage.mice_genotype || '-' }}
-                    </n-tag>
-                  </div>
-                  <div class="cage-header-right">
-                    <n-tag 
-                      size="tiny" 
-                      :type="getCageCountType(cage)" 
-                      round
-                    >
-                      {{ cage.mice?.length ?? cage.mice_count ?? 0 }}
-                    </n-tag>
+                  <div class="cage-header-top">
+                    <div class="cage-identifier">
+                      <div class="cage-sex-mark" :class="getCageSexClass(cage)">
+                        <AppIcon :name="getCageSexIcon(cage)" />
+                      </div>
+                      <div class="cage-id-group">
+                        <span class="cage-id-text">{{ cage.cage_id || '-' }}</span>
+                        <n-tag 
+                          v-if="cage.mice_genotype"
+                          size="small" 
+                          :type="getGenotypeTagType(cage.mice_genotype)" 
+                          round
+                          class="cage-genotype-badge"
+                        >
+                          {{ cage.mice_genotype }}
+                        </n-tag>
+                      </div>
+                    </div>
+                    <div class="cage-actions-right">
+                      <n-tag 
+                        size="small" 
+                        :type="getCageCountType(cage)" 
+                        round
+                      >
+                        {{ cage.mice?.length ?? cage.mice_count ?? 0 }}只
+                      </n-tag>
+                      <n-dropdown
+                        trigger="click"
+                        :options="cageActionOptions"
+                        @select="(key) => handleCageActionSelect(key, cage)"
+                      >
+                        <n-button quaternary circle size="tiny" class="action-btn" @click.stop>
+                          <AppIcon name="more_horiz" />
+                        </n-button>
+                      </n-dropdown>
+                    </div>
                   </div>
                 </div>
 
@@ -184,8 +186,7 @@
                   <n-data-table
                     :columns="mouseTableColumns"
                     :data="getCageDisplayRows(cage)"
-                    :max-height="220"
-                    :min-height="220"
+                    flex-height
                     size="small"
                     :bordered="false"
                     :single-line="false"
@@ -465,12 +466,11 @@ const searchResults = ref([])
 const currentResultIndex = ref(-1)
 const highlightedCageId = ref(null)
 
-// 交换状态
 const swapStatus = ref(null)
 const sourceCage = ref(null)
 const targetCage = ref(null)
 const matrixRows = ref(4)
-const matrixCols = ref(5)
+const matrixCols = ref(4)
 
 const showTemporaryDrawer = ref(false)
 
@@ -752,11 +752,20 @@ function handleCageActionSelect(key, cage) {
   }
 }
 
-function resolveCageSexMark(cage) {
-  if (cage?.mice_sex === 'F') return '♀'
-  if (cage?.mice_sex === 'M') return '♂'
-  if (cage?.mice_sex === 'Mixed') return '♂♀'
-  return cage?.cage_type === 'breeding' ? '♂♀' : '○'
+function getCageSexIcon(cage) {
+  if (cage?.cage_type === 'breeding') return 'male_female'
+  if (cage?.mice_sex === 'Mixed') return 'male_female'
+  if (cage?.mice_sex === 'F') return 'female'
+  if (cage?.mice_sex === 'M') return 'male'
+  return 'help'
+}
+
+function getCageSexClass(cage) {
+  if (cage?.cage_type === 'breeding') return 'sex-mark-breeding'
+  if (cage?.mice_sex === 'Mixed') return 'sex-mark-breeding'
+  if (cage?.mice_sex === 'F') return 'sex-mark-female'
+  if (cage?.mice_sex === 'M') return 'sex-mark-male'
+  return 'sex-mark-unknown'
 }
 
 function getGenotypeTagType(genotype) {
@@ -1327,6 +1336,8 @@ function isCageHighlighted(cageId) {
 
 .matrix-toolbar {
   margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
 }
 
 .matrix-label {
@@ -1447,9 +1458,10 @@ function isCageHighlighted(cageId) {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding-top: 28px;
+  padding: 12px;
   overflow: hidden;
   box-sizing: border-box;
+  gap: 8px;
 }
 
 .cage-card :deep(.n-card__content > *:not(.cage-table-wrapper)) {
@@ -1457,18 +1469,19 @@ function isCageHighlighted(cageId) {
 }
 
 .cage-card :deep(.n-data-table-wrapper) {
-  max-height: 220px !important;
+  max-height: 100% !important;
   overflow: hidden !important;
   flex: 1 !important;
   min-height: 0 !important;
 }
 
 .cage-card :deep(.n-data-table) {
-  max-height: 220px !important;
+  max-height: 100% !important;
+  height: 100%;
 }
 
 .cage-card :deep(.n-data-table-body) {
-  max-height: 188px !important;
+  max-height: calc(100% - 32px) !important; /* reserve space for table header */
   overflow-y: auto !important;
 }
 
@@ -1480,35 +1493,17 @@ function isCageHighlighted(cageId) {
   outline: 2px solid color-mix(in srgb, var(--n-error-color) 40%, transparent);
 }
 
-.cage-card-actions {
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-}
-
-.drag-dot-btn {
-  width: 26px;
-  height: 26px;
-}
-
-.dot-glyph {
-  font-size: 16px;
-  letter-spacing: 1px;
-  line-height: 1;
-  color: var(--n-text-color-2);
+.action-btn {
+  font-size: 18px;
 }
 
 .cage-header {
-  display: grid;
-  grid-template-columns: 40px 1fr auto;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 12px;
   background: var(--n-color-embedded);
   border-radius: 8px;
-  margin-bottom: 8px;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -1517,48 +1512,80 @@ function isCageHighlighted(cageId) {
   background: color-mix(in srgb, var(--n-color-embedded) 80%, var(--n-primary-color));
 }
 
-.cage-header-left {
+.cage-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.cage-identifier {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.cage-id-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cage-sex-mark {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: white;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
-.cage-header-type {
-  font-size: 22px;
-  line-height: 1;
+.sex-mark-breeding {
+  background-color: var(--n-warning-color);
 }
 
-.cage-header-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
+.sex-mark-female {
+  background-color: var(--n-error-color);
 }
 
-.cage-header-main {
-  font-size: 22px;
+.sex-mark-male {
+  background-color: var(--n-info-color);
+}
+
+.sex-mark-unknown {
+  background-color: var(--n-text-color-disabled);
+}
+
+.cage-id-text {
+  font-size: 20px;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  color: var(--n-text-color-1);
+}
+
+.cage-actions-right {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .cage-genotype-badge {
   max-width: 100%;
+  font-weight: 600;
 }
 
 .cage-genotype-badge :deep(.n-tag__content) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.cage-header-right {
-  display: flex;
-  align-items: center;
 }
 
 .cage-card :deep(.n-data-table) {
@@ -1572,25 +1599,23 @@ function isCageHighlighted(cageId) {
 .cage-table-wrapper {
   flex: 1;
   min-height: 0;
-  max-height: 220px;
+  height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  border: 1px solid var(--n-border-color);
+}
+
+.cage-table-wrapper :deep(.n-data-table) {
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.cage-table-wrapper :deep(.n-data-table) {
-  flex: 1;
-  max-height: 220px;
-  overflow: hidden;
-}
-
-.cage-table-wrapper :deep(.n-data-table-body) {
-  max-height: 188px !important;
-  overflow-y: auto !important;
-}
-
 .cage-table-wrapper :deep(.n-data-table-wrapper) {
-  max-height: 220px !important;
+  flex: 1;
+  min-height: 0;
 }
 
 .cage-mice-table {
@@ -1644,18 +1669,23 @@ function isCageHighlighted(cageId) {
   align-items: center;
   justify-content: center;
   color: var(--n-text-color-3);
-  gap: 8px;
+  gap: 12px;
   padding: 20px;
-  min-height: 120px;
+  height: 100%;
+  background-color: color-mix(in srgb, var(--n-color-embedded) 40%, transparent);
+  border-radius: 6px;
+  border: 1px dashed var(--n-border-color);
 }
 
 .cage-empty-state .empty-icon {
-  font-size: 32px;
-  opacity: 0.5;
+  font-size: 36px;
+  opacity: 0.3;
 }
 
 .cage-empty-state span {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
 
 .mouse-sex {
