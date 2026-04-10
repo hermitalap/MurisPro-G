@@ -246,7 +246,7 @@
 <script setup>
 import { h, ref, computed, nextTick, onMounted, watch } from 'vue'
 import { NInputNumber, useMessage } from 'naive-ui'
-import axios from 'axios'
+import api from '@/utils/api'
 import Chart from 'chart.js/auto'
 import regression from 'regression'
 import { useGeneStore, useExperimentStore } from '@/stores'
@@ -346,11 +346,11 @@ const weightInputColumns = computed(() => [
 const init = async () => {
 try {
     // 获取小鼠数据
-    const response = await axios.get('/api/lived_mice')
+    const response = await api.get('/lived_mice')
     lived_mice.value = response.data
     
     // 获取体重记录
-    const recordsResponse = await axios.get('/api/weight')
+    const recordsResponse = await api.get('/weight')
     weightRecords.value = recordsResponse.data
 } catch (error) {
     console.error('获取小鼠数据失败:', error)
@@ -424,13 +424,13 @@ const confirmSave = async () => {
     })
     try {
         // 发送批量请求
-        await axios.post('/api/weight', { records })
+        await api.post('/weight', { records })
         message.success(`成功保存 ${records.length} 条记录！`)
         weightValues.value = {}
         showModal.value = false
         
         // 重新获取体重记录
-        const recordsResponse = await axios.get('/api/weight')
+        const recordsResponse = await api.get('/weight')
         weightRecords.value = recordsResponse.data
     } catch (error) {
         console.error('保存体重记录失败:', error)

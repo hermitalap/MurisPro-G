@@ -132,6 +132,7 @@
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
 import { useRoute, onBeforeRouteUpdate } from 'vue-router';
 import axios from 'axios';
+import api from '@/utils/api';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
 import { Chart } from 'chart.js/auto';
@@ -256,7 +257,7 @@ var cellContextMenu = [
                         };
                     }
                     try {
-                        await axios.patch(`/api/experiments/${rowData.__experimentId}`, updateData);
+                        await api.patch(`/experiments/${rowData.__experimentId}`, updateData);
                         message.success('记录更新成功');
                     } catch (error) {
                         console.error('更新记录失败:', error);
@@ -420,7 +421,7 @@ const recordColumnDefs = computed(() => {
 
 const fetchGroups = async () => {
 try {
-    const response = await axios.get(`/api/experiments/${experimentId.value}/grouped_mice`, {cancelToken: currentRequestToken.token});
+    const response = await api.get(`/experiments/${experimentId.value}/grouped_mice`, {cancelToken: currentRequestToken.token});
     if (response.data.error) {
         message.info("请在设置页面为本实验设置预设分组")
         return
@@ -442,7 +443,7 @@ const handleGroupUpdate = (updatedGroup) => {
 
 const saveGroup = async () => {
     try {
-        await axios.put(`/api/groups/predefined/${allGroups.value.id}`, allGroups.value)
+        await api.put(`/groups/predefined/${allGroups.value.id}`, allGroups.value)
         message.success('预设ID分组保存成功')
         fetchPredefinedGroups()
         showGroupModal.value = false
@@ -576,7 +577,7 @@ async function exportData () {
                 experiment_ids: [experimentId.value],
                 format: 'xlsx'
             };
-        const response = await axios.get(`/api/export/experiment`, { 
+        const response = await api.get(`/export/experiment`, { 
             params,
             responseType: 'blob'
         })
@@ -607,7 +608,7 @@ async function exportData () {
 
 async function fetchData() {
 try {
-    const response = await axios.get(`/api/experiment/${experimentId.value}/data`, {cancelToken: currentRequestToken.token});
+    const response = await api.get(`/experiment/${experimentId.value}/data`, {cancelToken: currentRequestToken.token});
     experimentData.value = response.data;
     hasData.value = experimentData.value.length > 0;
 } catch (error) {
@@ -618,7 +619,7 @@ try {
 
 async function fetchCandidate() {
 try{
-    const miceExperiment = await axios.get(`/api/experiments/${experimentId.value}/mice`)
+    const miceExperiment = await api.get(`/experiments/${experimentId.value}/mice`)
     candidateMice.value = miceExperiment.data
 } catch (error) {
     console.error('获取数据:', error);
@@ -1379,7 +1380,7 @@ async function deleteRecord() {
         negativeText: '取消',
         onPositiveClick: async () => {
             try {
-                await axios.delete(`/api/experiments/${contextMenu.rowData.experimentId}`);
+                await api.delete(`/experiments/${contextMenu.rowData.experimentId}`);
                 message.success('记录删除成功');
                 await fetchData();
             } catch (error) {
@@ -1449,7 +1450,7 @@ try {
         records: records
     };
     
-    const response = await axios.post('/api/experiments', requestData);
+    const response = await api.post('/experiments', requestData);
     message.success(response.data.message);
     
     showRecordModal.value = false;

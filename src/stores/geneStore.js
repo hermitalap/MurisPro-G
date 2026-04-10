@@ -1,16 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import api from '@/utils/api'
 
 export const useGeneStore = defineStore('genotype', () => {
-    const api = axios.create({
-            baseURL: '/api',
-            timeout: 60000,
-            headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
 
     const loadInitialData = async () => {
         await loadMice()

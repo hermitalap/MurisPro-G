@@ -204,7 +204,7 @@
 <script setup>
 import { h, ref, computed, nextTick } from 'vue';
 import { NTag, useMessage } from 'naive-ui'
-import axios from 'axios';
+import api from '@/utils/api';
 import Chart from 'chart.js/auto';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
@@ -303,7 +303,7 @@ const fetchData = async (groupType) => {
       message.info('预设分组暂无信息');
       return;
     }
-    const response = await axios.post('/api/survival-analysis', {
+    const response = await api.post('/survival-analysis', {
       groups: groupData.map(g => g.mice)
     });
 

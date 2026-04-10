@@ -1044,7 +1044,8 @@
 <script setup>
 import { h, ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
 import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, useDialog, useMessage } from 'naive-ui'
-import axios from 'axios'
+import api from '@/utils/api'
+import { normalizeDateValue } from '@/utils/format'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
 
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
@@ -1154,11 +1155,7 @@ const getVisualizeTypeOptions = (dataType) => {
     return options
 }
 
-const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
-const normalizeDateValue = (value) => {
-    if (typeof value !== 'string') return null
-    return DATE_ONLY_REGEX.test(value) ? value : null
-}
+// normalizeDateValue 已从 @/utils/format 导入
 
 // 基因型相关状态
 const newGeneLocus = reactive({ symbol: '', description: '' })
@@ -1778,7 +1775,7 @@ const addGeneLocus = async () => {
     }
 
     try {
-    const response = await axios.post('/api/gene', newGeneLocus)
+    const response = await api.post('/gene', newGeneLocus)
     genotypes.value.push(response.data)
     newGeneLocus.symbol = ''
     newGeneLocus.description = ''
@@ -1796,7 +1793,7 @@ const addAllele = async (locus_id) => {
     }
 
     try {
-    await axios.post(`/api/${locus_id}/gene_allele`, newAllele)
+    await api.post(`/${locus_id}/gene_allele`, newAllele)
     await loadGenotypes()
     newAllele.symbol = ''
     newAllele.description = ''
@@ -1820,7 +1817,7 @@ const editAllele = (genotype) => {
 
 const saveGeneLocus = async () => {
     try {
-        await axios.put(`/api/gene/${editingLocus.id}`, editingLocus)
+        await api.put(`/gene/${editingLocus.id}`, editingLocus)
         await loadGenotypes()
         editLocusDialogVisible.value = false
         message.success('修改基因位点成功')
@@ -1832,7 +1829,7 @@ const saveGeneLocus = async () => {
 
 const saveAllele = async () => {
     try {
-        await axios.put(`/api/gene_allele/${editingAllele.id}`, editingAllele)
+        await api.put(`/gene_allele/${editingAllele.id}`, editingAllele)
         await loadGenotypes()
         editAlleleDialogVisible.value = false
         message.success('修改基因位点编辑方式成功')
@@ -1850,7 +1847,7 @@ const deleteGeneLocus = async (id) => {
         negativeText: '取消',
         onPositiveClick: async () => {
             try {
-                await axios.delete(`/api/gene/${id}`)
+                await api.delete(`/gene/${id}`)
                 genotypes.value = genotypes.value.filter(g => g.id !== id)
                 message.success('删除基因位点成功')
             } catch (error) {
@@ -1869,7 +1866,7 @@ const deleteAllele = async (id) => {
         negativeText: '取消',
         onPositiveClick: async () => {
             try {
-                await axios.delete(`/api/gene_allele/${id}`)
+                await api.delete(`/gene_allele/${id}`)
                 await loadGenotypes()
                 message.success('删除基因位点编辑方式成功')
             } catch (error) {
@@ -1887,7 +1884,7 @@ const addLocation = async () => {
     }
 
     try {
-        const response = await axios.post('/api/locations', newLocation)
+        const response = await api.post('/locations', newLocation)
         locations.value.push(response.data)
         newLocation.identifier = ''
         newLocation.description = ''
@@ -1906,7 +1903,7 @@ const editLocation = (location) => {
 
 const saveLocation = async () => {
     try {
-        const response = await axios.put(`/api/locations/${editingLocation.id}`, editingLocation)
+        const response = await api.put(`/locations/${editingLocation.id}`, editingLocation)
         const index = locations.value.findIndex(l => l.id === editingLocation.id)
     if (index !== -1) {
         locations.value[index] = response.data
@@ -1929,7 +1926,7 @@ const deleteLocation = async (id) => {
         negativeText: '取消',
         onPositiveClick: async () => {
             try {
-                await axios.delete(`/api/locations/${id}`)
+                await api.delete(`/locations/${id}`)
                 locations.value = locations.value.filter(l => l.id !== id)
                 section_key.value = true
                 await fetchCages()
@@ -1966,7 +1963,7 @@ const confirmExport = async () => {
     }
 
     try {
-        const response = await axios.get(`/api/export/${currentExportType.value}`, { 
+        const response = await api.get(`/export/${currentExportType.value}`, { 
             params,
             responseType: 'blob'
         })
@@ -2051,7 +2048,7 @@ const importData = async () => {
     formData.append('conflict_resolution', importConflictResolution.value)
 
     try {
-        const response = await axios.post('/api/import', formData, {
+        const response = await api.post('/import', formData, {
             headers: {
             'Content-Type': 'multipart/form-data'
             }
@@ -2127,7 +2124,7 @@ const saveExperimentType = async () => {
         }
 
         try {
-        await axios[method](url, dataToSend)
+        await api[method](url, dataToSend)
         message.success('实验设置保存成功，请前往分组预设中设置分组')
         cancelEdit()
         await fetchExperiments()
@@ -2183,7 +2180,7 @@ const deleteExperimentType = async (id) => {
         negativeText: '取消',
         onPositiveClick: async () => {
             try {
-                await axios.delete(`/api/experiment-types/${id}`)
+                await api.delete(`/experiment-types/${id}`)
                 message.success('删除成功')
                 await fetchExperiments()
             } catch (error) {
@@ -2358,7 +2355,7 @@ const handleDbImportComplete = async () => {
     formData.append('project_info', JSON.stringify(editingDatabase.value))
 
     try {
-        const response = await axios.post('/api/database/import', formData, {
+        const response = await api.post('/database/import', formData, {
         headers: {
             'Content-Type': 'multipart/form-data'
         }
@@ -2377,7 +2374,7 @@ const exportDatabase = async (key) => {
     if (!db) return
 
     try {
-        const response = await axios.get(`/api/database/export/${key}`, {
+        const response = await api.get(`/database/export/${key}`, {
             responseType: 'blob'
         })
 
@@ -2413,7 +2410,7 @@ const exportLogFile = async () => {
     isExportingLog.value = true
 
     try {
-        const response = await axios.get('/api/database/export-log', {
+        const response = await api.get('/database/export-log', {
             responseType: 'blob'
         })
 
@@ -2449,7 +2446,7 @@ const exportLogFile = async () => {
 
 const refreshDbInfo = async () => {
     try {
-        const response = await axios.get('/api/database/info')
+        const response = await api.get('/database/info')
         const dbInfo = {
             ...response.data,
             startAt: normalizeDateValue(response.data?.startAt),
@@ -2484,7 +2481,7 @@ const clearDatabase = async () => {
             deleteConfirmationError.value = ''
             
             try {
-                const response = await axios.post('/api/database/clear')
+                const response = await api.post('/database/clear')
                 message.success('数据库清空成功')
                 deleteConfirmation.value = ''
                 
@@ -2520,7 +2517,7 @@ const addDatabase = async () => {
 }
 
 const createDatabase = async () => {
-    const response = await axios.post('/api/database/create', editingDatabase.value)
+    const response = await api.post('/database/create', editingDatabase.value)
     editingDatabase.value = {
         projectName: '',
         startAt: null,
@@ -2571,7 +2568,7 @@ const saveEdit = async (index) => {
                 [editingField.value]: editingValue.value
             }
         }
-        const response = await axios.post(`/api/database/${index}`, databases.value[index])
+        const response = await api.post(`/database/${index}`, databases.value[index])
         resetEdit()
         message.success('修改成功')
     }
@@ -2611,7 +2608,7 @@ const getStatusClasses = (db, key) => {
 const selectDatabase = async (key) => {
     trueCurrentDatabase.value = currentDatabase.value
     currentDatabase.value = key
-    await axios.put(`/api/database/${key}`)
+    await api.put(`/database/${key}`)
     message.success('数据库切换成功，重新启动应用后生效')
     databaseNotChanged.value = false
 }
@@ -2632,7 +2629,7 @@ const toggleReadOnly = async (key) => {
                 negativeText: '取消',
                 onPositiveClick: async () => {
                     db.readOnly = !db.readOnly
-                    const response = await axios.post(`/api/database/${key}`, db)
+                    const response = await api.post(`/database/${key}`, db)
                     message.success(`数据库已设为${db.readOnly ? '只读' : '可写'}`)
                 }
             })
@@ -2640,7 +2637,7 @@ const toggleReadOnly = async (key) => {
         }
         
         db.readOnly = !db.readOnly
-        const response = await axios.post(`/api/database/${key}`, db)
+        const response = await api.post(`/database/${key}`, db)
         message.success(`数据库已设为${db.readOnly ? '只读' : '可写'}`)
     }
 }
@@ -2659,7 +2656,7 @@ const deleteDatabase = async (key) => {
         negativeText: '取消',
         onPositiveClick: async () => {
             delete databases.value[key];
-            await axios.delete(`/api/database/${key}`)
+            await api.delete(`/database/${key}`)
             message.success('数据库删除成功')
         }
     })
@@ -2667,7 +2664,7 @@ const deleteDatabase = async (key) => {
 
 const fetchDbInfo = async () => {
     try {
-        const response = await axios.get('/api/database')
+        const response = await api.get('/database')
         const rawDatabases = response.data.databases || {}
         databases.value = Object.fromEntries(
             Object.entries(rawDatabases).map(([key, db]) => [
@@ -2708,7 +2705,7 @@ const changeGroupExperiment = async (experimentID) => {
     editingGroup.Gtype = 'id'
     editingGroup.name = (experiments.value.find(et => et.id === experimentID)?.name || "未知实验") + "-分组"
     if (editingGroup.experiment_id) {
-        const miceExperiment = await axios.get(`/api/experiments/${editingGroup.experiment_id}/mice`)
+        const miceExperiment = await api.get(`/experiments/${editingGroup.experiment_id}/mice`)
         candidateMice.value = miceExperiment.data
     }
 }
@@ -2770,7 +2767,7 @@ const reviewRules = async () => {
         message.info("预览前请设定组别")
         return 
     }
-    const response = await axios.post(`/api/groups/predefined/review`, { editing : editingGroup, candidate: candidateMice.value.map(m => m.tid)})
+    const response = await api.post(`/groups/predefined/review`, { editing : editingGroup, candidate: candidateMice.value.map(m => m.tid)})
     response.data.forEach((g, gIndex) => {
         if (editingGroup.rules[gIndex]) {
             Object.assign(editingGroup.rules[gIndex], { mouseId: g })
@@ -2860,7 +2857,7 @@ const deleteGroup = async (id) => {
         negativeText: '取消',
         onPositiveClick: async () => {
             try {
-                await axios.delete(`/api/groups/predefined/${id}`)
+                await api.delete(`/groups/predefined/${id}`)
                 message.success('删除成功')
                 fetchPredefinedGroups()
                 cancelEditGroup()

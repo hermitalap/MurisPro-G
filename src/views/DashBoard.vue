@@ -391,7 +391,8 @@
 
 <script setup>
 import { ref, reactive, nextTick, computed, onMounted, watch, h } from 'vue'
-import axios from 'axios'
+import api from '@/utils/api'
+import { normalizeDateValue } from '@/utils/format'
 import MouseDetailModal from './MouseDetailView.vue'
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -442,11 +443,7 @@ const currentCage = reactive({
   mice_genotype: ''
 })
 
-const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
-const normalizeDateValue = (value) => {
-  if (typeof value !== 'string') return null
-  return DATE_ONLY_REGEX.test(value) ? value : null
-}
+// normalizeDateValue 已从 @/utils/format 导入
 const cageContextMenu = reactive({
   visible: false,
   x: 0,
@@ -557,7 +554,7 @@ onMounted(async () => {
 // 获取临时区小鼠数据
 async function fetchTemporaryMice() {
   try {
-    const response = await axios.get('/api/cages/-1')
+    const response = await api.get('/cages/-1')
     temporaryMice.value = response.data.map(mouse => ({ ...mouse }))
   } catch (error) {
     console.error('获取临时区小鼠信息失败:', error)
@@ -581,7 +578,7 @@ async function handleDrop(event, targetCageId) {
     
     try {
       // 更新数据库
-      await axios.put(`/api/cage`, {
+      await api.put(`/cage`, {
         cage_id: targetCageId,
         mouse_id: mouseId
       })
@@ -690,7 +687,7 @@ async function addNewCage() {
   }
   isSaving.value = true
   try {
-    const responseId = await axios.post('/api/cages', currentCage)
+    const responseId = await api.post('/cages', currentCage)
     cages.value.push({
       ...currentCage,
       'mice': [],
@@ -859,7 +856,7 @@ async function moveSection(direction) {
   locations.value = updatedSections
 
   try {
-    await axios.put('/api/locations/order', {
+    await api.put('/locations/order', {
       order: updatedSections.map(section => ({
         id: section.id,
         order: section.order
@@ -883,7 +880,7 @@ async function updateCage() {
   }
   isSaving.value = true
   try {
-    await axios.put(`/api/cages/${currentCage.id}`, {
+    await api.put(`/cages/${currentCage.id}`, {
       cage_id: currentCage.cage_id,
       location: currentCage.location,
       section: currentCage.section,
@@ -924,7 +921,7 @@ async function deleteCage(cage) {
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        await axios.delete(`/api/cages/${cage.id}`)
+        await api.delete(`/cages/${cage.id}`)
         // 更新本地数据
         const index = cages.value.findIndex(c => c.id === cage.id)
         if (index !== -1) {
@@ -996,7 +993,7 @@ function resetSwapState() {
 
 // API更新笼位排序
 async function updateCageOrder(cage_from_id, cage_to_id) {
-  await axios.put('/api/cages/order', {id_from: cage_from_id, id_to: cage_to_id})
+  await api.put('/cages/order', {id_from: cage_from_id, id_to: cage_to_id})
   const indexI = cages.value.findIndex(c => c.id === cage_from_id)
   const indexJ = cages.value.findIndex(c => c.id === cage_to_id)
   if (indexI !== -1 && indexJ !== -1) {

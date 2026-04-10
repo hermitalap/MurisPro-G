@@ -186,7 +186,6 @@
           :bordered="false"
           :single-line="false"
           :row-key="(row) => row.tid"
-          :row-class-name="rowClassName"
           :row-props="rowProps"
           @update:sorter="handleSorterChange"
           :sorter="sorterState"
@@ -677,8 +676,10 @@
 </template>
 
 <script setup>
-import { h, ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
-import axios from 'axios'
+import { h, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import api from '@/utils/api'
+import { formatDate, renderEmpty, normalizeDateValue } from '@/utils/format'
+import { fuzzySearch } from '@/utils/search'
 import MouseDetailModal from './MouseDetailView.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
@@ -755,11 +756,7 @@ const mouseCageMap = computed(() => {
   return map
 })
 
-const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
-const normalizeDateValue = (value) => {
-  if (typeof value !== 'string') return null
-  return DATE_ONLY_REGEX.test(value) ? value : null
-}
+// normalizeDateValue 已从 @/utils/format 导入
 
 // Naive UI原生排序状态
 const sorterState = ref({
@@ -788,8 +785,7 @@ const formatLiveStatus = (status) => {
     '未知状态'
 }
 
-// 渲染空值占位符
-const renderEmpty = (value) => value || '-'
+// renderEmpty 已从 @/utils/format 导入
 
 const miceColumns = computed(() => {
   const columns = [
@@ -912,9 +908,7 @@ const miceColumns = computed(() => {
   return columns
 })
 
-const rowClassName = (row) => {
-  return ''
-}
+// rowClassName 已移除（始终返回空字符串）
 
 const rowProps = (row, index) => ({
   onDblclick: () => openMouseDetail(row.tid),
@@ -1011,119 +1005,32 @@ const modalTitle = computed(() => {
 
 // 父亲建议列表
 const fatherSuggestions = computed(() => {
-  const query = fatherQuery.value
-  if (query.length < 1) return []
-  
-  const lowerQuery = query.toLowerCase()
-  let suggestions = mice.value.filter(mouse =>
+  let candidates = mice.value.filter(mouse =>
     mouse.sex === 'M' &&
-    mouse.id.toLowerCase().includes(lowerQuery)
-  )
-  
-  // 过滤已选中的父亲和子代
-  suggestions = suggestions.filter(mouse => 
     !selectedFathers.value?.some(m => m.tid === mouse.tid)
   )
-  
-  // 编辑模式下排除自己
   if (modalMode.value === 'edit' && formData.tid) {
-    suggestions = suggestions.filter(mouse => mouse.tid !== formData.tid)
+    candidates = candidates.filter(mouse => mouse.tid !== formData.tid)
   }
-  
-  // 排序逻辑
-  suggestions.sort((a, b) => {
-    const aStartsWith = a.id.toLowerCase().startsWith(lowerQuery)
-    const bStartsWith = b.id.toLowerCase().startsWith(lowerQuery)
-    const aIncludes = a.id.toLowerCase().includes(lowerQuery)
-    const bIncludes = b.id.toLowerCase().includes(lowerQuery)
-    
-    if (aStartsWith && !bStartsWith) return -1
-    if (!aStartsWith && bStartsWith) return 1
-    
-    if (aStartsWith && bStartsWith) {
-      return a.id.length - b.id.length
-    }
-    
-    if (aIncludes && bIncludes) {
-      const aIndex = a.id.toLowerCase().indexOf(lowerQuery)
-      const bIndex = b.id.toLowerCase().indexOf(lowerQuery)
-      return aIndex - bIndex
-    }
-    
-    return 0
-  })
-  
-  return suggestions.slice(0, 10)
+  return fuzzySearch(candidates, fatherQuery.value, 'id')
 })
 
 // 母亲建议列表
 const motherSuggestions = computed(() => {
-  const query = motherQuery.value
-  if (query.length < 1) return []
-  
-  const lowerQuery = query.toLowerCase()
-  let suggestions = mice.value.filter(mouse =>
+  let candidates = mice.value.filter(mouse =>
     mouse.sex === 'F' &&
-    mouse.id.toLowerCase().includes(lowerQuery)
-  )
-  
-  // 过滤已选中的母亲
-  suggestions = suggestions.filter(mouse => 
     !selectedMothers.value?.some(m => m.tid === mouse.tid)
   )
-  
-  // 编辑模式下排除自己
   if (modalMode.value === 'edit' && formData.tid) {
-    suggestions = suggestions.filter(mouse => mouse.tid !== formData.tid)
+    candidates = candidates.filter(mouse => mouse.tid !== formData.tid)
   }
-  
-  // 排序逻辑
-  suggestions.sort((a, b) => {
-    const aStartsWith = a.id.toLowerCase().startsWith(lowerQuery)
-    const bStartsWith = b.id.toLowerCase().startsWith(lowerQuery)
-    const aIncludes = a.id.toLowerCase().includes(lowerQuery)
-    const bIncludes = b.id.toLowerCase().includes(lowerQuery)
-    
-    if (aStartsWith && !bStartsWith) return -1
-    if (!aStartsWith && bStartsWith) return 1
-    
-    if (aStartsWith && bStartsWith) {
-      return a.id.length - b.id.length
-    }
-    
-    if (aIncludes && bIncludes) {
-      const aIndex = a.id.toLowerCase().indexOf(lowerQuery)
-      const bIndex = b.id.toLowerCase().indexOf(lowerQuery)
-      return aIndex - bIndex
-    }
-    
-    return 0
-  })
-  
-  return suggestions.slice(0, 10)
+  return fuzzySearch(candidates, motherQuery.value, 'id')
 })
 
 // 方法
-const createAxiosInstance = () => {
-  return axios.create({
-    baseURL: '/api',
-    timeout: 60000,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest'
-    }
-  })
-}
+// createAxiosInstance 已移除，使用统一的 api 实例
 
-const sortBy = (field) => {
-  if (sortField.value === field) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortField.value = field
-    sortDirection.value = 'asc'
-  }
-  applyFilters()
-}
+// sortBy / sortIconClass / sortIconName 已移除（排序由 NDataTable 原生处理）
 
 const resetSearch = () => {
   searchTerm.value = ''
@@ -1147,18 +1054,6 @@ const resetSearch = () => {
     cage:null
   })
   applyFilters()
-}
-
-const sortIconClass = (field) => {
-  if (sortField.value !== field) return 'sort-icon inactive-icon'
-  return sortDirection.value === 'asc'
-    ? 'sort-icon'
-    : 'sort-icon rotated-icon'
-}
-
-const sortIconName = (field) => {
-  if (sortField.value !== field) return 'arrow_downward'
-  return sortDirection.value === 'asc' ? 'arrow_upward' : 'arrow_downward'
 }
 
 const onLocusChange = () => {
@@ -1326,7 +1221,6 @@ const batchDeleteMice = async () => {
       negativeText: '取消',
       onPositiveClick: async () => {
         try {
-          const api = createAxiosInstance()
           await api.delete('/mice', {params: { miceIds: checkedRowKeys.value }})
           checkedRowKeys.value.forEach(mid => {
             const index = mice.value.findIndex(m => m.tid === mid)
@@ -1358,7 +1252,6 @@ const batchAddExperiment = async (batchTest) => {
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        const api = createAxiosInstance()
         await api.put('/mice/experiments', {
           batchTest: batchTest,
           miceIds: checkedRowKeys.value,
@@ -1518,7 +1411,6 @@ const saveMouse = async () => {
   
   saving.value = true
   try {
-    const api = createAxiosInstance()
     
     if (modalMode.value === 'add') {
       const response = await api.post('/mice', submitData)
@@ -1559,7 +1451,6 @@ const openMouseDetail = (mouseId) => {
 
 const deleteMouse = async (mouseId) => {
   try {
-    const api = createAxiosInstance()
     await api.delete(`/mice/${mouseId}`)
     
     // 更新本地数据
@@ -1690,38 +1581,7 @@ const removeTest = (type, index) => {
 const searchCage = () => {
   formData.cage_id = null
   const thisQuery = cageQuery.value.split(" - ")[0]
-  if (thisQuery.length < 1) {
-    cageSuggestions.value = []
-    return
-  }
-  
-  let suggestions = cages.value.filter(cage =>
-    cage.cage_id.includes(thisQuery))
-  
-  cageSuggestions.value = suggestions.sort((a, b) => {
-    const aStartsWith = a.cage_id.startsWith(thisQuery)
-    const bStartsWith = b.cage_id.startsWith(thisQuery)
-    const aIncludes = a.cage_id.includes(thisQuery)
-    const bIncludes = b.cage_id.includes(thisQuery)
-    
-    // 完全匹配或开头匹配的优先
-    if (aStartsWith && !bStartsWith) return -1
-    if (!aStartsWith && bStartsWith) return 1
-    
-    // 开头匹配的按ID长度排序（较短的优先）
-    if (aStartsWith && bStartsWith) {
-      return a.id.length - b.id.length
-    }
-    
-    // 包含匹配的按匹配位置排序
-    if (aIncludes && bIncludes) {
-      const aIndex = a.cage_id.indexOf(thisQuery)
-      const bIndex = b.cage_id.indexOf(thisQuery)
-      return aIndex - bIndex
-    }
-    
-    return 0
-  }).slice(0, 10)
+  cageSuggestions.value = fuzzySearch(cages.value, thisQuery, 'cage_id')
 }
 
 const selectCage = (cage) => {
@@ -1746,11 +1606,7 @@ const onBlur = () => {
   }, 200)
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
-}
+// formatDate 已从 @/utils/format 导入
 
 const addInputField = () => {
   newMice.value.push({ id: '', sex: templateMouse.value.sex })
@@ -1773,7 +1629,6 @@ const saveTemplateMice = async () => {
   
   saving.value = true
   try {
-    const api = createAxiosInstance()
     await api.post(`/mice/${templateMouse.value.tid}`, newMice.value)
     
     message.success(`按模板添加${newMice.value.length}只小鼠！`)
@@ -1814,6 +1669,11 @@ onMounted(async () => {
   applyFilters()
   document.addEventListener('click', closeContextMenu)
   document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeContextMenu)
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 

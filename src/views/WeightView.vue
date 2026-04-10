@@ -121,9 +121,10 @@
 </template>
 
 <script setup>
-import { h, ref, computed, onMounted, watch } from 'vue'
+import { h, ref, computed, onMounted } from 'vue'
 import { NButton, NSpace, useDialog, useMessage } from 'naive-ui'
-import axios from 'axios'
+import api from '@/utils/api'
+import { formatDate } from '@/utils/format'
 
 // 状态管理
 const weightRecords = ref([])
@@ -245,10 +246,10 @@ try {
     }
     })
     
-    const response = await axios.get('/api/weight_records', { params })
+    const response = await api.get('/weight_records', { params })
     weightRecords.value = response.data.records
     totalRecords.value = response.data.total
-    applySorting()
+    filteredRecords.value = weightRecords.value
 } catch (error) {
     console.error('加载体重记录失败:', error)
     message.error('加载体重记录失败')
@@ -272,11 +273,11 @@ try {
     
     if (editingRecord.value) {
         // 更新记录
-        await axios.put(`/api/weight_records/${editingRecord.value.id}`, newRecord.value)
+        await api.put(`/weight_records/${editingRecord.value.id}`, newRecord.value)
         message.success('体重记录更新成功')
     } else {
         // 添加新记录
-        await axios.post('/api/weight_records', newRecord.value)
+        await api.post('/weight_records', newRecord.value)
         message.success('体重记录添加成功')
     }
     } catch (error) {
@@ -314,7 +315,7 @@ const deleteRecord = async (id) => {
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        await axios.delete(`/api/weight_records/${id}`)
+        await api.delete(`/weight_records/${id}`)
         message.success('体重记录删除成功')
         loadWeightRecords()
       } catch (error) {
@@ -350,67 +351,9 @@ currentPage.value = page
 loadWeightRecords()
 }
 
-const sortBy = (field) => {
-if (sortField.value === field) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-} else {
-    sortField.value = field
-    sortDirection.value = 'asc'
-}
-applySorting()
-}
+// sortBy / sortIconClass / sortIconName / nextPage / prevPage 已移除（排序由 NDataTable 原生处理，分页由 NPagination 处理）
 
-const applySorting = () => {
-filteredRecords.value = [...weightRecords.value].sort((a, b) => {
-    let modifier = sortDirection.value === 'asc' ? 1 : -1
-    
-    if (sortField.value === 'record_date') {
-    return (new Date(a[sortField.value]) - new Date(b[sortField.value])) * modifier
-    }
-    
-    if (a[sortField.value] < b[sortField.value]) return -1 * modifier
-    if (a[sortField.value] > b[sortField.value]) return 1 * modifier
-    return 0
-})
-}
-
-const sortIconClass = (field) => {
-if (sortField.value !== field) return 'sort-icon inactive-icon'
-return sortDirection.value === 'asc' 
-  ? 'sort-icon'
-  : 'sort-icon rotated-icon'
-}
-
-const sortIconName = (field) => {
-if (sortField.value !== field) return 'arrow_downward'
-return sortDirection.value === 'asc' ? 'arrow_upward' : 'arrow_downward'
-}
-
-const formatDate = (dateString) => {
-if (!dateString) return ''
-const date = new Date(dateString)
-return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
-}
-
-const nextPage = () => {
-if (currentPage.value < totalPages.value) {
-    currentPage.value++
-    loadWeightRecords()
-}
-}
-
-const prevPage = () => {
-if (currentPage.value > 1) {
-    currentPage.value--
-    loadWeightRecords()
-}
-}
-
-// 监听筛选条件变化
-watch(filters, () => {
-currentPage.value = 1
-loadWeightRecords()
-}, { deep: true })
+// formatDate 已从 @/utils/format 导入
 </script>
 
 <style scoped>

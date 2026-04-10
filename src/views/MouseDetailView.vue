@@ -137,6 +137,8 @@ import { Chart, registerables } from 'chart.js'
 import { useMessage } from 'naive-ui';
 import { useGeneStore } from '@/stores'
 import { storeToRefs } from 'pinia'
+import api from '@/utils/api'
+import { formatDate } from '@/utils/format'
 
 const geneStore = useGeneStore()
 const { mice } = storeToRefs(geneStore)
@@ -181,9 +183,8 @@ watch(liveOnly, async () => {
 
 const fetchMouseData = async () => {
   try {
-    const response = await fetch(`/api/mice/${currentMouseID.value}`)
-    if (!response.ok) throw new Error('获取数据失败')
-    mouseData.value = await response.json()
+    const response = await api.get(`/mice/${currentMouseID.value}`)
+    mouseData.value = response.data
     // 渲染图表在 DOM 更新后进行
     await nextTick()
     renderWeightChart()
@@ -208,14 +209,10 @@ const deletingRecordId = ref(null)
 
 const deleteRecord = async (record) => {
   try {
-    const response = await fetch(`/api/status_records/${record.id}`, { method: 'DELETE' })
-    if (response.ok) {
-      const index = mouseData.value.status_records.findIndex(r => r.id === record.id)
+    const response = await api.delete(`/status_records/${record.id}`)
+    const index = mouseData.value.status_records.findIndex(r => r.id === record.id)
     if (index !== -1) mouseData.value.status_records.splice(index, 1)
     console.log('记录删除成功')
-    } else {
-      console.error('删除记录失败')
-    }
   } catch (error) {
     console.error('删除记录时出错:', error)
   } finally {
@@ -242,11 +239,7 @@ const cancelAddRecord = () => {
 const saveNewRecord = async () => {
   try {
     const recordToSave = { ...newRecord.value, mouse_tid: currentMouseID.value, birth_date: mouseData.value.birth_date }
-    const response = await fetch(`/api/status_records`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(recordToSave)
-    })
+    await api.post('/status_records', recordToSave)
     showAddRecordForm.value = false
     message.success('状态记录已添加')
     // 刷新数据
@@ -257,11 +250,7 @@ const saveNewRecord = async () => {
   }
 }
     
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN')
-}
+// formatDate 已从 @/utils/format 导入
 
 // ========== Chart.js 渲染（体重图） ==========
 const renderWeightChart = () => {
@@ -436,7 +425,7 @@ const renderPedigreeChart = async () => {
             type: 'father'
           })
         } else {
-          console.error(`获取父代小鼠 ${id} 失败:`, error)
+          console.warn(`未找到父代小鼠 ${id}`)
           const fallbackNode = {
             id,
             name: '未知',
@@ -486,7 +475,7 @@ const renderPedigreeChart = async () => {
             type: 'mother'
           })
         }else {
-          console.error(`获取母代小鼠 ${id} 失败:`, error)
+          console.warn(`未找到母代小鼠 ${id}`)
           const fallbackNode = {
             id,
             name: '未知',
@@ -536,7 +525,7 @@ const renderPedigreeChart = async () => {
             type: 'offspring'
           })
         } else {
-          console.error(`获取后代小鼠 ${id} 失败:`, error)
+          console.warn(`未找到后代小鼠 ${id}`)
           const fallbackNode = {
             id,
             name: '未知',
@@ -554,7 +543,6 @@ const renderPedigreeChart = async () => {
             target: fallbackNode,
             type: 'offspring'
           })
-          return fallbackNode
         }
       }
     }

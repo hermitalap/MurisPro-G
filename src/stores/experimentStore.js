@@ -1,18 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import api from '@/utils/api'
 
 export const useExperimentStore = defineStore('experiment', () => {
-    const api = axios.create({
-            baseURL: '/api',
-            timeout: 60000,
-            headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Cache-Control': 'no-store, max-age=0', // 完全禁用缓存
-            'Pragma': 'no-cache'
-            }
-        })
 
     const loadInitialData = async () => {
         fetchExperiments()
