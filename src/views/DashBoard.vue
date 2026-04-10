@@ -180,38 +180,18 @@
                   </div>
                 </div>
 
-                <div class="cage-mice-table-wrapper" v-if="(cage.mice?.length ?? 0) > 0">
-                  <table class="cage-mice-table">
-                    <thead>
-                      <tr>
-                        <th>性别</th>
-                        <th>小鼠ID</th>
-                        <th>年龄</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="(row, rowIndex) in getCageDisplayRows(cage)"
-                        :key="`${cage.id}-${rowIndex}`"
-                        class="mouse-row"
-                        :class="{
-                          'placeholder-row': row.type === 'placeholder'
-                        }"
-                        :draggable="row.type === 'mouse'"
-                        @dragstart="row.type === 'mouse' && handleDragStart($event, row.mouse.tid, cage.id)"
-                        @dblclick="row.type === 'mouse' && openMouseDetail(row.mouse.tid)"
-                      >
-                        <td v-if="row.type === 'mouse'">
-                          <n-tag size="small" :type="row.mouse.sex === 'F' ? 'error' : 'info'" round>
-                            {{ row.mouse.sex === 'F' ? '♀' : '♂' }}
-                          </n-tag>
-                        </td>
-                        <td v-if="row.type === 'mouse'">{{ row.mouse.id }}</td>
-                        <td v-if="row.type === 'mouse'">{{ !row.mouse.days || row.mouse.days === 'none' ? 'NA' : `${row.mouse.days}天` }}</td>
-                        <td v-if="row.type === 'placeholder'" colspan="3">&nbsp;</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div v-if="(cage.mice?.length ?? 0) > 0" class="cage-table-wrapper">
+                  <n-data-table
+                    :columns="mouseTableColumns"
+                    :data="getCageDisplayRows(cage)"
+                    :max-height="220"
+                    :min-height="220"
+                    size="small"
+                    :bordered="false"
+                    :single-line="false"
+                    virtual-scroll
+                    table-layout="fixed"
+                  />
                 </div>
                 <div v-else class="cage-empty-state">
                   <AppIcon name="inbox" class="empty-icon" />
@@ -410,7 +390,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, computed, onMounted, watch } from 'vue'
+import { ref, reactive, nextTick, computed, onMounted, watch, h } from 'vue'
 import axios from 'axios'
 import MouseDetailModal from './MouseDetailView.vue'
 import html2canvas from 'html2canvas';
@@ -501,6 +481,40 @@ const cageActionOptions = [
   { label: '编辑笼位信息', key: 'edit' },
   { label: '笼位排序互换', key: 'swap' },
   { label: '删除笼位', key: 'delete' }
+]
+
+const mouseTableColumns = [
+  {
+    title: '性别',
+    key: 'sex',
+    width: 50,
+    render(row) {
+      if (row.type !== 'mouse') return null
+      return h('n-tag', {
+        size: 'small',
+        type: row.mouse.sex === 'F' ? 'error' : 'info',
+        round: true
+      }, { default: () => row.mouse.sex === 'F' ? '♀' : '♂' })
+    }
+  },
+  {
+    title: '小鼠ID',
+    key: 'mouseId',
+    ellipsis: { tooltip: true },
+    render(row) {
+      if (row.type !== 'mouse') return null
+      return row.mouse.id
+    }
+  },
+  {
+    title: '年龄',
+    key: 'days',
+    width: 60,
+    render(row) {
+      if (row.type !== 'mouse') return null
+      return !row.mouse.days || row.mouse.days === 'none' ? 'NA' : `${row.mouse.days}天`
+    }
+  }
 ]
 
 // 监听搜索词变化
@@ -1324,8 +1338,8 @@ function isCageHighlighted(cageId) {
 }
 
 .cage-view-container {
-  --cage-card-width: 360px;
-  --cage-card-min-height: 320px;
+  --cage-card-width: 270px;
+  --cage-card-height: 340px;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
@@ -1353,7 +1367,7 @@ function isCageHighlighted(cageId) {
 
 .matrix-cell {
   width: var(--cage-card-width);
-  min-height: var(--cage-card-min-height);
+  height: var(--cage-card-height);
 }
 
 .cage-slot-empty {
@@ -1437,6 +1451,32 @@ function isCageHighlighted(cageId) {
   flex-direction: column;
   min-height: 0;
   padding-top: 28px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.cage-card :deep(.n-card__content > *:not(.cage-table-wrapper)) {
+  flex-shrink: 0;
+}
+
+.cage-card :deep(.n-data-table-wrapper) {
+  max-height: 220px !important;
+  overflow: hidden !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+.cage-card :deep(.n-data-table) {
+  max-height: 220px !important;
+}
+
+.cage-card :deep(.n-data-table-body) {
+  max-height: 188px !important;
+  overflow-y: auto !important;
+}
+
+.cage-card :deep(.n-data-table-tr) {
+  height: 32px !important;
 }
 
 .cage-card.breeding {
@@ -1524,12 +1564,36 @@ function isCageHighlighted(cageId) {
   align-items: center;
 }
 
-.cage-mice-table-wrapper {
-  border: 1px solid var(--n-border-color);
-  border-radius: 8px;
-  overflow: auto;
+.cage-card :deep(.n-data-table) {
+  overflow: hidden;
+}
+
+.cage-card :deep(.n-data-table .n-data-table-td) {
+  height: 32px;
+}
+
+.cage-table-wrapper {
   flex: 1;
   min-height: 0;
+  max-height: 220px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cage-table-wrapper :deep(.n-data-table) {
+  flex: 1;
+  max-height: 220px;
+  overflow: hidden;
+}
+
+.cage-table-wrapper :deep(.n-data-table-body) {
+  max-height: 188px !important;
+  overflow-y: auto !important;
+}
+
+.cage-table-wrapper :deep(.n-data-table-wrapper) {
+  max-height: 220px !important;
 }
 
 .cage-mice-table {
@@ -2085,8 +2149,8 @@ function isCageHighlighted(cageId) {
 
 @media (max-width: 1200px) {
   .cage-view-container {
-    --cage-card-width: 320px;
-    --cage-card-min-height: 280px;
+    --cage-card-width: 240px;
+    --cage-card-height: 340px;
   }
 }
 
@@ -2103,8 +2167,8 @@ function isCageHighlighted(cageId) {
   }
 
   .cage-view-container {
-    --cage-card-width: 280px;
-    --cage-card-min-height: 260px;
+    --cage-card-width: 210px;
+    --cage-card-height: 340px;
   }
 
   .cage-header-main {

@@ -810,27 +810,27 @@
 
     <!-- 数据库清空 -->
     <n-card size="small" class="form-section">
-    <h3>清空当前数据库</h3>
-    <div class="export-options">
-        <n-alert type="error" title="警告">
-            此操作将删除所有数据，包括小鼠信息、基因型、位置、实验记录等，且无法恢复！
-        </n-alert>
-        <n-form label-placement="top">
-            <n-form-item label="请输入确认文字 'DELETE ALL DATA' 以继续">
-                <n-input v-model:value="deleteConfirmation" placeholder="DELETE ALL DATA" class="confirmation-field" :class="{ 'error': deleteConfirmationError }" />
-                <div v-if="deleteConfirmationError" class="error-message">
-                {{ deleteConfirmationError }}
-                </div>
-            </n-form-item>
-        </n-form>
-        
-        <n-space class="form-group" align="end">
-        <n-button type="error" @click="clearDatabase" :disabled="!isDeleteConfirmed || isClearingDb">
-            <span v-if="isClearingDb">清空中...</span>
-            <span v-else>清空数据库</span>
-        </n-button>
-        </n-space>
-    </div>
+        <h3>清空当前数据库</h3>
+        <div class="export-options">
+            <n-alert type="error" title="警告">
+                此操作将删除所有数据，包括小鼠信息、基因型、位置、实验记录等，且无法恢复！
+            </n-alert>
+            <n-form label-placement="top" class="export-form">
+                <n-form-item label="请输入确认文字 'DELETE ALL DATA' 以继续">
+                    <n-input v-model:value="deleteConfirmation" placeholder="DELETE ALL DATA" class="confirmation-field" :class="{ 'error': deleteConfirmationError }" />
+                    <div v-if="deleteConfirmationError" class="error-message">
+                    {{ deleteConfirmationError }}
+                    </div>
+                </n-form-item>
+            </n-form>
+            
+            <n-space class="form-group" align="end">
+                <n-button type="error" @click="clearDatabase" :disabled="!isDeleteConfirmed || isClearingDb">
+                    <span v-if="isClearingDb">清空中...</span>
+                    <span v-else>清空数据库</span>
+                </n-button>
+            </n-space>
+        </div>
     </n-card>
     
     <!-- 日志导出 -->
@@ -3130,10 +3130,14 @@ margin-bottom: 5px;
 }
 
 .import-options, .export-options {
-margin-top: 20px;
-padding: 15px;
-background-color: var(--n-color-embedded);
-border-radius: 8px;
+  margin-top: 20px;
+  padding: 15px;
+  background-color: var(--n-color-embedded);
+  border-radius: 8px;
+}
+
+.export-options .export-form {
+  margin-top: 15px;
 }
 
 .date-range {
