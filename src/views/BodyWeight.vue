@@ -177,18 +177,11 @@
     </div>
     
     <!-- 录入模态框 -->
-    <n-modal v-model:show="showModal" :mask-closable="true" @mask-click="closeModal">
-        <n-card class="dialog-container" :bordered="false" role="dialog" aria-modal="true">
-            <n-space justify="space-between" align="center" class="modal-header">
-            <h5 class="modal-title">批量录入体重信息</h5>
-            <n-button quaternary circle @click="closeModal">
-                <AppIcon  name="close" />
-            </n-button>
-            </n-space>
+    <n-modal v-model:show="showModal" :mask-closable="true" preset="card" class="dialog-container" style="width: 90%; max-width: 800px; overflow: visible;" title="批量录入体重信息" closable @close="closeModal">
             <div class="modal-body">
             <div class="form-group">
                 <label for="recordDate" class="form-label">记录日期</label>
-                <n-date-picker type="date" value-format="yyyy-MM-dd" id="recordDate" v-model:formatted-value="recordDate" />
+                <n-date-picker type="date" value-format="yyyy-MM-dd" id="recordDate" v-model:formatted-value="recordDate" style="width: 100%;" to="body" />
             </div>
             
             <div class="input-table">
@@ -203,26 +196,19 @@
                     />
                 </div>
             </div>
-            
+            </div>
+            <template #footer>
             <div class="d-grid mt-3">
                 <n-button id="saveBtn" type="primary" @click="handleSaveWeight">
                 <AppIcon  name="save" /> 保存体重记录
                 </n-button>
             </div>
-            </div>
-        </n-card>
+            </template>
     </n-modal>
 </div>
 
     <!-- 确认对话框 -->
-    <n-modal v-model:show="showConfirmModal" :mask-closable="true" @mask-click="cancelConfirm">
-        <n-card class="confirm-dialog" :bordered="false" role="dialog" aria-modal="true">
-        <div class="confirm-header">
-            <h5 class="confirm-title">确认体重记录</h5>
-            <n-button quaternary circle @click="cancelConfirm">
-            <AppIcon  name="close" />
-            </n-button>
-        </div>
+    <n-modal v-model:show="showConfirmModal" :mask-closable="true" preset="card" class="confirm-dialog" style="width: 90%; max-width: 400px; overflow: visible;" title="确认体重记录" closable @close="cancelConfirm">
         <div class="confirm-body">
             <div class="confirm-info">
             <div class="info-item">
@@ -234,12 +220,13 @@
                 <span class="info-value">{{ confirmRecordCount }} 条</span>
             </div>
             </div>
+        </div>
+        <template #footer>
             <n-space justify="end" class="confirm-actions">
             <n-button secondary @click="cancelConfirm">取消</n-button>
             <n-button type="primary" @click="confirmSave" :disabled="isSaving">{{isSaving? "保存中...": "确认保存"}}</n-button>
             </n-space>
-        </div>
-        </n-card>
+        </template>
     </n-modal>
 </template>
 

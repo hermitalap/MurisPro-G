@@ -69,15 +69,7 @@
     </div>
     
     <!-- 添加/编辑体重记录模态框 -->
-    <n-modal v-model:show="showAddModal" :mask-closable="false">
-    <n-card class="modal-content" :bordered="false" role="dialog" aria-modal="true">
-        <n-space justify="space-between" align="center" class="modal-header">
-        <h3>{{ editingRecord ? '编辑体重记录' : '添加体重记录' }}</h3>
-        <n-button quaternary circle @click="closeModal">
-          <AppIcon  name="close" />
-        </n-button>
-        </n-space>
-        
+    <n-modal v-model:show="showAddModal" :mask-closable="false" preset="card" style="width: 90%; max-width: 600px;" :title="editingRecord ? '编辑体重记录' : '添加体重记录'" closable @close="closeModal">
         <div class="form-body">
         
         <div class="form-group">
@@ -104,6 +96,7 @@
         </div>
         </div>
         
+        <template #footer>
         <n-space justify="end" class="button-group">
         <n-button type="primary" @click="saveRecord" :disabled="saving">
             <AppIcon  :name="editingRecord ? 'save' : 'add'" />
@@ -115,7 +108,7 @@
             取消
         </n-button>
         </n-space>
-      </n-card>
+        </template>
     </n-modal>
 </div>
 </template>

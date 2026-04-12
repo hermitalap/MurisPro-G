@@ -152,8 +152,7 @@ const menuOptions = computed(() => {
       label: '系统设置',
       icon: renderIcon(SettingsOutline),
       children: [
-        { key: 'SystemSettings', label: '设置', icon: renderIcon(SettingsOutline) },
-        { key: 'InfoPage', label: '宣传页', icon: renderIcon(InformationCircleOutline) }
+        { key: 'SystemSettings', label: '设置', icon: renderIcon(SettingsOutline) }
       ]
     }
   ]

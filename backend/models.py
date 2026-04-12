@@ -85,10 +85,8 @@ class Cage(db.Model):
     location = db.Column(db.String(50))
     cage_type = db.Column(db.String(20), default='normal')  # 'normal' or 'breeding' or 'testing'
     order = db.Column(db.Integer, nullable=False)
-    # 新增字段：笼内小鼠出生日期、数量及性别、基因型
-    mice_birth_date = db.Column(db.Date)
-    mice_count = db.Column(db.Integer)
-    mice_sex = db.Column(db.String(10))  # 'M'/'F'/'Mixed'
+    # 新增字段：笼内小鼠建笼日期和基因型 (小鼠数量和性别动态计算不再作为数据库实体列)
+    mice_birth_date = db.Column(db.Date) # 用于标记建笼日期
     mice_genotype = db.Column(db.String(50))
 
     def display(self):

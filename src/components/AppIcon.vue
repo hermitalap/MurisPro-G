@@ -60,7 +60,9 @@ import {
   WarningOutline,
   MaleOutline,
   FemaleOutline,
-  MaleFemaleOutline
+  MaleFemaleOutline,
+  EllipsisHorizontalCircleOutline,
+  FileTrayOutline
 } from '@vicons/ionicons5'
 
 const props = defineProps({
@@ -137,7 +139,11 @@ const iconMap = {
   arrow_forward: ArrowForwardOutline,
   male: MaleOutline,
   female: FemaleOutline,
-  male_female: MaleFemaleOutline
+  male_female: MaleFemaleOutline,
+  more_horiz_circle: EllipsisHorizontalCircleOutline,
+  help: HelpCircleOutline,
+  file_tray: FileTrayOutline,
+  keyboard_arrow_up: FileTrayOutline
 }
 
 const resolvedIcon = computed(() => {

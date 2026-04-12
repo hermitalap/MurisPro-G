@@ -50,11 +50,6 @@ const routes = [
   path: '/setting',
   name: 'SystemSettings',
   component: () => import('../views/Setting.vue')
-},
-  {
-  path: '/info',
-  name: 'InfoPage',
-  component: () => import('../views/InfoView.vue')
 }
 ]
 

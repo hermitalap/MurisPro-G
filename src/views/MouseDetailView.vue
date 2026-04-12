@@ -1,7 +1,6 @@
 <template>
 <div class="main-content">
-<n-modal :show="true" @mask-click="closeMainModal">
-<n-card class="mouse-detail-modal" :bordered="false" role="dialog" aria-modal="true">
+<n-modal :show="true" @mask-click="closeMainModal" preset="card" class="mouse-detail-modal" :bordered="false" role="dialog" aria-modal="true" style="width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto; background-color: var(--n-color-embedded); border-radius: 12px;">
   <n-space justify="space-between" align="center" class="page-header">
     <n-button class="back-button" type="primary" @click="closeMainModal">
       <AppIcon  name="arrow_back" />
@@ -18,7 +17,7 @@
       <AppIcon  name="replay" />
       返回上一只
     </n-button>
-    <h2>小鼠详情 #{{ mouseData.id }}</h2>
+    <h2 style="margin: 0;">小鼠详情 #{{ mouseData.id }}</h2>
   </n-space>
 
   <div class="detail-grid">
@@ -67,7 +66,7 @@
           <div v-else class="add-record-form">
             <div class="form-group">
               <n-form-item label="记录日期" label-placement="top">
-                <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="newRecord.record_date" />
+                <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="newRecord.record_date" style="width: 100%;" to="body" />
               </n-form-item>
             </div>
             <div class="form-group">
@@ -125,7 +124,6 @@
       </div>
     </div>
   </div>
-</n-card>
 </n-modal>
 </div>
 </template>

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <div class="section">
-      <!-- 顶部统计区 -->
+      <!-- 顶部统计与操作区 -->
       <div class="header-bar">
         <div class="header-left">
           <h2>小鼠管理</h2>
@@ -10,6 +10,10 @@
             （♂ {{filteredMice.filter(m=>m.sex==='M').length}} / ♀ {{filteredMice.filter(m=>m.sex==='F').length}}）
           </span>
         </div>
+        <n-button @click="openModal('add')" type="primary">
+          <template #icon><AppIcon name="add" /></template>
+          添加新小鼠
+        </n-button>
       </div>
       
       <!-- 加载状态 -->
@@ -22,10 +26,6 @@
       <div class="filter-section">
         <!-- 第一行：核心搜索 -->
         <div class="filter-row filter-row-search">
-          <n-button @click="openModal('add')" type="success">
-            <template #icon><AppIcon name="add" /></template>
-            添加新小鼠
-          </n-button>
           <n-input 
             v-model:value="searchTerm" 
             placeholder="搜索小鼠ID或基因型" 
@@ -41,31 +41,8 @@
             <template #icon><AppIcon name="refresh" /></template>
             重置
           </n-button>
-        </div>
-
-        <!-- 第二行：基础属性 -->
-        <div class="filter-row filter-row-basic">
           <div class="filter-item" v-if="showColumns.id">
             <n-input v-model:value="filters.id" @update:value="applyFilters" placeholder="筛选ID" clearable />
-          </div>
-          <div class="filter-item filter-item-location" v-if="showColumns.cage">
-            <n-select
-              v-model:value="filters.location"
-              :options="[
-                { label: '所有区域', value: '' },
-                { label: '未分配', value: 'unassigned' },
-                ...locations.map(location => ({ label: location.identifier, value: location.identifier }))
-              ]"
-              @update:value="onLocationChange"
-              placeholder="选择区域"
-            />
-            <n-select
-              v-if="filters.location && filters.location !== 'unassigned'"
-              v-model:value="filters.cage"
-              :options="[{ label: '所有笼位', value: null }, ...locationCages.map(cage => ({ label: cage.cage_id, value: cage.id }))]"
-              @update:value="applyFilters"
-              placeholder="选择笼位"
-            />
           </div>
           <div class="filter-item filter-item-genotype" v-if="showColumns.genotype">
             <n-select
@@ -174,6 +151,29 @@
             />
           </div>
         </div>
+
+        <!-- 第四行：空间位置 -->
+        <div class="filter-row filter-row-location">
+          <div class="filter-item filter-item-location" v-if="showColumns.cage">
+            <n-select
+              v-model:value="filters.location"
+              :options="[
+                { label: '所有区域', value: '' },
+                { label: '未分配', value: 'unassigned' },
+                ...locations.map(location => ({ label: location.identifier, value: location.identifier }))
+              ]"
+              @update:value="onLocationChange"
+              placeholder="选择区域"
+            />
+            <n-select
+              v-if="filters.location && filters.location !== 'unassigned'"
+              v-model:value="filters.cage"
+              :options="[{ label: '所有笼位', value: null }, ...locationCages.map(cage => ({ label: cage.cage_id, value: cage.id }))]"
+              @update:value="applyFilters"
+              placeholder="选择笼位"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- 小鼠列表表格 -->
@@ -186,6 +186,7 @@
           :bordered="false"
           :single-line="false"
           :row-key="(row) => row.tid"
+          :row-class-name="rowClassName"
           :row-props="rowProps"
           @update:sorter="handleSorterChange"
           :sorter="sorterState"
@@ -276,7 +277,14 @@
     />
 
     <!-- 统一的小鼠编辑/添加模态框 -->
-    <n-modal v-model:show="showModal" v-if="modalMode !== 'template'" :mask-closable="false" preset="card" style="width: 90%; max-width: 600px;" :title="modalTitle" closable @close="closeModal">
+    <n-modal v-model:show="showModal" v-if="modalMode !== 'template'" :mask-closable="false">
+      <n-card class="modal-content" :bordered="false" role="dialog" aria-modal="true">
+        <n-space justify="space-between" align="center" class="modal-header">
+          <h3>{{ modalTitle }}</h3>
+          <n-button class="close-btn" quaternary circle @click="closeModal">
+            <AppIcon  name="close" />
+          </n-button>
+        </n-space>
         <div class="form-body">
           <!-- 小鼠ID字段（仅在添加模式显示） -->
           <div class="form-group" v-if="modalMode === 'add'">
@@ -549,7 +557,6 @@
           </div>
         </div>
         </div>
-        <template #footer>
         <n-space justify="end" class="button-group">
           <n-button @click="saveMouse" :disabled="saving" type="primary">
             <AppIcon  :name="modalMode === 'add' ? 'add' : 'save'" />
@@ -561,11 +568,18 @@
             取消
           </n-button>
         </n-space>
-        </template>
+      </n-card>
     </n-modal>
 
     <!-- 批量添加小鼠模态框 -->
-    <n-modal v-model:show="showModal" v-if="modalMode === 'template' && templateMouse" :mask-closable="false" preset="card" style="width: 90%; max-width: 600px;" title="基于模板批量创建小鼠" closable @close="closeModal">
+    <n-modal v-model:show="showModal" v-if="modalMode === 'template' && templateMouse" :mask-closable="false">
+      <n-card class="modal-content" :bordered="false" role="dialog" aria-modal="true">
+        <n-space justify="space-between" align="center" class="modal-header">
+          <h3>基于模板批量创建小鼠</h3>
+          <n-button class="close-btn" quaternary circle @click="closeModal">
+            <AppIcon  name="close" />
+          </n-button>
+        </n-space>
         <div class="form-body">
         <div class="template-info">
           <h3><AppIcon  name="pets" /> 模板小鼠信息</h3>
@@ -646,7 +660,6 @@
           <n-button attr-type="button" class="remove-btn" tertiary type="error" @click="removeField(index)">移除</n-button>
         </div>
         </div>
-        <template #footer>
         <n-space justify="end" class="button-group">
           <n-button @click="saveTemplateMice" :disabled="saving" type="primary">
             <AppIcon  name="save" />
@@ -658,20 +671,20 @@
             取消
           </n-button>
         </n-space>
-        </template>
+      </n-card>
     </n-modal>
   </div>
 </template>
 
 <script setup>
-import { h, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import api from '@/utils/api'
-import { formatDate, renderEmpty, normalizeDateValue } from '@/utils/format'
-import { fuzzySearch } from '@/utils/search'
+import { h, ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import axios from 'axios'
+import { toast } from 'vue3-toastify'
+import 'vue3-toastify/dist/index.css'
 import MouseDetailModal from './MouseDetailView.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
-import { useDialog, useMessage } from 'naive-ui'
+import { useDialog } from 'naive-ui'
 
 const geneStore = useGeneStore()
 const { mice, loading, genotypes, selectedGenes, alleleSuggestions } = storeToRefs(geneStore)
@@ -686,7 +699,6 @@ const { experiments } = storeToRefs(experimentStore)
 
 const settingStore = useSettingStore()
 const dialog = useDialog()
-const message = useMessage()
 const {showColumns} = storeToRefs(settingStore)
 
 
@@ -744,7 +756,11 @@ const mouseCageMap = computed(() => {
   return map
 })
 
-// normalizeDateValue 已从 @/utils/format 导入
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
+const normalizeDateValue = (value) => {
+  if (typeof value !== 'string') return null
+  return DATE_ONLY_REGEX.test(value) ? value : null
+}
 
 // Naive UI原生排序状态
 const sorterState = ref({
@@ -773,7 +789,8 @@ const formatLiveStatus = (status) => {
     '未知状态'
 }
 
-// renderEmpty 已从 @/utils/format 导入
+// 渲染空值占位符
+const renderEmpty = (value) => value || '-'
 
 const miceColumns = computed(() => {
   const columns = [
@@ -896,7 +913,9 @@ const miceColumns = computed(() => {
   return columns
 })
 
-// rowClassName 已移除（始终返回空字符串）
+const rowClassName = (row) => {
+  return ''
+}
 
 const rowProps = (row, index) => ({
   onDblclick: () => openMouseDetail(row.tid),
@@ -993,32 +1012,119 @@ const modalTitle = computed(() => {
 
 // 父亲建议列表
 const fatherSuggestions = computed(() => {
-  let candidates = mice.value.filter(mouse =>
+  const query = fatherQuery.value
+  if (query.length < 1) return []
+  
+  const lowerQuery = query.toLowerCase()
+  let suggestions = mice.value.filter(mouse =>
     mouse.sex === 'M' &&
+    mouse.id.toLowerCase().includes(lowerQuery)
+  )
+  
+  // 过滤已选中的父亲和子代
+  suggestions = suggestions.filter(mouse => 
     !selectedFathers.value?.some(m => m.tid === mouse.tid)
   )
+  
+  // 编辑模式下排除自己
   if (modalMode.value === 'edit' && formData.tid) {
-    candidates = candidates.filter(mouse => mouse.tid !== formData.tid)
+    suggestions = suggestions.filter(mouse => mouse.tid !== formData.tid)
   }
-  return fuzzySearch(candidates, fatherQuery.value, 'id')
+  
+  // 排序逻辑
+  suggestions.sort((a, b) => {
+    const aStartsWith = a.id.toLowerCase().startsWith(lowerQuery)
+    const bStartsWith = b.id.toLowerCase().startsWith(lowerQuery)
+    const aIncludes = a.id.toLowerCase().includes(lowerQuery)
+    const bIncludes = b.id.toLowerCase().includes(lowerQuery)
+    
+    if (aStartsWith && !bStartsWith) return -1
+    if (!aStartsWith && bStartsWith) return 1
+    
+    if (aStartsWith && bStartsWith) {
+      return a.id.length - b.id.length
+    }
+    
+    if (aIncludes && bIncludes) {
+      const aIndex = a.id.toLowerCase().indexOf(lowerQuery)
+      const bIndex = b.id.toLowerCase().indexOf(lowerQuery)
+      return aIndex - bIndex
+    }
+    
+    return 0
+  })
+  
+  return suggestions.slice(0, 10)
 })
 
 // 母亲建议列表
 const motherSuggestions = computed(() => {
-  let candidates = mice.value.filter(mouse =>
+  const query = motherQuery.value
+  if (query.length < 1) return []
+  
+  const lowerQuery = query.toLowerCase()
+  let suggestions = mice.value.filter(mouse =>
     mouse.sex === 'F' &&
+    mouse.id.toLowerCase().includes(lowerQuery)
+  )
+  
+  // 过滤已选中的母亲
+  suggestions = suggestions.filter(mouse => 
     !selectedMothers.value?.some(m => m.tid === mouse.tid)
   )
+  
+  // 编辑模式下排除自己
   if (modalMode.value === 'edit' && formData.tid) {
-    candidates = candidates.filter(mouse => mouse.tid !== formData.tid)
+    suggestions = suggestions.filter(mouse => mouse.tid !== formData.tid)
   }
-  return fuzzySearch(candidates, motherQuery.value, 'id')
+  
+  // 排序逻辑
+  suggestions.sort((a, b) => {
+    const aStartsWith = a.id.toLowerCase().startsWith(lowerQuery)
+    const bStartsWith = b.id.toLowerCase().startsWith(lowerQuery)
+    const aIncludes = a.id.toLowerCase().includes(lowerQuery)
+    const bIncludes = b.id.toLowerCase().includes(lowerQuery)
+    
+    if (aStartsWith && !bStartsWith) return -1
+    if (!aStartsWith && bStartsWith) return 1
+    
+    if (aStartsWith && bStartsWith) {
+      return a.id.length - b.id.length
+    }
+    
+    if (aIncludes && bIncludes) {
+      const aIndex = a.id.toLowerCase().indexOf(lowerQuery)
+      const bIndex = b.id.toLowerCase().indexOf(lowerQuery)
+      return aIndex - bIndex
+    }
+    
+    return 0
+  })
+  
+  return suggestions.slice(0, 10)
 })
 
 // 方法
-// createAxiosInstance 已移除，使用统一的 api 实例
+const createAxiosInstance = () => {
+  return axios.create({
+    baseURL: '/api',
+    timeout: 60000,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+}
 
-// sortBy / sortIconClass / sortIconName 已移除（排序由 NDataTable 原生处理）
+const sortBy = (field) => {
+  if (sortField.value === field) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortDirection.value = 'asc'
+  }
+  applyFilters()
+}
 
 const resetSearch = () => {
   searchTerm.value = ''
@@ -1042,6 +1148,18 @@ const resetSearch = () => {
     cage:null
   })
   applyFilters()
+}
+
+const sortIconClass = (field) => {
+  if (sortField.value !== field) return 'sort-icon inactive-icon'
+  return sortDirection.value === 'asc'
+    ? 'sort-icon'
+    : 'sort-icon rotated-icon'
+}
+
+const sortIconName = (field) => {
+  if (sortField.value !== field) return 'arrow_downward'
+  return sortDirection.value === 'asc' ? 'arrow_upward' : 'arrow_downward'
 }
 
 const onLocusChange = () => {
@@ -1209,6 +1327,7 @@ const batchDeleteMice = async () => {
       negativeText: '取消',
       onPositiveClick: async () => {
         try {
+          const api = createAxiosInstance()
           await api.delete('/mice', {params: { miceIds: checkedRowKeys.value }})
           checkedRowKeys.value.forEach(mid => {
             const index = mice.value.findIndex(m => m.tid === mid)
@@ -1218,7 +1337,7 @@ const batchDeleteMice = async () => {
           })
           await fetchCages()
           applyFilters()
-          message.success(`批量删除${checkedRowKeys.value.length}只小鼠`)
+          toast.success(`批量删除${checkedRowKeys.value.length}只小鼠`)
         } catch (error) {
           console.error('批量删除小鼠失败:', error)
         } finally {
@@ -1230,7 +1349,7 @@ const batchDeleteMice = async () => {
 
 const batchAddExperiment = async (batchTest) => {
   if (batchSelectedTests.value.length === 0) {
-    message.warning('请先选择要操作的实验')
+    toast.warning('请先选择要操作的实验')
     return
   }
   dialog.warning({
@@ -1240,6 +1359,7 @@ const batchAddExperiment = async (batchTest) => {
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
+        const api = createAxiosInstance()
         await api.put('/mice/experiments', {
           batchTest: batchTest,
           miceIds: checkedRowKeys.value,
@@ -1247,7 +1367,7 @@ const batchAddExperiment = async (batchTest) => {
         })
         await loadMice()
         applyFilters()
-        message.success("批量修改" + batchTest +"成功")
+        toast.success("批量修改" + batchTest +"成功")
       } catch (error) {
         console.error('批量修改实验小鼠失败:', error)
       } finally {
@@ -1259,7 +1379,7 @@ const batchAddExperiment = async (batchTest) => {
 
 const validateMouse = (mouse) => {
   if (!mouse.id && modalMode.value === 'add') {
-    message.warning('小鼠编号不能为空')
+    toast.warning('小鼠编号不能为空')
     return false
   }
   return true
@@ -1367,7 +1487,7 @@ const saveMouse = async () => {
   if (!validateMouse(formData)) return
   
   if (selectedGenes.value.length > 1 && selectedGenes.value.some(g => g.locus === "WT")) {
-    message.error("野生型不能添加基因型")
+    toast.error("野生型不能添加基因型")
     return
   }
 
@@ -1375,14 +1495,14 @@ const saveMouse = async () => {
   // 检查必填字段
   for (const gene of selectedGenes.value) {
     if (existingLocus.includes(gene.locus)) {
-      message.error(`基因位点 ${gene.locus} 出现重复`)
+      toast.error(`基因位点 ${gene.locus} 出现重复`)
       return false
     } else {
       existingLocus.push(gene.locus)
     }
     if (gene.locus && gene.locus !== "WT") {
       if (!gene.allele1 || !gene.allele2) {
-        message.error(`基因 ${gene.locus} 的等位基因必须完整`)
+        toast.error(`基因 ${gene.locus} 的等位基因必须完整`)
         return false
       }
     }
@@ -1399,15 +1519,16 @@ const saveMouse = async () => {
   
   saving.value = true
   try {
+    const api = createAxiosInstance()
     
     if (modalMode.value === 'add') {
       const response = await api.post('/mice', submitData)
       mice.value.push(response.data)
-      message.success(`小鼠 ${submitData.id} 添加成功！`)
+      toast.success(`小鼠 ${submitData.id} 添加成功！`)
     } else if (modalMode.value === 'edit') {
       await api.put(`/mice/${formData.tid}`, submitData)
       await loadMice()
-      message.success(`小鼠 ${formData.id} 信息已更新！`)
+      toast.success(`小鼠 ${formData.id} 信息已更新！`)
     }
     applyFilters()
     closeModal()
@@ -1417,14 +1538,14 @@ const saveMouse = async () => {
     
     if (error.response) {
       if (error.response.status === 400) {
-        message.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
+        toast.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
       } else if (error.response.status === 500) {
-        message.error('服务器内部错误，请稍后再试')
+        toast.error('服务器内部错误，请稍后再试')
       } else {
-        message.error(`保存失败: ${error.response.data.error || '未知错误'}`)
+        toast.error(`保存失败: ${error.response.data.error || '未知错误'}`)
       }
     } else {
-      message.error(`保存失败: ${error.message || '网络错误'}`)
+      toast.error(`保存失败: ${error.message || '网络错误'}`)
     }
   } finally {
     saving.value = false
@@ -1439,12 +1560,13 @@ const openMouseDetail = (mouseId) => {
 
 const deleteMouse = async (mouseId) => {
   try {
+    const api = createAxiosInstance()
     await api.delete(`/mice/${mouseId}`)
     
     // 更新本地数据
     const index = mice.value.findIndex(m => m.tid === mouseId)
     if (index !== -1) {
-      message.success(`小鼠 ${mice.value[index].id} 已删除！`)
+      toast.success(`小鼠 ${mice.value[index].id} 已删除！`)
       mice.value.splice(index, 1)
       applyFilters()
     }
@@ -1459,12 +1581,12 @@ const deleteMouse = async (mouseId) => {
     
     if (error.response) {
       if (error.response.status === 404) {
-        message.error('未找到该小鼠记录')
+        toast.error('未找到该小鼠记录')
       } else {
-        message.error(`删除失败: ${error.response.data.error || '服务器错误'}`)
+        toast.error(`删除失败: ${error.response.data.error || '服务器错误'}`)
       }
     } else {
-      message.error(`删除失败: ${error.message || '网络错误'}`)
+      toast.error(`删除失败: ${error.message || '网络错误'}`)
     }
   }
 }
@@ -1544,7 +1666,7 @@ const selectTest = (type, experiment) => {
   } else if (type === 'batch') {
     const index = batchSelectedTests.value.findIndex(p => p.id === experiment.id)
     if (index !== -1) {
-      message.info("请勿选择重复实验")
+      toast.info("请勿选择重复实验")
       return
     }
     batchSelectedTests.value.push(experiment)
@@ -1569,7 +1691,38 @@ const removeTest = (type, index) => {
 const searchCage = () => {
   formData.cage_id = null
   const thisQuery = cageQuery.value.split(" - ")[0]
-  cageSuggestions.value = fuzzySearch(cages.value, thisQuery, 'cage_id')
+  if (thisQuery.length < 1) {
+    cageSuggestions.value = []
+    return
+  }
+  
+  let suggestions = cages.value.filter(cage =>
+    cage.cage_id.includes(thisQuery))
+  
+  cageSuggestions.value = suggestions.sort((a, b) => {
+    const aStartsWith = a.cage_id.startsWith(thisQuery)
+    const bStartsWith = b.cage_id.startsWith(thisQuery)
+    const aIncludes = a.cage_id.includes(thisQuery)
+    const bIncludes = b.cage_id.includes(thisQuery)
+    
+    // 完全匹配或开头匹配的优先
+    if (aStartsWith && !bStartsWith) return -1
+    if (!aStartsWith && bStartsWith) return 1
+    
+    // 开头匹配的按ID长度排序（较短的优先）
+    if (aStartsWith && bStartsWith) {
+      return a.id.length - b.id.length
+    }
+    
+    // 包含匹配的按匹配位置排序
+    if (aIncludes && bIncludes) {
+      const aIndex = a.cage_id.indexOf(thisQuery)
+      const bIndex = b.cage_id.indexOf(thisQuery)
+      return aIndex - bIndex
+    }
+    
+    return 0
+  }).slice(0, 10)
 }
 
 const selectCage = (cage) => {
@@ -1594,7 +1747,11 @@ const onBlur = () => {
   }, 200)
 }
 
-// formatDate 已从 @/utils/format 导入
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+}
 
 const addInputField = () => {
   newMice.value.push({ id: '', sex: templateMouse.value.sex })
@@ -1611,15 +1768,16 @@ const saveTemplateMice = async () => {
   })
 
   if (hasEmptyId) {
-    message.error("存在ID为空的小鼠")
+    toast.error("存在ID为空的小鼠")
     return
   }
   
   saving.value = true
   try {
+    const api = createAxiosInstance()
     await api.post(`/mice/${templateMouse.value.tid}`, newMice.value)
     
-    message.success(`按模板添加${newMice.value.length}只小鼠！`)
+    toast.success(`按模板添加${newMice.value.length}只小鼠！`)
     await loadMice()
     applyFilters()
     if (templateMouse.value.cage_id) {
@@ -1633,14 +1791,14 @@ const saveTemplateMice = async () => {
     
     if (error.response) {
       if (error.response.status === 404) {
-        message.error('未找到该小鼠记录')
+        toast.error('未找到该小鼠记录')
       } else if (error.response.status === 400) {
-        message.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
+        toast.error(`请求格式错误: ${error.response.data.error || '请检查输入数据'}`)
       } else {
-        message.error(`添加失败: ${error.response.data.error || '服务器错误'}`)
+        toast.error(`添加失败: ${error.response.data.error || '服务器错误'}`)
       }
     } else {
-      message.error(`添加失败: ${error.message || '网络错误'}`)
+      toast.error(`添加失败: ${error.message || '网络错误'}`)
     }
   } finally {
     saving.value = false
@@ -1657,11 +1815,6 @@ onMounted(async () => {
   applyFilters()
   document.addEventListener('click', closeContextMenu)
   document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', closeContextMenu)
-  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -1730,7 +1883,7 @@ onUnmounted(() => {
 
 /* 核心搜索行 */
 .filter-row-search {
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: 1fr auto auto;
 }
 
 .search-input {
@@ -1768,6 +1921,11 @@ onUnmounted(() => {
 .range-separator {
   color: var(--n-text-color-3);
   flex-shrink: 0;
+}
+
+/* 空间位置行 */
+.filter-row-location {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .filter-item-location {
@@ -1879,6 +2037,37 @@ onUnmounted(() => {
   margin-bottom: 20px;
 }
 
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--n-text-color-2);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--n-border-color);
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--n-primary-color);
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--n-primary-color) 20%, transparent);
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
 .button-group {
   display: flex;
   justify-content: flex-end;
@@ -1939,7 +2128,7 @@ onUnmounted(() => {
 .empty-state button {
   padding: 10px 20px;
   background: var(--n-primary-color);
-  color: var(--n-color);
+  color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -2256,7 +2445,7 @@ onUnmounted(() => {
   justify-content: center;
   margin-right: 8px;
   font-size: 12px;
-  color: var(--n-color);
+  color: white;
   font-weight: bold;
   flex-shrink: 0;
   overflow: hidden;
@@ -2269,6 +2458,14 @@ onUnmounted(() => {
 
 .sex-male {
   background-color: var(--n-info-color);
+}
+
+.genotype-filter {
+  display: contents;
+  gap: 5px;
+  margin-bottom: 20px;
+  background-color: var(--n-color-embedded);
+  border-radius: 8px;
 }
 
 .custom-select {
@@ -2293,11 +2490,12 @@ onUnmounted(() => {
 
 @media (max-width: 992px) {
   .filter-row-search {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .filter-row-basic,
-  .filter-row-time {
+  .filter-row-time,
+  .filter-row-location {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -2312,12 +2510,13 @@ onUnmounted(() => {
     align-items: flex-start;
   }
 
-  .filter-row-search {
-    grid-template-columns: 1fr;
+  .header-bar button {
+    width: 100%;
   }
 
   .filter-row-basic,
-  .filter-row-time {
+  .filter-row-time,
+  .filter-row-location {
     grid-template-columns: 1fr;
   }
 

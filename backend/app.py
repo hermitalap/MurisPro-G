@@ -559,6 +559,19 @@ def get_all_cages():
                         'sex': mouse.sex,
                         'days': (datetime.now().date() - mouse.birth_date).days if mouse.birth_date else None
                     })
+            # 动态计算笼内小鼠的数量和性别情况
+            dynamic_count = len(mice_info)
+            if dynamic_count == 0:
+                dynamic_sex = None
+            else:
+                sexes = set(m['sex'] for m in mice_info if m.get('sex'))
+                if sexes == {'F'}:
+                    dynamic_sex = 'F'
+                elif sexes == {'M'}:
+                    dynamic_sex = 'M'
+                else:
+                    dynamic_sex = 'Mixed'
+                    
             cage_data.append({
                 'id': cage.id,
                 'cage_id': cage.cage_id,
@@ -567,8 +580,8 @@ def get_all_cages():
                 'cage_type': cage.cage_type,
                 'mice': mice_info,
                 'mice_birth_date': cage.mice_birth_date.strftime('%Y-%m-%d') if cage.mice_birth_date else None,
-                'mice_count': cage.mice_count,
-                'mice_sex': cage.mice_sex,
+                'mice_count': dynamic_count,
+                'mice_sex': dynamic_sex,
                 'mice_genotype': cage.mice_genotype
             })
         return jsonify(cage_data)
@@ -612,8 +625,6 @@ def add_cage():
             cage_type=data.get('cage_type', 'normal'),
             order=new_order,
             mice_birth_date=datetime.strptime(data['mice_birth_date'], '%Y-%m-%d').date() if data.get('mice_birth_date') else None,
-            mice_count=int(data['mice_count']) if data.get('mice_count') not in (None, "") else None,
-            mice_sex=data.get('mice_sex'),
             mice_genotype=data.get('mice_genotype')
         )
         db.session.add(cage)
@@ -669,13 +680,12 @@ def update_cage(cage_id):
         cage.cage_type = data.get('cage_type')
         if 'mice_birth_date' in data:
             cage.mice_birth_date = datetime.strptime(data['mice_birth_date'], '%Y-%m-%d').date() if data.get('mice_birth_date') else None
-        if 'mice_count' in data:
-            cage.mice_count = int(data['mice_count']) if data.get('mice_count') not in (None, "") else None
-        if 'mice_sex' in data:
-            cage.mice_sex = data.get('mice_sex')
         if 'mice_genotype' in data:
             cage.mice_genotype = data.get('mice_genotype')
         db.session.commit()
+        
+        # 为了兼容前端返回，手动算一遍数量和性别（但前端目前其实是重新加载 fetchCages 或根据返回使用）
+        # 前端会自己通过笼子中的 .mice 更新它们，或者重新加载。我们这里返回占位符或旧值
         return jsonify({
             'id': cage.id,
             'cage_id': cage.cage_id,
@@ -683,8 +693,6 @@ def update_cage(cage_id):
             'location': cage.location,
             'cage_type': cage.cage_type,
             'mice_birth_date': cage.mice_birth_date.strftime('%Y-%m-%d') if cage.mice_birth_date else None,
-            'mice_count': cage.mice_count,
-            'mice_sex': cage.mice_sex,
             'mice_genotype': cage.mice_genotype
         })
     except Exception as e:
