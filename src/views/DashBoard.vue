@@ -1,76 +1,94 @@
 <template>
+  <n-scrollbar trigger="hover" :size="8">
   <div class="main-content">
-    <n-space vertical size="large" class="content-header" id="contentHeader">
-      <h1 class="page-title">笼位视图</h1>
-      <!-- 搜索框 -->
-      <div class="search-container">
-        <div class="search-box">
-          <AppIcon  name="search" />
-          <n-input
-            v-model:value="searchTerm"
-            placeholder="搜索小鼠ID..."
-            @update:value="performSearch"
-            @keyup.enter="performSearch"
-            clearable
-          />
-          <n-button v-if="searchTerm" @click="clearSearch" class="search-clear" quaternary circle>
-            <AppIcon  name="close" />
-          </n-button>
-        </div>
-        
-        <!-- 搜索结果下拉框 -->
-        <div v-if="searchResults.length > 0" class="search-results">
-          <div class="search-result-header">
-            <span>找到 {{ searchResults.length }} 个结果</span>
-            <div class="search-nav">
-              <n-button quaternary circle @click="navigateResults(-1)" :disabled="currentResultIndex <= 0">
-                <AppIcon  name="arrow_upward" />
-              </n-button>
-              <n-button quaternary circle @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1">
-                <AppIcon  name="arrow_downward" />
-              </n-button>
-            </div>
-          </div>
-          
-          <div 
-            v-for="(result, index) in searchResults" 
-            :key="index" 
-            class="search-result-item"
-            :class="{ active: index === currentResultIndex }"
-            @click="selectSearchResult(result, index)"
-          >
-            <div class="mouse-sex" :class="result.mouse.sex === 'F' ? 'sex-female' : (result.mouse.sex === 'Mixed' ? 'sex-mixed' : 'sex-male')">
-              {{ result.mouse.sex === 'F' ? '♀' : (result.mouse.sex === 'Mixed' ? '⚥' : '♂') }}
-            </div>
-            <div class="result-info">
-              <div class="mouse-id">{{ result.mouse.id }}</div>
-              <div class="cage-info">{{ result.cage.section }} - {{ result.cage.cage_id }} {{ result.cage.location ? `(${result.cage.location})` : "" }}</div>
-            </div>
+    <div class="content-header" id="contentHeader">
+      <div class="header-top-row">
+        <div class="header-title-section">
+          <h1 class="page-title">笼位视图</h1>
+          <div class="header-stats-panel">
+            <n-statistic label="存活" :value="survivingMouseCount">
+              <template #prefix>
+                <AppIcon name="fitness_outline" />
+              </template>
+              <n-number-animation :from="0" :to="survivingMouseCount" />
+            </n-statistic>
+            <n-statistic label="活跃笼位" :value="activeCageCount">
+              <template #prefix>
+                <AppIcon name="grid_view" />
+              </template>
+              <n-number-animation :from="0" :to="activeCageCount" />
+            </n-statistic>
           </div>
         </div>
       </div>
+      <div class="header-controls-row">
+        <div class="search-container">
+          <div class="search-box">
+            <AppIcon  name="search" />
+            <n-input
+              v-model:value="searchTerm"
+              placeholder="搜索小鼠ID..."
+              @update:value="performSearch"
+              @keyup.enter="performSearch"
+              clearable
+            />
+            <n-button v-if="searchTerm" @click="clearSearch" class="search-clear" quaternary circle>
+              <AppIcon  name="close" />
+            </n-button>
+          </div>
+          
+          <div v-if="searchResults.length > 0" class="search-results">
+            <div class="search-result-header">
+              <span>找到 {{ searchResults.length }} 个结果</span>
+              <div class="search-nav">
+                <n-button quaternary circle @click="navigateResults(-1)" :disabled="currentResultIndex <= 0">
+                  <AppIcon  name="arrow_upward" />
+                </n-button>
+                <n-button quaternary circle @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1">
+                  <AppIcon  name="arrow_downward" />
+                </n-button>
+              </div>
+            </div>
+            
+            <div 
+              v-for="(result, index) in searchResults" 
+              :key="index" 
+              class="search-result-item"
+              :class="{ active: index === currentResultIndex }"
+              @click="selectSearchResult(result, index)"
+            >
+              <div class="mouse-sex" :class="result.mouse.sex === 'F' ? 'sex-female' : (result.mouse.sex === 'Mixed' ? 'sex-mixed' : 'sex-male')">
+                {{ result.mouse.sex === 'F' ? '♀' : (result.mouse.sex === 'Mixed' ? '⚥' : '♂') }}
+              </div>
+              <div class="result-info">
+                <div class="mouse-id">{{ result.mouse.id }}</div>
+                <div class="cage-info">{{ result.cage.section }} - {{ result.cage.cage_id }} {{ result.cage.location ? `(${result.cage.location})` : "" }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <n-space class="action-buttons">
-        <n-button secondary @click="fetchCages">
-          <AppIcon  class="btn-icon" name="refresh" />
-          刷新数据
-        </n-button>
-        <n-badge :value="temporaryMice.length" :max="99">
-          <n-button secondary @click="showTemporaryDrawer = true">
-            <AppIcon class="btn-icon" name="file_tray" />
-            打开临时区
+        <div class="slot-toolbar">
+          <span class="slot-label">笼位插槽数</span>
+          <n-input-number v-model:value="cageSlotCount" :min="1" />
+        </div>
+
+        <n-space class="action-buttons">
+          <n-button secondary @click="fetchCages">
+            <AppIcon  class="btn-icon" name="refresh" />
+            刷新数据
           </n-button>
-        </n-badge>
-        <n-button secondary @click="exportToPDF">
-          <AppIcon  class="btn-icon" name="picture_as_pdf" />
-          当前位置导出pdf
-        </n-button>
-        <n-button type="primary" @click="openCageModal(null)">
-          <AppIcon  class="btn-icon" name="add" />
-          添加笼位
-        </n-button>
-      </n-space>
-    </n-space>
+          <n-button secondary @click="exportToPDF">
+            <AppIcon  class="btn-icon" name="picture_as_pdf" />
+            当前位置导出pdf
+          </n-button>
+          <n-button type="primary" @click="openCageModal(null)">
+            <AppIcon  class="btn-icon" name="add" />
+            添加笼位
+          </n-button>
+        </n-space>
+      </div>
+    </div>
     
     <!-- Section标签页导航 -->
     <div class="section-tabs">
@@ -88,6 +106,81 @@
               {{ element.identifier }}
             </div>
           </template>
+          <div class="cage-scroll-container">
+            <n-scrollbar trigger="hover" :size="8">
+              <n-flex class="cage-flex-container" wrap="wrap" justify="center" :size="16">
+                <div v-for="(cage, idx) in getMatrixCellsForSection(element.identifier)" :key="`matrix-cell-${idx}`" class="matrix-cell">
+                  <div
+                    v-if="cage"
+                    class="cage-card"
+                    :data-cage-id="cage.id"
+                    :class="{
+                      breeding: cage.cage_type === 'breeding',
+                      'swap-source': cage.id === sourceCage?.id,
+                      'swap-target': cage.id === targetCage?.id,
+                      'search-highlight': isCageHighlighted(cage.id)
+                    }"
+                    @dragover.prevent
+                    @drop="handleDrop($event, cage.id)"
+                    @contextmenu.prevent="openCageContextMenu($event, cage)"
+                    @click="handleCageClick(cage)"
+                  >
+                    <n-card size="small" :bordered="true" class="cage-card-body">
+                      <div class="cage-header" @click.stop="openCageModal(cage)">
+                        <div class="cage-header-top">
+                          <div class="cage-identifier">
+                            <div class="cage-sex-mark" :class="getCageSexClass(cage)">
+                              <AppIcon :name="getCageSexIcon(cage)" />
+                            </div>
+                            <span class="cage-id-text">{{ cage.cage_id || '-' }}</span>
+                          </div>
+                          <div class="cage-actions-right">
+                            <n-tag 
+                              v-if="cage.mice_genotype"
+                              size="small" 
+                              :type="getGenotypeTagType(cage.mice_genotype)" 
+                              :bordered="false"
+                              class="cage-genotype-badge"
+                            >
+                              {{ cage.mice_genotype }}
+                            </n-tag>
+                            <n-tag 
+                              size="small" 
+                              :type="getCageCountType(cage)" 
+                              :bordered="false"
+                              class="cage-count-badge"
+                            >
+                              {{ cage.mice?.length ?? cage.mice_count ?? 0 }}只
+                            </n-tag>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="cage-table-wrapper">
+                        <n-data-table
+                          :columns="mouseTableColumns"
+                          :data="getCageDisplayRows(cage)"
+                          size="small"
+                          :bordered="false"
+                          :single-line="false"
+                          :max-height="240"
+                          :min-height="240"
+                          table-layout="fixed"
+                        />
+                      </div>
+                    </n-card>
+                  </div>
+
+                  <n-card v-else size="small" class="cage-slot-empty" :bordered="false" @click="openCageModal(null)">
+                    <div class="empty-slot-content">
+                      <AppIcon name="add" class="slot-icon" />
+                      <span>新增笼位</span>
+                    </div>
+                  </n-card>
+                </div>
+              </n-flex>
+            </n-scrollbar>
+          </div>
         </n-tab-pane>
       </n-tabs>
     </div>
@@ -113,99 +206,6 @@
       </ul>
     </div>
     
-    <div class="matrix-toolbar">
-      <n-space align="center" size="small">
-        <span class="matrix-label">矩阵布局</span>
-        <n-input-number v-model:value="matrixRows" :min="1" size="small" />
-        <span>x</span>
-        <n-input-number v-model:value="matrixCols" :min="1" size="small" />
-      </n-space>
-    </div>
-
-    <div class="cage-view-container">
-      <div v-if="locations.length > 0" class="cage-matrix-scroll" id="cageGrid">
-        <div class="cage-matrix" :style="matrixGridStyle">
-          <div v-for="(cage, index) in matrixCells" :key="`matrix-cell-${index}`" class="matrix-cell">
-            <div
-              v-if="cage"
-              class="cage-card"
-              :data-cage-id="cage.id"
-              :class="{
-                breeding: cage.cage_type === 'breeding',
-                'swap-source': cage.id === sourceCage?.id,
-                'swap-target': cage.id === targetCage?.id,
-                'search-highlight': isCageHighlighted(cage.id)
-              }"
-              @dragover.prevent
-              @drop="handleDrop($event, cage.id)"
-              @contextmenu.prevent="openCageContextMenu($event, cage)"
-              @click="handleCageClick(cage)"
-            >
-              <n-card size="small" :bordered="true" class="cage-card-body">
-                <div class="cage-header" @click.stop="openCageModal(cage)">
-                  <div class="cage-header-top">
-                    <div class="cage-identifier">
-                      <div class="cage-sex-mark" :class="getCageSexClass(cage)">
-                        <AppIcon :name="getCageSexIcon(cage)" />
-                      </div>
-                      <span class="cage-id-text">{{ cage.cage_id || '-' }}</span>
-                    </div>
-                    <div class="cage-actions-right">
-                      <n-tag 
-                        v-if="cage.mice_genotype"
-                        size="small" 
-                        :type="getGenotypeTagType(cage.mice_genotype)" 
-                        :bordered="false"
-                        class="cage-genotype-badge"
-                      >
-                        {{ cage.mice_genotype }}
-                      </n-tag>
-                      <n-tag 
-                        size="small" 
-                        :type="getCageCountType(cage)" 
-                        :bordered="false"
-                        class="cage-count-badge"
-                      >
-                        {{ cage.mice?.length ?? cage.mice_count ?? 0 }}只
-                      </n-tag>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="cage-table-wrapper">
-                  <n-data-table
-                    :columns="mouseTableColumns"
-                    :data="getCageDisplayRows(cage)"
-                    size="small"
-                    :bordered="false"
-                    :single-line="false"
-                    :max-height="240"
-                    :min-height="240"
-                    table-layout="fixed"
-                  />
-                </div>
-              </n-card>
-            </div>
-
-            <n-card v-else size="small" class="cage-slot-empty" :bordered="false" @click="openCageModal(null)">
-              <div class="empty-slot-content">
-                <AppIcon name="add" class="slot-icon" />
-                <span>新增笼位</span>
-              </div>
-            </n-card>
-          </div>
-        </div>
-      </div>
-
-      <div v-else style="flex: 1;padding: 80px;background-color: var(--n-color);">
-        <div class="container">
-          <AppIcon style="font-size: 120px; color: var(--n-text-color-disabled);" name="error_outline" />
-          <h1>未设定区域</h1>
-          <p>请前往设置页面设定区域。</p>
-        </div>
-      </div>
-    </div>
-
     <n-drawer v-model:show="showTemporaryDrawer" placement="bottom" :height="460" resizable>
       <n-drawer-content title="临时区小鼠管理" closable>
         <div class="temporary-drawer-content" style="height: 100%;">
@@ -242,7 +242,6 @@
       :mouse-id="selectedMouseId" 
       @close="showMouseDetail = false" 
     />
-  </div>
 
     <!-- 笼位右键菜单 -->
   <div v-if="cageContextMenu.visible" 
@@ -377,6 +376,22 @@
     <div class="spinner"></div>
     <p>正在生成PDF，请稍候...</p>
   </div>
+
+  <!-- 浮动按钮 -->
+  <div class="floating-button-group">
+    <n-badge :value="temporaryMice.length" :max="99" :offset="[-5, 5]">
+      <n-tooltip trigger="hover">
+        <template #trigger>
+          <n-button circle type="primary" @click="showTemporaryDrawer = true">
+            <AppIcon name="file_tray" />
+          </n-button>
+        </template>
+        临时区
+      </n-tooltip>
+    </n-badge>
+  </div>
+  </div>
+  </n-scrollbar>
 </template>
 
 <script setup>
@@ -413,6 +428,23 @@ const miceSexOptions = [
   { label: '雌性', value: 'F' },
   { label: '混合', value: 'Mixed' }
 ]
+
+const survivingMouseCount = computed(() => {
+  let count = 0
+  for (const cage of cages.value) {
+    if (Array.isArray(cage.mice)) {
+      count += cage.mice.filter(m => m.live_status !== false && m.live_status !== 'dead').length
+    }
+  }
+  return count
+})
+
+const activeCageCount = computed(() => {
+  return cages.value.filter(cage => {
+    const mouseCount = Array.isArray(cage.mice) ? cage.mice.length : (cage.mice_count ?? 0)
+    return mouseCount > 0
+  }).length
+})
 
 // 响应式状态
 const temporaryMice = ref([])
@@ -456,8 +488,7 @@ const highlightedCageId = ref(null)
 const swapStatus = ref(null)
 const sourceCage = ref(null)
 const targetCage = ref(null)
-const matrixRows = ref(4)
-const matrixCols = ref(4)
+const cageSlotCount = ref(12)
 
 const showTemporaryDrawer = ref(false)
 
@@ -624,16 +655,21 @@ const sortedSections = computed(() => {
 })
 
 const filteredSectionCages = computed(() => cageStore.filteredCages || [])
-const effectiveMatrixCols = computed(() => Math.max(1, Number(matrixCols.value) || 1))
-const effectiveMatrixRows = computed(() => {
-  const requestedRows = Math.max(1, Number(matrixRows.value) || 1)
-  const neededRows = Math.ceil(filteredSectionCages.value.length / effectiveMatrixCols.value)
-  return Math.max(requestedRows, neededRows || 1)
-})
+
+function getCagesBySection(sectionIdentifier) {
+  return cages.value.filter(cage => cage.section === sectionIdentifier)
+}
+
 const matrixCells = computed(() => {
-  const total = effectiveMatrixRows.value * effectiveMatrixCols.value
+  const total = Math.max(1, Number(cageSlotCount.value) || 1)
   return Array.from({ length: total }, (_, index) => filteredSectionCages.value[index] || null)
 })
+
+function getMatrixCellsForSection(sectionIdentifier) {
+  const sectionCages = getCagesBySection(sectionIdentifier)
+  const total = Math.max(1, Number(cageSlotCount.value) || 1)
+  return Array.from({ length: total }, (_, index) => sectionCages[index] || null)
+}
 const matrixGridStyle = computed(() => ({
   gridTemplateColumns: `repeat(${effectiveMatrixCols.value}, var(--cage-card-width))`,
   gridTemplateRows: `repeat(${effectiveMatrixRows.value}, var(--cage-card-height))`
@@ -1412,46 +1448,97 @@ function isCageHighlighted(cageId) {
 
 /* 主容器布局 */
 .main-content {
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
-.matrix-toolbar {
+.content-header {
   margin-bottom: 12px;
-  display: flex;
-  justify-content: center;
 }
 
-.matrix-label {
+.header-top-row {
+  margin-bottom: 12px;
+}
+
+.header-title-section {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.header-controls-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-stats-panel {
+  display: flex;
+  gap: 24px;
+}
+
+.header-stats-panel :deep(.n-statistic) {
+  text-align: center;
+}
+
+.header-stats-panel :deep(.n-statistic .n-statistic-label) {
+  color: var(--n-text-color-2);
+  font-size: 12px;
+}
+
+.header-stats-panel :deep(.n-statistic .n-statistic-value) {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.slot-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slot-toolbar :deep(.n-input-number) {
+  width: 80px;
+}
+
+.slot-label {
   color: var(--n-text-color-2);
   font-size: 13px;
+  white-space: nowrap;
 }
 
-.cage-view-container {
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cage-flex-container {
   --cage-card-width: 270px;
   --cage-card-height: 340px;
+}
+
+.cage-scroll-container {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
 }
 
-.cage-matrix-scroll {
-  width: 100%;
-  height: calc(100vh - 300px);
-  min-height: 500px;
-  overflow: auto;
-  background-color: var(--n-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 10px;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 5%, transparent);
-  padding: 16px;
+.cage-scroll-container :deep(.n-scrollbar-container) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-.cage-matrix {
-  display: grid;
-  gap: 16px;
-  width: max-content;
-  min-width: 100%;
-  align-items: start;
+.cage-flex-container :deep(.matrix-cell) {
+  width: var(--cage-card-width);
+  height: var(--cage-card-height);
 }
 
 .matrix-cell {
@@ -1472,8 +1559,8 @@ function isCageHighlighted(cageId) {
 /* Section标签页样式 */
 .section-tabs {
   border-bottom: 1px solid var(--n-border-color);
-  margin-bottom: 15px;
-  padding: 0 4px 8px;
+  margin-bottom: 0;
+  padding: 0 4px 4px;
 }
 
 .section-tabs :deep(.n-tabs-nav) {
@@ -2388,6 +2475,21 @@ p {
   text-align: center;
   padding: 40px 20px;
   max-width: 400px;
+}
+
+.floating-button-group {
+  position: fixed;
+  left: 90%;
+  top: 90%;
+  z-index: 100;
+  transform: translate(-50%, -50%);
+}
+
+.floating-button-group .n-button {
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--n-text-color) 20%, transparent);
 }
 </style>
 
