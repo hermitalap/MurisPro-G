@@ -85,9 +85,12 @@ import {
 import {
   AnalyticsOutline,
   FlaskOutline,
+  GitBranchOutline,
+  GitNetworkOutline,
   GridOutline,
   InformationCircleOutline,
   ListOutline,
+  NutritionOutline,
   PlayCircleOutline,
   ScaleOutline,
   SettingsOutline,
@@ -126,6 +129,15 @@ const menuOptions = computed(() => {
         { key: 'home', label: '笼位视图', icon: renderIcon(GridOutline) },
         { key: 'mice', label: '小鼠列表', icon: renderIcon(ListOutline) },
         { key: 'WeightList', label: '体重列表', icon: renderIcon(ScaleOutline) }
+      ]
+    },
+    {
+      key: 'group-breeding',
+      label: '基因编辑小鼠繁配',
+      icon: renderIcon(GitBranchOutline),
+      children: [
+        { key: 'BreedingProgress', label: '基因型繁配进度', icon: renderIcon(GitNetworkOutline) },
+        { key: 'Genotyping', label: '基因型鉴定', icon: renderIcon(NutritionOutline) }
       ]
     },
     ...(experimentChildren.length

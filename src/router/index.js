@@ -50,6 +50,16 @@ const routes = [
   path: '/setting',
   name: 'SystemSettings',
   component: () => import('../views/Setting.vue')
+},
+  {
+  path: '/breeding/progress',
+  name: 'BreedingProgress',
+  component: () => import('../views/BreedingProgressView.vue')
+},
+  {
+  path: '/breeding/genotyping',
+  name: 'Genotyping',
+  component: () => import('../views/GenotypingView.vue')
 }
 ]
 
