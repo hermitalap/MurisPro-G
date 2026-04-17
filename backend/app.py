@@ -143,6 +143,26 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db.init_app(app)
 
+def _ensure_columns(table_name, columns_spec):
+    """对 SQLite 已有表做兼容性 ADD COLUMN。
+    columns_spec: [(column_name, 'TYPE [DEFAULT ...]'), ...]
+    """
+    try:
+        existing = {row[1] for row in db.session.execute(text(f"PRAGMA table_info({table_name})")).fetchall()}
+    except Exception as ex:
+        logger.warning(f"读取表 {table_name} 结构失败，跳过列兼容: {ex}")
+        return
+    for col_name, col_def in columns_spec:
+        if col_name not in existing:
+            try:
+                db.session.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}"))
+                db.session.commit()
+                logger.info(f"已为 {table_name} 添加列 {col_name}")
+            except Exception as ex:
+                db.session.rollback()
+                logger.error(f"为 {table_name} 添加列 {col_name} 失败: {ex}")
+
+
 # 确保数据库初始化完成
 with app.app_context():
     try:
@@ -151,6 +171,17 @@ with app.app_context():
         # 测试数据库连接
         db.session.execute(text('SELECT 1'))
         print("数据库连接测试成功")
+
+        # 兼容旧库：为已存在的表补齐基因编辑小鼠繁配模块字段
+        _ensure_columns('mouse', [
+            ('genotype_confirmed', 'BOOLEAN NOT NULL DEFAULT 1'),
+            ('id_strategy', 'VARCHAR(10)'),
+            ('toe_mark', 'VARCHAR(10)'),
+        ])
+        _ensure_columns('cage', [
+            ('breeding_status', 'VARCHAR(20)'),
+            ('breeding_status_date', 'DATE'),
+        ])
 
         # 自动创建默认位置（如果不存在）
         if not db.session.query(Location).first():
@@ -260,7 +291,11 @@ def get_all_mice():
                 'tests_done': [t.experiment_id for t in m.tests_done] if m.tests_done else [],
                 'tests_planned': m.tests_planned,
                 'days_old': days,
-                'weeks_old': weeks
+                'weeks_old': weeks,
+                'cage_id': m.cage_id,
+                'genotype_confirmed': m.genotype_confirmed,
+                'id_strategy': m.id_strategy,
+                'toe_mark': m.toe_mark
             }
             mice_data.append(mouse_dict)
         return jsonify(mice_data)
@@ -582,7 +617,9 @@ def get_all_cages():
                 'mice_birth_date': cage.mice_birth_date.strftime('%Y-%m-%d') if cage.mice_birth_date else None,
                 'mice_count': dynamic_count,
                 'mice_sex': dynamic_sex,
-                'mice_genotype': cage.mice_genotype
+                'mice_genotype': cage.mice_genotype,
+                'breeding_status': cage.breeding_status,
+                'breeding_status_date': cage.breeding_status_date.strftime('%Y-%m-%d') if cage.breeding_status_date else None
             })
         return jsonify(cage_data)
     except Exception as e:
@@ -699,6 +736,151 @@ def update_cage(cage_id):
         logger.error(f"更新笼位失败: {str(e)}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+#============================================================
+# 基因编辑小鼠繁配模块
+#============================================================
+
+@app.route('/api/cages/<int:cage_id>/breeding-status', methods=['PUT'])
+def update_breeding_status(cage_id):
+    """更新笼位繁殖状态。status: 'pregnant' | 'delivered' | null
+    delivered 时同步写入 mice_birth_date（若前端传 date）。"""
+    cage = Cage.query.get_or_404(cage_id)
+    data = request.json or {}
+    status = data.get('status')
+    if status not in (None, 'pregnant', 'delivered'):
+        return jsonify({'error': f'非法状态: {status}'}), 400
+    try:
+        cage.breeding_status = status
+        date_str = data.get('date')
+        status_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date()
+        cage.breeding_status_date = status_date if status else None
+        if status == 'delivered':
+            cage.mice_birth_date = status_date
+        db.session.commit()
+        return jsonify({
+            'id': cage.id,
+            'breeding_status': cage.breeding_status,
+            'breeding_status_date': cage.breeding_status_date.strftime('%Y-%m-%d') if cage.breeding_status_date else None,
+            'mice_birth_date': cage.mice_birth_date.strftime('%Y-%m-%d') if cage.mice_birth_date else None
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"更新笼位繁殖状态失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/mice/litter', methods=['POST'])
+def register_litter():
+    """批量登记新生仔（预登记状态，genotype_confirmed=False）。
+    body: {
+        cage_id, father_ids: [tid,...], mother_ids: [tid,...],
+        birth_date, strain, id_strategy, pups: [{id, sex, toe_mark?}, ...]
+    }
+    """
+    data = request.json or {}
+    try:
+        cage_id = data.get('cage_id')
+        birth_date_str = data.get('birth_date')
+        birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date() if birth_date_str else None
+        strain = data.get('strain')
+        id_strategy = data.get('id_strategy')
+        father_ids = data.get('father_ids') or []
+        mother_ids = data.get('mother_ids') or []
+        pups = data.get('pups') or []
+        if not pups:
+            return jsonify({'error': '至少需要登记一只新生仔'}), 400
+
+        created = []
+        for pup in pups:
+            if not pup.get('id'):
+                return jsonify({'error': '每只新生仔必须有 ID'}), 400
+            mouse = Mouse(
+                id=pup['id'],
+                sex=pup.get('sex'),
+                birth_date=birth_date,
+                cage_id=cage_id,
+                strain=strain,
+                live_status=1,
+                genotype_confirmed=False,
+                id_strategy=id_strategy,
+                toe_mark=pup.get('toe_mark')
+            )
+            db.session.add(mouse)
+            db.session.flush()
+            for fid in father_ids:
+                db.session.add(Pedigree(mouse_id=mouse.tid, parent_id=fid, parent_type='father'))
+            for mid in mother_ids:
+                db.session.add(Pedigree(mouse_id=mouse.tid, parent_id=mid, parent_type='mother'))
+            created.append(mouse.tid)
+        db.session.commit()
+        return jsonify({'created_tids': created}), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"批量登记新生仔失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/mice/batch-genotype', methods=['PUT'])
+def batch_genotype():
+    """批量鉴定。body: { items: [{tid, genotypes:[{locus, allele1, allele2}], cull: bool}] }
+    副作用：
+      - 写入/替换 Genotype 记录
+      - 设置 genotype_confirmed=True
+      - cull=True 时 live_status=4, death_date=今日
+      - 若对应笼位剩余小鼠都已确认，将 breeding_status 重置为 None
+    """
+    data = request.json or {}
+    items = data.get('items') or []
+    if not items:
+        return jsonify({'error': '无待处理数据'}), 400
+    try:
+        today = datetime.now().date()
+        touched_cage_ids = set()
+        for item in items:
+            tid = item.get('tid')
+            mouse = Mouse.query.get(tid)
+            if not mouse:
+                continue
+            # 替换基因型记录
+            Genotype.query.filter_by(mouse_id=tid).delete()
+            for g in item.get('genotypes') or []:
+                locus = GeneLocus.query.filter_by(symbol=g['locus']).first()
+                if not locus:
+                    continue
+                db.session.add(Genotype(
+                    mouse_id=tid,
+                    locus_id=locus.id,
+                    allele1_id=g.get('allele1'),
+                    allele2_id=g.get('allele2')
+                ))
+            mouse.genotype_confirmed = True
+            if item.get('cull'):
+                mouse.live_status = 4
+                mouse.death_date = today
+            if mouse.cage_id is not None:
+                touched_cage_ids.add(mouse.cage_id)
+        db.session.flush()
+
+        # 若某笼位内剩余活体均已确认，重置 breeding_status
+        reset_cages = []
+        for cid in touched_cage_ids:
+            remaining_unconfirmed = Mouse.query.filter_by(
+                cage_id=cid, genotype_confirmed=False, live_status=1
+            ).count()
+            if remaining_unconfirmed == 0:
+                cage = Cage.query.get(cid)
+                if cage and cage.breeding_status:
+                    cage.breeding_status = None
+                    cage.breeding_status_date = None
+                    reset_cages.append(cid)
+        db.session.commit()
+        return jsonify({'success': True, 'reset_cage_ids': reset_cages})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"批量鉴定失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 # 更新笼位排序
 @app.route('/api/cages/order', methods=['PUT'])

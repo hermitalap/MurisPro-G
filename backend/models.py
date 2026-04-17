@@ -6,7 +6,7 @@ class Mouse(db.Model):
     __tablename__ = 'mouse'
 
     tid = db.Column(db.Integer, primary_key=True)
-    id = db.Column(db.String(10), nullable=False)
+    id = db.Column(db.String(20), nullable=False)
     sex = db.Column(db.String(1))  # 'M' or 'F'
     live_status = db.Column(db.Integer, default=1)  # 1 for '活', 0 for '死', 2 for '解剖', 3 for '意外消失', 4 for '丢弃'
     birth_date = db.Column(db.Date)
@@ -14,6 +14,10 @@ class Mouse(db.Model):
     cage_id = db.Column(db.Integer, db.ForeignKey('cage.id'))
     strain = db.Column(db.String(50))
     tests_planned = db.Column(db.JSON)  #储存实验id的列表
+    # 基因编辑小鼠繁配模块字段
+    genotype_confirmed = db.Column(db.Boolean, default=True, nullable=False)  # False 表示"已登记未鉴定"
+    id_strategy = db.Column(db.String(10))  # 'ear_tag' | 'toe_clip' | None
+    toe_mark = db.Column(db.String(10))  # 剪趾策略下的脚趾编号
 
     # 关系
     cage = db.relationship('Cage', backref=db.backref('mice', lazy=True))
@@ -61,7 +65,10 @@ class Mouse(db.Model):
             'cage_id': self.cage_id,
             'strain': self.strain,
             'tests_done': [t.experiment_id for t in self.tests_done] if self.tests_done else [],
-            'tests_planned': self.tests_planned
+            'tests_planned': self.tests_planned,
+            'genotype_confirmed': self.genotype_confirmed,
+            'id_strategy': self.id_strategy,
+            'toe_mark': self.toe_mark
         }
     
 class Pedigree(db.Model):
@@ -88,6 +95,9 @@ class Cage(db.Model):
     # 新增字段：笼内小鼠建笼日期和基因型 (小鼠数量和性别动态计算不再作为数据库实体列)
     mice_birth_date = db.Column(db.Date) # 用于标记建笼日期
     mice_genotype = db.Column(db.String(50))
+    # 基因编辑小鼠繁配：繁殖状态 'pregnant' | 'delivered' | None
+    breeding_status = db.Column(db.String(20))
+    breeding_status_date = db.Column(db.Date)  # 当前状态打标时的日期
 
     def display(self):
         return self.section + "-" + self.cage_id
