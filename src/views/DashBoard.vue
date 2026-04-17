@@ -6,7 +6,7 @@
         <div class="header-title-section">
           <h1 class="page-title">笼位视图</h1>
           <div class="header-stats-panel">
-            <n-statistic label="存活" :value="survivingMouseCount">
+            <n-statistic label="存活小鼠" :value="survivingMouseCount">
               <template #prefix>
                 <AppIcon name="fitness_outline" />
               </template>
@@ -2368,7 +2368,7 @@ function isCageHighlighted(cageId) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 0px;
   flex-wrap: wrap;
   gap: 15px;
 }

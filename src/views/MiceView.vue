@@ -177,22 +177,22 @@
       </div>
 
       <!-- 小鼠列表表格 -->
-      <div class="table-scroll">
-        <n-data-table
-          ref="dataTableRef"
-          :columns="miceColumns"
-          :data="filteredMice"
-          :pagination="false"
-          :bordered="false"
-          :single-line="false"
-          :row-key="(row) => row.tid"
-          :row-props="rowProps"
-          @update:sorter="handleSorterChange"
-          :sorter="sorterState"
-          @update:checked-row-keys="handleCheckedRowKeysChange"
-          :checked-row-keys="checkedRowKeys"
-        />
-      </div>
+      <n-data-table
+        ref="dataTableRef"
+        :columns="miceColumns"
+        :data="filteredMice"
+        :pagination="pagination"
+        :bordered="false"
+        :single-line="false"
+        :row-key="(row) => row.tid"
+        :row-props="rowProps"
+        @update:sorter="handleSorterChange"
+        :sorter="sorterState"
+        @update:checked-row-keys="handleCheckedRowKeysChange"
+        :checked-row-keys="checkedRowKeys"
+        :flex-height="true"
+        class="mouse-table"
+      />
       
       <!-- 批量操作栏 -->
       <div class="batch-actions" v-if="checkedRowKeys.length > 0">
@@ -707,6 +707,12 @@ const contextMenu = reactive({
 const dataTableRef = ref(null)
 const checkedRowKeys = ref([])
 const batchSelectedTests = ref([])
+const pagination = ref({
+  page: 1,
+  pageSize: 50,
+  showSizePicker: true,
+  pageSizes: [20, 50, 100, 200]
+})
 
 // 处理选择变化
 const handleCheckedRowKeysChange = (keys) => {
@@ -1775,14 +1781,13 @@ onUnmounted(() => {
 }
 
 /* 表格样式 */
-.table-scroll {
-  overflow: auto;
+.mouse-table {
   border: 1px solid var(--n-border-color);
   border-radius: 10px;
-  background: var(--n-color);
+  height: calc(100vh - 380px);
 }
 
-.table-scroll :deep(.n-data-table) {
+.mouse-table :deep(.n-data-table) {
   min-width: 1200px;
   font-size: 0.9rem;
 }
