@@ -22,23 +22,20 @@
       <div class="filter-section">
         <!-- 第一行：核心搜索 -->
         <div class="filter-row filter-row-search">
-          <n-button @click="openModal('add')" type="success">
-            <template #icon><AppIcon name="add" /></template>
+          <n-button @click="openModal('add')" type="success" :render-icon="renderIcon(Add)">
             添加新小鼠
           </n-button>
-          <n-input 
-            v-model:value="searchTerm" 
-            placeholder="搜索小鼠ID或基因型" 
-            @keyup.enter="applyFilters" 
-            clearable 
+          <n-input
+            v-model:value="searchTerm"
+            placeholder="搜索小鼠ID或基因型"
+            @keyup.enter="applyFilters"
+            clearable
             class="search-input"
           />
-          <n-button @click="applyFilters" type="primary">
-            <template #icon><AppIcon name="search" /></template>
+          <n-button @click="applyFilters" type="primary" :render-icon="renderIcon(Search)">
             搜索
           </n-button>
-          <n-button @click="resetSearch" secondary>
-            <template #icon><AppIcon name="refresh" /></template>
+          <n-button @click="resetSearch" secondary :render-icon="renderIcon(Refresh)">
             重置
           </n-button>
         </div>
@@ -276,292 +273,213 @@
     />
 
     <!-- 统一的小鼠编辑/添加模态框 -->
-    <n-modal v-model:show="showModal" v-if="modalMode !== 'template'" :mask-closable="false" preset="card" style="width: 90%; max-width: 600px;" :title="modalTitle" closable @close="closeModal">
-        <div class="form-body">
-          <!-- 小鼠ID字段（仅在添加模式显示） -->
-          <div class="form-group" v-if="modalMode === 'add'">
-            <n-form-item label="小鼠 ID *" label-placement="top">
-              <n-input v-model:value="formData.id" />
-            </n-form-item>
-          </div>
-          <!-- 显示小鼠ID（仅在编辑模式显示） -->
-          <div class="form-group" v-if="modalMode === 'edit'">
-            <n-form-item label="小鼠 ID" label-placement="top">
-              <span>{{ formData.id }}</span>
-            </n-form-item>
-          </div>          
-          <!-- 基因型选择 -->
-          <div class="form-group">
-            <div class="form-header">
-              <div class="n-form-item-label">基因型:
-                <span class="selected-gene" v-html="geneStore.selectedGeneName"></span>
-              </div>
-              <n-button type="primary" @click="addGene" :disabled="!geneStore.addable">
-                <AppIcon  name="add" />
-                添加
-              </n-button>
-            </div>
-
-            <div v-for="(gene, index) in selectedGenes" class="genotype-select-container" :key="gene">
-              <div class="locus-control">
-                <div class="locus-select">
+    <n-modal v-model:show="showModal" v-if="modalMode !== 'template'" :mask-closable="false" preset="card" style="width: 90%; max-width: 760px;" :title="modalTitle" closable @close="closeModal">
+      <n-scrollbar style="max-height: 70vh;">
+        <n-form
+          ref="formRef"
+          :model="formData"
+          :rules="formRules"
+          label-placement="top"
+          class="mouse-form"
+        >
+          <!-- 基本信息分组 -->
+          <n-divider title-placement="left" class="form-divider">基本信息</n-divider>
+          <n-grid :cols="2" x-gap="16" y-gap="12" responsive="screen" item-responsive>
+            <n-gi v-if="modalMode === 'add'">
+              <n-form-item label="小鼠 ID" path="id" required>
+                <n-input v-model:value="formData.id" placeholder="输入小鼠 ID" />
+              </n-form-item>
+            </n-gi>
+            <n-gi v-else>
+              <n-form-item label="小鼠 ID" :show-feedback="false">
+                <n-input :value="formData.id" readonly />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="性别" path="sex" required>
                 <n-select
-                  v-model:value="gene.locus"
-                  :options="geneStore.locusSuggestions[index].map(locus => ({ label: locus.symbol, value: locus.symbol }))"
-                  @update:value="onFormLocusChange(index, gene.locus)"
+                  v-model:value="formData.sex"
+                  :options="[
+                    { label: '雄性', value: 'M' },
+                    { label: '雌性', value: 'F' }
+                  ]"
                 />
-                </div>
-                <n-button tertiary type="error" @click="deleteGene(index)">
-                  <AppIcon  name="delete" />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="品系" :show-feedback="false">
+                <n-auto-complete
+                  v-model:value="formData.strain"
+                  :options="strainOptions"
+                  placeholder="选择或输入品系（如 C57BL/6J）"
+                  clearable
+                  :get-show="() => true"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="出生日期" :show-feedback="false">
+                <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="formData.birth_date" style="width: 100%;" />
+              </n-form-item>
+            </n-gi>
+            <n-gi v-if="modalMode === 'edit'">
+              <n-form-item label="生存状态" :show-feedback="false">
+                <n-select
+                  v-model:value="formData.live_status"
+                  :options="[
+                    { label: '存活', value: 1 },
+                    { label: '死亡', value: 0 },
+                    { label: '解剖', value: 2 },
+                    { label: '意外消失', value: 3 },
+                    { label: '丢弃', value: 4 }
+                  ]"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi v-if="modalMode === 'edit' && formData.live_status != 1">
+              <n-form-item label="死亡日期" :show-feedback="false">
+                <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="formData.death_date" style="width: 100%;" />
+              </n-form-item>
+            </n-gi>
+            <n-gi :span="2">
+              <n-form-item label="笼位" :show-feedback="false">
+                <n-select
+                  v-model:value="formData.cage_id"
+                  :options="cageOptions"
+                  placeholder="选择笼位（可搜索）"
+                  filterable
+                  clearable
+                />
+              </n-form-item>
+            </n-gi>
+          </n-grid>
+
+          <!-- 基因型分组 -->
+          <n-divider title-placement="left" class="form-divider">基因型</n-divider>
+          <div class="genotype-section">
+            <div class="genotype-head">
+              <div class="genotype-preview">
+                当前: <span class="selected-gene" v-html="geneStore.selectedGeneName || '—'"></span>
+              </div>
+              <n-space :size="8">
+                <n-button size="small" type="primary" :render-icon="renderIcon(Add)" @click="addGene" :disabled="!geneStore.addable">
+                  添加位点
                 </n-button>
-              </div>
+                <n-button v-if="selectedGenes.length>0" size="small" type="error" secondary :render-icon="renderIcon(TrashBin)" @click="deleteGenes">
+                  全部删除
+                </n-button>
+              </n-space>
+            </div>
+            <div v-if="selectedGenes.length === 0" class="genotype-empty">暂未选择基因位点</div>
+            <n-grid v-else :cols="4" x-gap="12" y-gap="8" responsive="screen" item-responsive>
+              <template v-for="(gene, index) in selectedGenes" :key="index">
+                <n-gi :span="2">
+                  <n-form-item label="基因位点" :show-feedback="false">
+                    <n-input-group>
+                      <n-select
+                        v-model:value="gene.locus"
+                        :options="geneStore.locusSuggestions[index].map(locus => ({ label: locus.symbol, value: locus.symbol }))"
+                        @update:value="onFormLocusChange(index, gene.locus)"
+                      />
+                      <n-button type="error" ghost :render-icon="renderIcon(Trash)" @click="deleteGene(index)" />
+                    </n-input-group>
+                  </n-form-item>
+                </n-gi>
+                <n-gi v-if="gene.locus && gene.locus !== 'WT'">
+                  <n-form-item label="等位基因 1" :show-feedback="false">
+                    <n-select
+                      v-model:value="gene.allele1"
+                      :disabled="!gene.locus"
+                      :options="alleleSuggestions[index][0].map(allele => ({ label: allele.symbol, value: allele.id }))"
+                      @update:value="onFormAlleleChange(true, index, gene.allele1)"
+                    />
+                  </n-form-item>
+                </n-gi>
+                <n-gi v-if="gene.locus && gene.locus !== 'WT'">
+                  <n-form-item label="等位基因 2" :show-feedback="false">
+                    <n-select
+                      v-model:value="gene.allele2"
+                      :disabled="!gene.locus"
+                      :options="alleleSuggestions[index][1].map(allele => ({ label: allele.symbol, value: allele.id }))"
+                      @update:value="onFormAlleleChange(false, index, gene.allele2)"
+                    />
+                  </n-form-item>
+                </n-gi>
+                <n-gi v-else :span="2"><div /></n-gi>
+              </template>
+            </n-grid>
+          </div>
 
-              <div class="allele-controls">
-                <div class="allele-group" v-if="gene.locus && gene.locus !== 'WT'">
-                  <div class="n-form-item-label">等位基因 1</div>
+          <!-- 血统分组 -->
+          <n-divider title-placement="left" class="form-divider">血统</n-divider>
+          <n-grid :cols="2" x-gap="16" y-gap="12" responsive="screen" item-responsive>
+            <n-gi>
+              <n-form-item label="父本" :show-feedback="false">
                 <n-select
-                  v-model:value="gene.allele1"
-                  :disabled="!gene.locus"
-                  :options="alleleSuggestions[index][0].map(allele => ({ label: allele.symbol, value: allele.id }))"
-                  @update:value="onFormAlleleChange(true, index, gene.allele1)"
+                  v-model:value="formData.father"
+                  :options="fatherSelectOptions"
+                  placeholder="选择父本（可搜索 / 多选）"
+                  multiple
+                  filterable
+                  clearable
+                  :render-tag="renderMouseTag"
                 />
-                </div>
-                <div class="allele-group" v-if="gene.locus && gene.locus !== 'WT'">
-                  <div class="n-form-item-label">等位基因 2</div>
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="母本" :show-feedback="false">
                 <n-select
-                  v-model:value="gene.allele2"
-                  :disabled="!gene.locus"
-                  :options="alleleSuggestions[index][1].map(allele => ({ label: allele.symbol, value: allele.id }))"
-                  @update:value="onFormAlleleChange(false, index, gene.allele2)"
+                  v-model:value="formData.mother"
+                  :options="motherSelectOptions"
+                  placeholder="选择母本（可搜索 / 多选）"
+                  multiple
+                  filterable
+                  clearable
+                  :render-tag="renderMouseTag"
                 />
-                </div>
-              </div>
-            </div>
-            <n-button v-if="selectedGenes.length>0" type="error" secondary @click="deleteGenes">
-              <AppIcon  name="delete_forever" />
-              全部删除
-            </n-button>
-          </div>
+              </n-form-item>
+            </n-gi>
+          </n-grid>
 
-          <div class="form-group">
-            <n-form-item label="品系" label-placement="top">
-              <n-input v-model:value="formData.strain" placeholder="如：C57BL/6J" />
-            </n-form-item>
-          </div>
-          
-          <div class="form-group">
-            <n-form-item label="性别" label-placement="top">
-              <n-select
-                v-model:value="formData.sex"
-                :options="[
-                  { label: '雄性', value: 'M' },
-                  { label: '雌性', value: 'F' }
-                ]"
-              />
-            </n-form-item>
-          </div>
-
-          <div class="form-group">
-            <n-form-item label="出生日期" label-placement="top">
-              <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="formData.birth_date" />
-            </n-form-item>
-          </div>
-
-          <!-- 生存状态（仅在编辑模式显示） -->
-          <div class="form-group" v-if="modalMode === 'edit'">
-            <n-form-item label="生存状态" label-placement="top">
-              <n-select
-                v-model:value="formData.live_status"
-                :options="[
-                  { label: '存活', value: 1 },
-                  { label: '死亡', value: 0 },
-                  { label: '解剖', value: 2 },
-                  { label: '意外消失', value: 3 },
-                  { label: '丢弃', value: 4 }
-                ]"
-              />
-            </n-form-item>
-          </div>
-          <!-- 死亡日期（仅在编辑且非存活状态显示） -->
-          <div class="form-group" v-if="modalMode === 'edit' && formData.live_status != 1">
-            <n-form-item label="死亡日期" label-placement="top">
-              <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="formData.death_date" />
-            </n-form-item>
-          </div>        
-
-          <!-- 父本选择 -->
-          <div class="form-group">
-            <div class="n-form-item-label">父本 ID</div>
-            <div class="autocomplete">
-              <n-input
-                v-model:value="fatherQuery"
-                placeholder="输入父本ID搜索..."
-                @focus="showFatherSuggestions = true"
-                @blur="onBlur"
-                clearable
-              />
-              <ul v-if="showFatherSuggestions && fatherSuggestions.length" class="suggestions">
-                <li
-                  v-for="mouse in fatherSuggestions"
-                  :key="mouse.tid"
-                  @click="selectParent('father', mouse)"
-                >
-                  {{ mouse.id }} ({{ formatDate(mouse.birth_date) }}) - <span v-html="mouse.genotype.symbol"></span>
-                </li>
-              </ul>
-            </div>
-            <div class="selected-parents" v-if="selectedFathers.length">
-              <div class="selected-parent" v-for="(father, index) in selectedFathers" :key="father.tid">
-                <span>{{ father.id }} ({{ formatDate(father.birth_date) }}) - <span v-html="father.genotype.symbol"></span></span>
-                <n-button attr-type="button" class="remove-btn" tertiary type="error" @click="removeParent('father', index)">移除</n-button>
-              </div>
-            </div>
-            <p class="info-text" v-else>未选择父本</p>
-          </div>
-
-          <!-- 母本选择 -->
-          <div class="form-group">
-            <div class="n-form-item-label">母本 ID</div>
-            <div class="autocomplete">
-              <n-input
-                v-model:value="motherQuery"
-                placeholder="输入母本ID搜索..."
-                @focus="showMotherSuggestions = true"
-                @blur="onBlur"
-                clearable
-              />
-              <ul v-if="showMotherSuggestions && motherSuggestions.length" class="suggestions">
-                <li
-                  v-for="mouse in motherSuggestions"
-                  :key="mouse.tid"
-                  @click="selectParent('mother', mouse)"
-                >
-                  {{ mouse.id }} ({{ formatDate(mouse.birth_date) }}) - <span v-html="mouse.genotype.symbol"></span>
-                </li>
-              </ul>
-            </div>
-            <div class="selected-parents" v-if="selectedMothers.length">
-              <div class="selected-parent" v-for="(mother, index) in selectedMothers" :key="mother.tid">
-                <span>{{ mother.id }} ({{ formatDate(mother.birth_date) }}) - <span v-html="mother.genotype.symbol"></span></span>
-                <n-button attr-type="button" class="remove-btn" tertiary type="error" @click="removeParent('mother', index)">移除</n-button>
-              </div>
-            </div>
-            <p class="info-text" v-else>未选择母本</p>
-          </div>
-
-        <!-- 已完成测试 -->
-        <div class="form-group"  v-if="modalMode === 'edit'">
-          <div class="n-form-item-label">已完成测试</div>
-          <div class="tags-input-container">
-            <!-- 下拉选择框 -->
-            <div class="custom-select" :class="{ 'is-open': showTestsDoneDropdown }">
-              <div class="select-header" @click="toggleTestsDoneDropdown">
-                <div class="select-content">
-                <!-- 显示已选标签 -->
-                <div class="selected-tags">
-                  <span v-for="(experiment, index) in selectedTestsDone" :key="experiment.id" class="tag">
-                    {{ experiment.name }}
-                    <span class="tag-remove" @click="removeTest('done', index)">×</span>
-                  </span>
-                </div>
-                <span class="placeholder" v-if="selectedTestsDone.length === 0">选择已完成测试...</span>
-                </div>
-                <div class="select-arrow">▼</div>
-              </div>
-              
-              <div class="select-options" v-if="showTestsDoneDropdown">
-                <div 
-                  v-for="experiment in availableTestsDone" 
-                  :key="experiment.id" 
-                  class="select-option"
-                  :class="{is_show: experiment.is_show}"
-                  @click="selectTest('done', experiment)"
-                >
-                  {{ experiment.id }}-{{ experiment.name }}
-                </div>
-                <div v-if="availableTestsDone.length === 0" class="select-option disabled">
-                  没有可选的测试
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 计划进行测试 -->
-        <div class="form-group">
-          <div class="n-form-item-label">计划进行测试</div>
-          <div class="tags-input-container">
-            <!-- 下拉选择框 -->
-            <div class="custom-select" :class="{ 'is-open': showTestsPlanDropdown }">
-              <div class="select-header" @click="toggleTestsPlanDropdown">
-                <div class="select-content">
-                <!-- 显示已选标签 -->
-                <div class="selected-tags">
-                  <span v-for="(experiment, index) in selectedTestsPlanned" :key="experiment.id" class="tag">
-                    {{ experiment.name }}
-                    <span class="tag-remove" @click="removeTest('plan', index)">×</span>
-                  </span>
-                </div>
-                <span class="placeholder" v-if="selectedTestsPlanned.length === 0">选择计划测试...</span>                
-                </div>
-                <div class="select-arrow">▼</div>
-              </div>
-              
-              <div class="select-options" v-if="showTestsPlanDropdown">
-                <div 
-                  v-for="experiment in availableTestsPlan" 
-                  :key="experiment.id" 
-                  class="select-option"
-                  :class="{is_show: experiment.is_show}"
-                  @click="selectTest('plan', experiment)"
-                >
-                  {{ experiment.id }}-{{ experiment.name }}
-                </div>
-                <div v-if="availableTestsPlan.length === 0" class="select-option disabled">
-                  没有可选的测试
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 笼位选择 -->
-        <div class="form-group">
-          <div class="n-form-item-label">笼位名称</div>
-          <div class="autocomplete">
-            <n-input
-              v-model:value="cageQuery"
-              @input="searchCage()"
-              placeholder="输入笼位名称搜索..."
-              @focus="showCageSuggestions = true"
-              @blur="onBlur"
-              clearable
-            />
-            <ul v-if="showCageSuggestions && cageSuggestions.length" class="suggestions">
-              <li
-                v-for="cage in cageSuggestions"
-                :key="cage.id"
-                @click="selectCage(cage)"
-              >
-                {{ cage.cage_id }} - {{ cage.section }}
-              </li>
-            </ul>
-          </div>
-        </div>
-        </div>
-        <template #footer>
-        <n-space justify="end" class="button-group">
-          <n-button @click="saveMouse" :disabled="saving" type="primary">
-            <AppIcon  :name="modalMode === 'add' ? 'add' : 'save'" />
+          <!-- 实验分组 -->
+          <n-divider title-placement="left" class="form-divider">实验安排</n-divider>
+          <n-grid :cols="2" x-gap="16" y-gap="12" responsive="screen" item-responsive>
+            <n-gi :span="modalMode === 'edit' ? 1 : 2">
+              <n-form-item label="计划进行测试" :show-feedback="false">
+                <n-select
+                  v-model:value="selectedTestsPlanIds"
+                  :options="experimentOptions"
+                  placeholder="选择计划测试"
+                  multiple
+                  filterable
+                  clearable
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi v-if="modalMode === 'edit'">
+              <n-form-item label="已完成测试" :show-feedback="false">
+                <n-select
+                  v-model:value="selectedTestsDoneIds"
+                  :options="testsDoneOptions"
+                  placeholder="选择已完成测试"
+                  multiple
+                  filterable
+                  clearable
+                />
+              </n-form-item>
+            </n-gi>
+          </n-grid>
+        </n-form>
+      </n-scrollbar>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="closeModal" secondary :render-icon="renderIcon(CloseCircle)">取消</n-button>
+          <n-button @click="saveMouse" :disabled="saving" type="primary" :render-icon="renderIcon(modalMode === 'add' ? Add : Save)">
             <span v-if="saving">{{ modalMode === 'add' ? '添加中...' : '保存中...' }}</span>
             <span v-else>{{ modalMode === 'add' ? '添加' : '保存' }}</span>
           </n-button>
-          <n-button @click="closeModal" secondary>
-            <AppIcon  name="cancel" />
-            取消
-          </n-button>
         </n-space>
-        </template>
+      </template>
     </n-modal>
 
     <!-- 批量添加小鼠模态框 -->
@@ -630,9 +548,7 @@
 
         <div class="form-group">
           <span style="margin-right: 20px;">创建数量：{{ newMice.length }}</span>
-          <n-button @click="addInputField" quaternary circle>
-            <AppIcon  name="add" />
-          </n-button>
+          <n-button @click="addInputField" quaternary circle :render-icon="renderIcon(Add)" />
         </div>
         <div v-for="(m, index) in newMice" :key="index" class="input-row">
           <n-input v-model:value="m.id" placeholder="ID" />
@@ -648,15 +564,11 @@
         </div>
         <template #footer>
         <n-space justify="end" class="button-group">
-          <n-button @click="saveTemplateMice" :disabled="saving" type="primary">
-            <AppIcon  name="save" />
+          <n-button @click="saveTemplateMice" :disabled="saving" type="primary" :render-icon="renderIcon(Save)">
             <span v-if="saving">保存中...</span>
             <span v-else>保存</span>
           </n-button>
-          <n-button @click="closeModal" secondary>
-            <AppIcon  name="cancel" />
-            取消
-          </n-button>
+          <n-button @click="closeModal" secondary :render-icon="renderIcon(CloseCircle)">取消</n-button>
         </n-space>
         </template>
     </n-modal>
@@ -671,7 +583,12 @@ import { fuzzySearch } from '@/utils/search'
 import MouseDetailModal from './MouseDetailView.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
-import { useDialog, useMessage } from 'naive-ui'
+import { useDialog, useMessage, NTag, NIcon } from 'naive-ui'
+import {
+  Add, Search, Refresh, CloseCircle, Save, Trash, TrashBin, BanSharp
+} from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 const geneStore = useGeneStore()
 const { mice, loading, genotypes, selectedGenes, alleleSuggestions } = storeToRefs(geneStore)
@@ -707,11 +624,19 @@ const contextMenu = reactive({
 const dataTableRef = ref(null)
 const checkedRowKeys = ref([])
 const batchSelectedTests = ref([])
-const pagination = ref({
+const pagination = reactive({
   page: 1,
   pageSize: 50,
   showSizePicker: true,
-  pageSizes: [20, 50, 100, 200]
+  pageSizes: [20, 50, 100, 200],
+  prefix: ({ itemCount }) => `共 ${itemCount} 只`,
+  onUpdatePage: (page) => {
+    pagination.page = page
+  },
+  onUpdatePageSize: (pageSize) => {
+    pagination.pageSize = pageSize
+    pagination.page = 1
+  }
 })
 
 // 处理选择变化
@@ -724,6 +649,31 @@ const showModal = ref(false)
 const modalMode = ref('') // 'add', 'edit', 'template'
 const templateMouse = ref(null)
 const newMice = ref([])
+
+// naive-ui 表单验证引用与规则
+const formRef = ref(null)
+const formRules = {
+  id: {
+    required: true,
+    trigger: ['input', 'blur'],
+    validator(rule, value) {
+      // 只在添加模式下校验
+      if (modalMode.value !== 'add') return true
+      if (!value || !String(value).trim()) {
+        return new Error('请输入小鼠 ID')
+      }
+      return true
+    }
+  },
+  sex: {
+    required: true,
+    trigger: ['change', 'blur'],
+    validator(rule, value) {
+      if (value !== 'M' && value !== 'F') return new Error('请选择性别')
+      return true
+    }
+  }
+}
 const locationCages = computed(() => {
   if (!filters.location) return cages.value
   return cages.value.filter(cage => cage.section === filters.location)
@@ -995,6 +945,119 @@ const modalTitle = computed(() => {
     case 'template': return '基于模板批量创建小鼠'
     default: return ''
   }
+})
+
+// 常用小鼠品系（可在输入框内输入自定义品系）
+const COMMON_STRAINS = [
+  'C57BL/6J',
+  'C57BL/6N',
+  'BALB/c',
+  'DBA/2',
+  'FVB/N',
+  '129/Sv',
+  'C3H/He',
+  'CD-1',
+  'ICR',
+  'Swiss Webster',
+  'NOD/ShiLtJ',
+  'NSG',
+  'NOG',
+  'B6.SJL',
+  'BALB/c nude',
+  'KM (昆明)'
+]
+
+const strainOptions = computed(() => {
+  // 合并数据库中已经出现过的品系和常用品系
+  const seen = new Set()
+  const result = []
+  for (const s of COMMON_STRAINS) {
+    if (s && !seen.has(s)) {
+      seen.add(s)
+      result.push({ label: s, value: s })
+    }
+  }
+  mice.value.forEach(m => {
+    if (m.strain && !seen.has(m.strain)) {
+      seen.add(m.strain)
+      result.push({ label: m.strain, value: m.strain })
+    }
+  })
+  return result
+})
+
+// 笼位下拉选项
+const cageOptions = computed(() =>
+  cages.value.map(c => ({
+    label: `${c.section} - ${c.cage_id}`,
+    value: c.id
+  }))
+)
+
+function stripTags(html) {
+  return (html || '').replace(/<[^>]+>/g, '')
+}
+
+// 父本选项（naive-ui select）
+const fatherSelectOptions = computed(() => {
+  let candidates = mice.value.filter(m => m.sex === 'M')
+  if (modalMode.value === 'edit' && formData.tid) {
+    candidates = candidates.filter(m => m.tid !== formData.tid)
+  }
+  return candidates.map(m => ({
+    label: `${m.id}  ${stripTags(m.genotype?.symbol || '')}`,
+    value: m.tid
+  }))
+})
+
+// 母本选项
+const motherSelectOptions = computed(() => {
+  let candidates = mice.value.filter(m => m.sex === 'F')
+  if (modalMode.value === 'edit' && formData.tid) {
+    candidates = candidates.filter(m => m.tid !== formData.tid)
+  }
+  return candidates.map(m => ({
+    label: `${m.id}  ${stripTags(m.genotype?.symbol || '')}`,
+    value: m.tid
+  }))
+})
+
+const renderMouseTag = ({ option, handleClose }) =>
+  h(
+    NTag,
+    {
+      closable: true,
+      onMousedown: (e) => e.preventDefault(),
+      onClose: (e) => {
+        e.stopPropagation()
+        handleClose()
+      }
+    },
+    { default: () => option.label }
+  )
+
+// 实验选项
+const experimentOptions = computed(() =>
+  experiments.value.map(e => ({
+    label: `${e.id}-${e.name}`,
+    value: e.id
+  }))
+)
+
+const selectedTestsPlanIds = ref([])
+const selectedTestsDoneIds = ref([])
+
+// 已完成测试选项：限制为已计划集合
+const testsDoneOptions = computed(() =>
+  experiments.value
+    .filter(e => selectedTestsPlanIds.value.includes(e.id))
+    .map(e => ({ label: `${e.id}-${e.name}`, value: e.id }))
+)
+
+watch(selectedTestsPlanIds, (newPlanIds) => {
+  selectedTestsDoneIds.value = selectedTestsDoneIds.value.filter(id =>
+    newPlanIds.includes(id)
+  )
 })
 
 // 父亲建议列表
@@ -1310,7 +1373,12 @@ const openModal = async (mode, mouse = null) => {
   }
   
   showModal.value = true
-  
+
+  // 清除上一次打开的表单校验状态
+  nextTick(() => {
+    formRef.value?.restoreValidation?.()
+  })
+
   // 重置表单数据
   Object.assign(formData, {
     id: '',
@@ -1335,18 +1403,19 @@ const openModal = async (mode, mouse = null) => {
     Object.assign(formData, { ...mouse })
     formData.birth_date = normalizeDateValue(formData.birth_date)
     formData.death_date = normalizeDateValue(formData.death_date)
-    
-    // 设置测试
+    formData.father = Array.isArray(mouse.father) ? [...mouse.father] : []
+    formData.mother = Array.isArray(mouse.mother) ? [...mouse.mother] : []
+
+    // 计划/已完成测试 id 数组
+    selectedTestsPlanIds.value = Array.isArray(mouse.tests_planned) ? [...mouse.tests_planned] : []
+    selectedTestsDoneIds.value = Array.isArray(mouse.tests_done) ? [...mouse.tests_done] : []
+
+    // 兼容 template 模式使用的对象数组
     if (mouse.tests_done && mouse.tests_done.length > 0) {
       selectedTestsDone.value = mouse.tests_done.map(id => experiments.value.find(e => e.id === id)).filter(Boolean)
     }
     if (mouse.tests_planned && mouse.tests_planned.length > 0) {
       selectedTestsPlanned.value = mouse.tests_planned.map(id => experiments.value.find(e => e.id === id)).filter(Boolean)
-    }
-
-    if (mouse.cage_id) {
-      const ctemp = cages.value.find(cage => cage.id === mouse.cage_id)
-      cageQuery.value = `${ctemp.cage_id} - ${ctemp.section}`
     }
   }
 }
@@ -1364,14 +1433,24 @@ const closeModal = () => {
   selectedMothers.value = []
   selectedTestsDone.value = []
   selectedTestsPlanned.value = []
+  selectedTestsPlanIds.value = []
+  selectedTestsDoneIds.value = []
   cageQuery.value = ''
+  formData.father = []
+  formData.mother = []
   formData.birth_date = null
   formData.death_date = null
 }
 
 const saveMouse = async () => {
-  if (!validateMouse(formData)) return
-  
+  // 使用 naive-ui 原生 form 校验替代自定义 message 提示
+  try {
+    await formRef.value?.validate()
+  } catch (errors) {
+    // 校验失败由表单项自身展示错误文本
+    return
+  }
+
   if (selectedGenes.value.length > 1 && selectedGenes.value.some(g => g.locus === "WT")) {
     message.error("野生型不能添加基因型")
     return
@@ -1397,10 +1476,10 @@ const saveMouse = async () => {
   const submitData = {
     ...formData,
     genotype: selectedGenes.value,
-    father: selectedFathers.value.map(t => t.tid),
-    mother: selectedMothers.value.map(t => t.tid),
-    tests_done: selectedTestsDone.value.map(e => e.id),
-    tests_planned: selectedTestsPlanned.value.map(e => e.id)
+    father: Array.isArray(formData.father) ? formData.father : [],
+    mother: Array.isArray(formData.mother) ? formData.mother : [],
+    tests_done: selectedTestsDoneIds.value,
+    tests_planned: selectedTestsPlanIds.value
   }
   
   saving.value = true
@@ -1672,13 +1751,25 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.main-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .section {
-  margin-bottom: 30px;
-  padding: 25px;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
+  padding: 20px;
   background: var(--n-color);
   border-radius: 12px;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -1784,7 +1875,8 @@ onUnmounted(() => {
 .mouse-table {
   border: 1px solid var(--n-border-color);
   border-radius: 10px;
-  height: calc(100vh - 380px);
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .mouse-table :deep(.n-data-table) {
@@ -2340,5 +2432,50 @@ onUnmounted(() => {
   .table-scroll :deep(.n-data-table) {
     min-width: 1040px;
   }
+}
+
+/* 添加/编辑小鼠对话框 - 基因型分组居中显示 */
+.genotype-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.genotype-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.genotype-preview {
+  font-size: 0.95rem;
+  color: var(--n-text-color-2);
+  text-align: center;
+}
+
+.genotype-preview .selected-gene {
+  color: var(--n-text-color-1);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.genotype-empty {
+  color: var(--n-text-color-3);
+  font-size: 0.9rem;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.genotype-section :deep(.n-grid) {
+  width: 100%;
+}
+
+.genotype-section :deep(.n-form-item-label) {
+  justify-content: center;
 }
 </style>

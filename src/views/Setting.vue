@@ -10,9 +10,15 @@
     <n-tab-pane name="genotype" tab="基因型设置">
     <n-space vertical size="large" class="form-container">
     <n-card title="添加新基因位点" size="small">
-        <n-form @submit.prevent="addGeneLocus" label-placement="top">
+        <n-form
+          ref="geneLocusFormRef"
+          :model="newGeneLocus"
+          :rules="geneLocusRules"
+          @submit.prevent="addGeneLocus"
+          label-placement="top"
+        >
             <n-grid :cols="24" :x-gap="12">
-                <n-form-item-gi :span="8" label="基因组位点 *">
+                <n-form-item-gi :span="8" label="基因组位点" path="symbol" required>
                     <n-input v-model:value="newGeneLocus.symbol" placeholder="例如: TP53" />
                 </n-form-item-gi>
                 <n-form-item-gi :span="12" label="描述">
@@ -37,9 +43,15 @@
             >
                 <n-data-table :columns="alleleColumns" :data="locus.alleles" :pagination="false" :bordered="true" />
                 <n-divider />
-                <n-form @submit.prevent="addAllele(locus.id)" label-placement="top">
+                <n-form
+                  :ref="el => { if (el) alleleFormRefs[locus.id] = el }"
+                  :model="newAllele"
+                  :rules="alleleRules"
+                  @submit.prevent="addAllele(locus.id)"
+                  label-placement="top"
+                >
                     <n-grid :cols="24" :x-gap="12">
-                        <n-form-item-gi :span="8" label="符号 *">
+                        <n-form-item-gi :span="8" label="符号" path="symbol" required>
                             <n-input v-model:value="newAllele.symbol" placeholder="例如: KO" />
                         </n-form-item-gi>
                         <n-form-item-gi :span="10" label="描述">
@@ -64,9 +76,15 @@
     <n-space vertical size="large" class="form-container">
 
     <n-card title="新增位置" size="small">
-        <n-form @submit.prevent="addLocation" label-placement="top">
+        <n-form
+          ref="locationFormRef"
+          :model="newLocation"
+          :rules="locationRules"
+          @submit.prevent="addLocation"
+          label-placement="top"
+        >
             <n-grid :cols="24" :x-gap="12">
-                <n-form-item-gi :span="8" label="位置标识 *">
+                <n-form-item-gi :span="8" label="位置标识" path="identifier" required>
                     <n-input v-model:value="newLocation.identifier" placeholder="例如: A-3-2" />
                 </n-form-item-gi>
                 <n-form-item-gi :span="12" label="描述">
@@ -230,9 +248,15 @@
         
         <n-card size="small" class="form-section">
         <h3>{{ editingExperimentType.id ? '编辑实验类型' : '新增实验类型' }}</h3>
-        <n-form @submit.prevent="saveExperimentType" label-placement="top">
+        <n-form
+          ref="experimentTypeFormRef"
+          :model="editingExperimentType"
+          :rules="experimentTypeRules"
+          @submit.prevent="saveExperimentType"
+          label-placement="top"
+        >
             <n-grid :cols="24" :x-gap="12">
-                <n-form-item-gi :span="8" label="实验类型名称 *">
+                <n-form-item-gi :span="8" label="实验类型名称" path="name" required>
                     <n-input v-model:value="editingExperimentType.name" placeholder="例如: 肿瘤测量" />
                 </n-form-item-gi>
                 <n-form-item-gi :span="10" label="描述">
@@ -271,9 +295,7 @@
             </div>
             
             <div class="field-actions">
-            <n-button quaternary @click="addField">
-                <AppIcon  name="add" /> 添加字段
-            </n-button>
+            <n-button quaternary @click="addField" :render-icon="renderIcon(Add)">添加字段</n-button>
             </div>
         </div>
         </n-card>
@@ -292,9 +314,7 @@
             <n-card v-if="selectedExperimentType" class="detail-content" size="small" style="margin-top: 12px;">
                 <div class="detail-header">
                     <h3 class="detail-title">{{ selectedExperimentType.name }} - 详情</h3>
-                    <n-button quaternary @click="expandedExperimentType = null">
-                        <AppIcon  name="close" /> 收起
-                    </n-button>
+                    <n-button quaternary @click="expandedExperimentType = null" :render-icon="renderIcon(Close)">收起</n-button>
                 </div>
 
                 <div class="detail-section">
@@ -360,9 +380,14 @@
                     </n-form-item-gi>
                 </n-grid>
             </n-form>
-            <n-form label-placement="top">
+            <n-form
+              ref="groupFormRef"
+              :model="editingGroup"
+              :rules="groupRules"
+              label-placement="top"
+            >
                 <n-grid :cols="24" :x-gap="12">
-                    <n-form-item-gi :span="8" label="分组名称 *">
+                    <n-form-item-gi :span="8" label="分组名称" path="name" required>
                         <n-input v-model:value="editingGroup.name" placeholder="例如: WT vs TP53 ♀" />
                     </n-form-item-gi>
                     <n-form-item-gi :span="10" label="描述">
@@ -397,9 +422,7 @@
                                 </div>
                             </div>
                             <div class="subgroup-actions">
-                                <n-button text type="error" @click="removeGroup(subgroupIndex)">
-                                    <AppIcon  name="delete" />
-                                </n-button>
+                                <n-button text type="error" @click="removeGroup(subgroupIndex)" :render-icon="renderIcon(Trash)" />
                                 <n-button text @click="toggleSubgroupRules(subgroupIndex)">
                                     {{ subgroup.expanded ? '收起规则' : '展开规则' }}
                                 </n-button>
@@ -412,9 +435,7 @@
                                 <div v-for="(rule, ruleIndex) in subgroup.rules" :key="ruleIndex" class="rule-item">
                                     <div class="rule-header">
                                         <span>规则 {{ ruleIndex + 1 }}</span>
-                                        <n-button text type="error" @click="removeRule(subgroupIndex, ruleIndex)">
-                                            <AppIcon  name="delete" />
-                                        </n-button>
+                                        <n-button text type="error" @click="removeRule(subgroupIndex, ruleIndex)" :render-icon="renderIcon(Trash)" />
                                     </div>
                                     
                                     <div class="rule-content">
@@ -440,12 +461,8 @@
                                                         <span class="selected-gene" v-if="!gene?.selectedGeneName" v-html="geneStore.selectedGeneName"></span>
                                                         <span class="selected-gene" v-else v-html="gene.selectedGeneName"></span>
                                                     </div>
-                                                    <n-button text v-if="!gene?.selectedGeneName" @click="addGene" :disabled="!geneStore.addable">
-                                                        <AppIcon  name="add" />
-                                                    </n-button>
-                                                    <n-button text type="error" v-else @click="removeGeneSelection(subgroupIndex, ruleIndex, geneIndex)">
-                                                        <AppIcon  name="close" />
-                                                    </n-button>
+                                                    <n-button text v-if="!gene?.selectedGeneName" @click="addGene" :disabled="!geneStore.addable" :render-icon="renderIcon(Add)" />
+                                                    <n-button text type="error" v-else @click="removeGeneSelection(subgroupIndex, ruleIndex, geneIndex)" :render-icon="renderIcon(Close)" />
                                                     </div>
 
                                                     <div v-if="!gene?.selectedGeneName" v-for="(gene, index) in selectedGenes" class="genotype-select-container" :key="gene">
@@ -457,9 +474,7 @@
                                                             @update:value="onFormLocusChange(index, gene.locus)"
                                                         />
                                                         </div>
-                                                        <n-button text type="error" @click="deleteGene(index)">
-                                                        <AppIcon  name="delete" />
-                                                        </n-button>
+                                                        <n-button text type="error" @click="deleteGene(index)" :render-icon="renderIcon(Trash)" />
                                                     </div>
 
                                                     <div class="allele-controls">
@@ -484,14 +499,8 @@
                                                     </div>
                                                     </div>
                                                     <div v-if="selectedGenes.length>0 && !gene?.selectedGeneName" class="form-group-row">
-                                                        <n-button type="error" @click="deleteGenes">
-                                                        <AppIcon  name="delete_forever" />
-                                                        全部删除
-                                                        </n-button>
-                                                        <n-button type="primary" @click="saveGenes(subgroupIndex, ruleIndex, geneIndex)">
-                                                        <AppIcon  name="archive" />
-                                                        确定基因型
-                                                        </n-button>
+                                                        <n-button type="error" @click="deleteGenes" :render-icon="renderIcon(TrashBin)">全部删除</n-button>
+                                                        <n-button type="primary" @click="saveGenes(subgroupIndex, ruleIndex, geneIndex)" :render-icon="renderIcon(Archive)">确定基因型</n-button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -567,24 +576,14 @@
                                     </div>
                                 </div>
                             </div>
-                            <n-button @click="addRule(subgroupIndex)" :disabled="showIDList" quaternary>
-                                <AppIcon  name="add" /> 添加规则
-                            </n-button>
+                            <n-button @click="addRule(subgroupIndex)" :disabled="showIDList" quaternary :render-icon="renderIcon(Add)">添加规则</n-button>
                         </div>
                     </div>
                     <n-space class="form-group-row" align="end">
-                    <n-button :disabled="showIDList" @click="addGroup" quaternary class="add-subgroup-btn">
-                        <AppIcon  name="add" /> 添加小组
-                    </n-button>
-                    <n-button v-if="!showIDList" @click="reviewRules" type="primary" class="add-subgroup-btn">
-                        <AppIcon  name="book" /> 预览规则
-                    </n-button>
-                    <n-button v-else @click="reviewRulesClose" type="error" class="add-subgroup-btn">
-                        <AppIcon  name="book" /> 取消预览
-                    </n-button>
-                    <n-button @click="saveGroup" type="primary" class="add-subgroup-btn">
-                        <AppIcon  name="save" /> 按规则存储
-                    </n-button>
+                    <n-button :disabled="showIDList" @click="addGroup" quaternary class="add-subgroup-btn" :render-icon="renderIcon(Add)">添加小组</n-button>
+                    <n-button v-if="!showIDList" @click="reviewRules" type="primary" class="add-subgroup-btn" :render-icon="renderIcon(BookmarkSharp)">预览规则</n-button>
+                    <n-button v-else @click="reviewRulesClose" type="error" class="add-subgroup-btn" :render-icon="renderIcon(BookmarkSharp)">取消预览</n-button>
+                    <n-button @click="saveGroup" type="primary" class="add-subgroup-btn" :render-icon="renderIcon(Save)">按规则存储</n-button>
                     </n-space>
                 </div>
                 <!-- ID分组 -->
@@ -875,12 +874,8 @@
             
             <!-- 操作按钮 -->
             <div v-if="selectedSetting" class="form-group-row">
-                <n-button type="primary" @click="saveDisplaySettings">
-                    <AppIcon  name="save" /> 保存设置
-                </n-button>
-                <n-button quaternary @click="resetToDefault(selectedSetting)">
-                    <AppIcon  name="refresh" /> 恢复默认
-                </n-button>
+                <n-button type="primary" @click="saveDisplaySettings" :render-icon="renderIcon(Save)">保存设置</n-button>
+                <n-button quaternary @click="resetToDefault(selectedSetting)" :render-icon="renderIcon(Refresh)">恢复默认</n-button>
             </div>
         </n-card>
 
@@ -888,9 +883,7 @@
         <n-card size="small" class="reset-section">
             <h4>重置设置</h4>
             <p>这将重置所有显示设置为默认值，此操作不可撤销。</p>
-            <n-button type="error" @click="confirmReset">
-                <AppIcon  name="warning" /> 重置所有设置
-            </n-button>
+            <n-button type="error" @click="confirmReset" :render-icon="renderIcon(Warning)">重置所有设置</n-button>
         </n-card>
     </n-space>
     </n-tab-pane>
@@ -1043,7 +1036,10 @@
 
 <script setup>
 import { h, ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
-import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, useDialog, useMessage } from 'naive-ui'
+import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, NIcon, useDialog, useMessage } from 'naive-ui'
+import { Add, Close, Trash, TrashBin, Archive, BookmarkSharp, Save, Refresh, Warning } from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api'
 import { normalizeDateValue } from '@/utils/format'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
@@ -1160,6 +1156,67 @@ const getVisualizeTypeOptions = (dataType) => {
 // 基因型相关状态
 const newGeneLocus = reactive({ symbol: '', description: '' })
 const newAllele = reactive({ symbol: '', description: '', is_wildtype: false })
+
+// n-form 引用与必填规则（统一替代 message.info 的提示方式）
+const geneLocusFormRef = ref(null)
+const geneLocusRules = {
+  symbol: {
+    required: true,
+    trigger: ['input', 'blur'],
+    validator(rule, value) {
+      if (!value || !String(value).trim()) return new Error('请输入基因位点名称')
+      return true
+    }
+  }
+}
+
+const alleleFormRefs = reactive({})
+const alleleRules = {
+  symbol: {
+    required: true,
+    trigger: ['input', 'blur'],
+    validator(rule, value) {
+      if (!value || !String(value).trim()) return new Error('请输入基因位点修饰名称')
+      return true
+    }
+  }
+}
+
+const locationFormRef = ref(null)
+const locationRules = {
+  identifier: {
+    required: true,
+    trigger: ['input', 'blur'],
+    validator(rule, value) {
+      if (!value || !String(value).trim()) return new Error('请输入位置标识')
+      return true
+    }
+  }
+}
+
+const experimentTypeFormRef = ref(null)
+const experimentTypeRules = {
+  name: {
+    required: true,
+    trigger: ['input', 'blur'],
+    validator(rule, value) {
+      if (!value || !String(value).trim()) return new Error('请输入实验类型名称')
+      return true
+    }
+  }
+}
+
+const groupFormRef = ref(null)
+const groupRules = {
+  name: {
+    required: true,
+    trigger: ['input', 'blur'],
+    validator(rule, value) {
+      if (!value || !String(value).trim()) return new Error('请输入分组名称')
+      return true
+    }
+  }
+}
 const expandedLoci = ref([])
 const editingLocus = reactive({ id: null, symbol: '', description: '' })
 const editLocusDialogVisible = ref(false)
@@ -1769,10 +1826,9 @@ const groupDetailColumns = (groupType) => [
 ]
 
 const addGeneLocus = async () => {
-    if (!newGeneLocus.symbol) {
-    message.info('请填写基因位点名称')
-    return
-    }
+    try {
+    await geneLocusFormRef.value?.validate()
+    } catch (errors) { return }
 
     try {
     const response = await api.post('/gene', newGeneLocus)
@@ -1787,10 +1843,9 @@ const addGeneLocus = async () => {
 }
 
 const addAllele = async (locus_id) => {
-    if (!newAllele.symbol) {
-    message.info('请填写基因位点修饰名称')
-    return
-    }
+    try {
+    await alleleFormRefs[locus_id]?.validate()
+    } catch (errors) { return }
 
     try {
     await api.post(`/${locus_id}/gene_allele`, newAllele)
@@ -1878,10 +1933,9 @@ const deleteAllele = async (id) => {
 }
 
 const addLocation = async () => {
-    if (!newLocation.identifier) {
-        message.info('请填写位置标识')
-        return
-    }
+    try {
+        await locationFormRef.value?.validate()
+    } catch (errors) { return }
 
     try {
         const response = await api.post('/locations', newLocation)
@@ -2083,11 +2137,11 @@ const removeField = (index) => {
 }
 
 const saveExperimentType = async () => {
-    if (!editingExperimentType.name) {
-    message.info('请填写实验类型名称')
-    return
-    }
+    try {
+    await experimentTypeFormRef.value?.validate()
+    } catch (errors) { return }
 
+    // 字段数组不为空属于业务规则，仍以 message 形式提示
     if (editingExperimentType.fields.length === 0) {
     message.info('请至少添加一个字段')
     return
@@ -2783,13 +2837,13 @@ const reviewRulesClose = () => {
 }
 
 const saveGroup = async () => {
+    try {
+        await groupFormRef.value?.validate()
+    } catch (errors) { return }
+
+    // 业务规则：基因选择未完成，仍以 message 提示
     if (selectedGenes.value && selectedGenes.value.length !== 0) {
         message.info('请完成基因选择')
-        return
-    }
-
-    if (!editingGroup.name) {
-        message.info('请填写预设分组名称')
         return
     }
 

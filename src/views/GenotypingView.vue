@@ -27,10 +27,7 @@
             <AppIcon name="search" />
           </template>
         </n-input>
-        <n-button @click="refreshData" :loading="refreshing">
-          <template #icon><AppIcon name="refresh" /></template>
-          刷新
-        </n-button>
+        <n-button @click="refreshData" :loading="refreshing" :render-icon="renderIcon(Refresh)">刷新</n-button>
       </n-space>
       <n-space align="center" :size="16">
         <span class="legend-item"><span class="dot dot-pregnant" /> 已标记怀孕</span>
@@ -123,37 +120,36 @@
             <div class="quick-actions" @click.stop>
               <n-space :size="6">
                 <template v-if="!cage.breeding_status">
-                  <n-button size="tiny" type="primary" ghost @click="onMarkPregnant(cage)">
-                    <AppIcon name="heart" :size="14" />
+                  <n-button strong secondary size="small" type="primary" :render-icon="renderIcon(Heart)" @click="onMarkPregnant(cage)">
                     标记怀孕
                   </n-button>
-                  <n-button size="tiny" @click="onConfirmDelivered(cage)">
-                    <AppIcon name="happy" :size="14" />
+                  <n-button strong secondary size="small" type="info" :render-icon="renderIcon(LogIn)" @click="onConfirmDelivered(cage)">
                     直接登记
                   </n-button>
                 </template>
                 <template v-else-if="cage.breeding_status === 'pregnant'">
-                  <n-button size="tiny" type="primary" @click="onConfirmDelivered(cage)">
-                    <AppIcon name="happy" :size="14" />
+                  <n-button strong secondary size="small" type="primary" :render-icon="renderIcon(Ribbon)" @click="onConfirmDelivered(cage)">
                     确认生产
                   </n-button>
-                  <n-button size="tiny" ghost @click="onClearStatus(cage)">
-                    <AppIcon name="close" :size="14" />
+                  <n-button strong secondary size="small" type="error" :render-icon="renderIcon(Close)" @click="onClearStatus(cage)">
                     取消标记
                   </n-button>
                 </template>
                 <template v-else>
-                  <n-button size="tiny" type="primary" @click="onOpenRegister(cage)">
-                    <AppIcon name="add" :size="14" />
+                  <n-button strong secondary size="small" type="primary" :render-icon="renderIcon(Add)" @click="onOpenRegister(cage)">
                     登记新生仔
                   </n-button>
+                  <n-button strong secondary size="small" type="error" :render-icon="renderIcon(Close)" @click="onRevertToPregnant(cage)">
+                    取消标记
+                  </n-button>
                   <n-button
+                    strong secondary
                     v-if="breedingStore.pendingPupsCount(cage.id) > 0"
-                    size="tiny"
+                    size="small"
                     type="warning"
+                    :render-icon="renderIcon(Flask)"
                     @click="onOpenBatchGenotype(cage)"
                   >
-                    <AppIcon name="flask" :size="14" />
                     批量鉴定
                   </n-button>
                 </template>
@@ -242,6 +238,7 @@
       v-model:show="registerModalVisible"
       :cage="registerCage"
       @submitted="onRegisterSubmitted"
+      @reset-status="onResetStatusFromRegister"
     />
     <BatchGenotypeModal
       v-model:show="batchModalVisible"
@@ -253,13 +250,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, h } from 'vue'
 import {
   NSpace, NSelect, NInput, NButton, NCard, NTag, NPopover, NFlex, NEmpty,
   NDrawer, NDrawerContent, NTabs, NTabPane, NDescriptions, NDescriptionsItem,
-  useDialog, useMessage
+  NIcon, useDialog, useMessage
 } from 'naive-ui'
 import AppIcon from '@/components/AppIcon.vue'
+import {
+  Heart, Ribbon, Flask, Add, Close, RefreshCircle, LogIn, Refresh, HappySharp
+} from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import { useCageStore, useGeneStore, useBreedingStore } from '@/stores'
 import LitterRegistrationModal from '@/components/LitterRegistrationModal.vue'
 import BatchGenotypeModal from '@/components/BatchGenotypeModal.vue'
@@ -367,6 +369,43 @@ function onClearStatus(cage) {
       try {
         await breedingStore.setBreedingStatus(cage.id, null)
         message.success('已取消标记')
+      } catch (e) {
+        message.error('操作失败: ' + (e.response?.data?.error || e.message))
+      }
+    }
+  })
+}
+
+function onRevertToPregnant(cage) {
+  dialog.warning({
+    title: '回退生产状态',
+    content: `将 ${cage.section}-${cage.cage_id} 回退到「已标记怀孕」状态？`,
+    positiveText: '确认回退',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await breedingStore.setBreedingStatus(cage.id, 'pregnant')
+        message.success('已回退到怀孕状态')
+      } catch (e) {
+        message.error('操作失败: ' + (e.response?.data?.error || e.message))
+      }
+    }
+  })
+}
+
+function onResetStatusFromRegister() {
+  const cage = registerCage.value
+  if (!cage) return
+  dialog.warning({
+    title: '重置繁殖状态',
+    content: `确认将 ${cage.section}-${cage.cage_id} 直接重置为「未标记」状态？此操作不可撤销。`,
+    positiveText: '确认重置',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await breedingStore.setBreedingStatus(cage.id, null)
+        message.success('已重置为未标记状态')
+        registerModalVisible.value = false
       } catch (e) {
         message.error('操作失败: ' + (e.response?.data?.error || e.message))
       }
@@ -487,13 +526,14 @@ onMounted(async () => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px;
+  /* 顶部/右侧 padding 增加，避免卡片右上角 status-badge 被裁切 */
+  padding: 14px 14px 8px 4px;
 }
 .cage-grid {
   min-height: 120px;
 }
 .breeding-card {
-  width: 320px;
+  width: 360px;
   position: relative;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;

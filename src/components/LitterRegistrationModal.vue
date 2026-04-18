@@ -110,12 +110,26 @@
     </template>
 
     <template #footer>
-      <n-space justify="end">
-        <n-button @click="$emit('update:show', false)">取消</n-button>
-        <n-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="onSubmit">
-          提交登记
-        </n-button>
-      </n-space>
+      <div class="footer-bar">
+        <n-popconfirm
+          positive-text="确认重置"
+          negative-text="取消"
+          @positive-click="$emit('reset-status')"
+        >
+          <template #trigger>
+            <n-button type="error" ghost>
+              重置状态
+            </n-button>
+          </template>
+          将此繁殖笼直接回退为「未标记」状态（取消已生产/怀孕标记）？
+        </n-popconfirm>
+        <n-space justify="end">
+          <n-button @click="$emit('update:show', false)">取消</n-button>
+          <n-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="onSubmit">
+            提交登记
+          </n-button>
+        </n-space>
+      </div>
     </template>
   </n-modal>
 </template>
@@ -124,7 +138,7 @@
 import { computed, h, reactive, ref, watch } from 'vue'
 import {
   NModal, NInput, NInputNumber, NSelect, NDatePicker, NRadioGroup, NRadioButton,
-  NFormItem, NSpace, NButton, NDataTable, useMessage
+  NFormItem, NSpace, NButton, NDataTable, NPopconfirm, useMessage
 } from 'naive-ui'
 import { useBreedingStore, useGeneStore } from '@/stores'
 import { buildEarTagIds, nextEarTagNumber, buildToeClipId, toeClipPrefix } from '@/utils/idGenerator'
@@ -133,7 +147,7 @@ const props = defineProps({
   show: { type: Boolean, default: false },
   cage: { type: Object, default: null }
 })
-const emit = defineEmits(['update:show', 'submitted'])
+const emit = defineEmits(['update:show', 'submitted', 'reset-status'])
 
 const breedingStore = useBreedingStore()
 const geneStore = useGeneStore()
@@ -345,5 +359,11 @@ async function onSubmit() {
   margin-top: 6px;
   font-size: 12px;
   color: var(--n-text-color-3);
+}
+.footer-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 </style>

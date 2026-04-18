@@ -93,14 +93,13 @@
                 </div>
               </div>
               <div class="group-actions">
-                <n-button 
+                <n-button
                   @click="removeGroup(groupIndex)"
                   :disabled="editingGroup.rules.length <= 1"
                   type="error"
                   quaternary
-                >
-                  <AppIcon  name="delete" />
-                </n-button>
+                  :render-icon="renderIcon(Trash)"
+                />
               </div>
             </div>
             <div class="group-mice">
@@ -113,12 +112,11 @@
                 <div class="mouse-details" v-html="mouse.genotype.symbol? mouse.genotype.symbol : mouse.genotype"></div>
                 <div class="mouse-details">{{ mouse.sex }} · {{ mouse.strain }} · {{ mouse.birth_date }}</div>
                 <div class="mouse-actions">
-                  <n-button 
+                  <n-button
                     @click="removeMouseFromGroup(mouse.tid, groupIndex)"
                     quaternary
-                  >
-                    <AppIcon  name="remove_circle" />
-                  </n-button>
+                    :render-icon="renderIcon(RemoveCircle)"
+                  />
                 </div>
               </div>
               <div v-if="group.mouseId.length === 0" class="empty-group">
@@ -129,15 +127,9 @@
         </div>
         
         <div class="grouping-actions">
-          <n-button quaternary @click="addGroup">
-            <AppIcon  name="add" /> 添加新分组
-          </n-button>
-          <n-button v-if="editingGroup.rules.length > 0" quaternary @click="resetGroup">
-            <AppIcon  name="refresh" /> 重置分组
-          </n-button>
-          <n-button type="success" @click="saving" :disabled="isSaving">
-            <AppIcon  name="save" /> {{ isSaving? "保存中...": "保存ID分组" }}
-          </n-button>
+          <n-button quaternary @click="addGroup" :render-icon="renderIcon(Add)">添加新分组</n-button>
+          <n-button v-if="editingGroup.rules.length > 0" quaternary @click="resetGroup" :render-icon="renderIcon(Refresh)">重置分组</n-button>
+          <n-button type="success" @click="saving" :disabled="isSaving" :render-icon="renderIcon(Save)">{{ isSaving? "保存中...": "保存ID分组" }}</n-button>
         </div>
       </div>
     </div>
@@ -145,7 +137,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { h, ref, computed } from 'vue'
+import { NIcon } from 'naive-ui'
+import { Trash, RemoveCircle, Add, Refresh, Save } from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 // 定义props
 const props = defineProps({

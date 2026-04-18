@@ -16,10 +16,7 @@
           :options="chartTypeOptions"
           style="min-width: 200px;"
         />
-        <n-button type="primary" @click="openRecordModal">
-            <AppIcon  class="btn-icon" name="add" />
-            录入体重
-        </n-button>
+        <n-button type="primary" @click="openRecordModal" :render-icon="renderIcon(Add)">录入体重</n-button>
         </div>
         <div v-if="showChartType === 'pred'" class="d-flex justify-content-between mb-4">
             <n-select
@@ -29,22 +26,12 @@
               :disabled="predefinedGroups.length === 0"
               style="min-width: 180px;"
             />
-            <n-button type="primary" @click="showChart('pred')">
-            <AppIcon  name="insights" />
-            以预设分组生成图表
-            </n-button>
+            <n-button type="primary" @click="showChart('pred')" :render-icon="renderIcon(TrendingUp)">以预设分组生成图表</n-button>
         </div>
         <div v-if="showChartType === 'temp'" class="d-flex justify-content-between mb-4">
-            <n-button type="primary" @click="showChart('temp')">
-            <AppIcon  name="insights" />
-            以临时分组生成图表
-            </n-button>
-            <n-button id="addGroupBtn" secondary @click="addGroup">
-            <AppIcon  name="add" /> 添加分组
-            </n-button>
-            <n-button id="addGroupBtn" type="error" @click="clearGroups">
-            <AppIcon  name="add" /> 清空分组
-            </n-button>
+            <n-button type="primary" @click="showChart('temp')" :render-icon="renderIcon(TrendingUp)">以临时分组生成图表</n-button>
+            <n-button id="addGroupBtn" secondary @click="addGroup" :render-icon="renderIcon(Add)">添加分组</n-button>
+            <n-button id="addGroupBtn" type="error" @click="clearGroups" :render-icon="renderIcon(Close)">清空分组</n-button>
         </div>
         
         <!-- 分组设置 -->
@@ -59,9 +46,7 @@
                 <div class="card">
                 <div class="card-header compact-header">
                     <span>分组 {{ index }}</span>
-                    <n-button quaternary circle @click="removeGroup(index)"  v-if="tempGroups.length > 1">
-                        <AppIcon  name="close" />
-                    </n-button>
+                    <n-button quaternary circle @click="removeGroup(index)" v-if="tempGroups.length > 1" :render-icon="renderIcon(Close)" />
                 </div>
                 <div class="card-body">
                     <div class="mb-2">
@@ -199,9 +184,7 @@
             </div>
             <template #footer>
             <div class="d-grid mt-3">
-                <n-button id="saveBtn" type="primary" @click="handleSaveWeight">
-                <AppIcon  name="save" /> 保存体重记录
-                </n-button>
+                <n-button id="saveBtn" type="primary" @click="handleSaveWeight" :render-icon="renderIcon(Save)">保存体重记录</n-button>
             </div>
             </template>
     </n-modal>
@@ -232,7 +215,10 @@
 
 <script setup>
 import { h, ref, computed, nextTick, onMounted, watch } from 'vue'
-import { NInputNumber, useMessage } from 'naive-ui'
+import { NInputNumber, NIcon, useMessage } from 'naive-ui'
+import { Add, Close, TrendingUp, Save } from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api'
 import Chart from 'chart.js/auto'
 import regression from 'regression'

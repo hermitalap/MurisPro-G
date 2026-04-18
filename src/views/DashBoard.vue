@@ -1,8 +1,17 @@
 <template>
   <n-scrollbar trigger="hover" :size="8">
   <div class="main-content">
-    <div class="content-header" id="contentHeader">
-      <div class="header-top-row">
+    <n-grid
+      class="content-header"
+      id="contentHeader"
+      :cols="24"
+      :x-gap="24"
+      :y-gap="14"
+      responsive="screen"
+      item-responsive
+    >
+      <!-- 左：标题 + 统计 -->
+      <n-gi span="24 s:12" class="header-title-col">
         <div class="header-title-section">
           <h1 class="page-title">笼位视图</h1>
           <div class="header-stats-panel">
@@ -20,75 +29,68 @@
             </n-statistic>
           </div>
         </div>
-      </div>
-      <div class="header-controls-row">
-        <div class="search-container">
-          <div class="search-box">
-            <AppIcon  name="search" />
-            <n-input
-              v-model:value="searchTerm"
-              placeholder="搜索小鼠ID..."
-              @update:value="performSearch"
-              @keyup.enter="performSearch"
-              clearable
-            />
-            <n-button v-if="searchTerm" @click="clearSearch" class="search-clear" quaternary circle>
-              <AppIcon  name="close" />
-            </n-button>
-          </div>
-          
-          <div v-if="searchResults.length > 0" class="search-results">
-            <div class="search-result-header">
-              <span>找到 {{ searchResults.length }} 个结果</span>
-              <div class="search-nav">
-                <n-button quaternary circle @click="navigateResults(-1)" :disabled="currentResultIndex <= 0">
-                  <AppIcon  name="arrow_upward" />
-                </n-button>
-                <n-button quaternary circle @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1">
-                  <AppIcon  name="arrow_downward" />
-                </n-button>
+      </n-gi>
+
+      <!-- 右：5 个控件（两行） -->
+      <n-gi span="24 s:12" class="header-controls-col">
+        <div class="header-controls-block">
+          <!-- 第一行：搜索框 + 笼位插槽 -->
+          <div class="controls-row controls-row-1">
+            <div class="search-container">
+              <div class="search-box">
+                <AppIcon name="search" />
+                <n-input
+                  v-model:value="searchTerm"
+                  placeholder="搜索小鼠ID..."
+                  @update:value="performSearch"
+                  @keyup.enter="performSearch"
+                  clearable
+                />
+                <n-button v-if="searchTerm" @click="clearSearch" class="search-clear" quaternary circle :render-icon="renderIcon(Close)" />
+              </div>
+
+              <div v-if="searchResults.length > 0" class="search-results">
+                <div class="search-result-header">
+                  <span>找到 {{ searchResults.length }} 个结果</span>
+                  <div class="search-nav">
+                    <n-button quaternary circle @click="navigateResults(-1)" :disabled="currentResultIndex <= 0" :render-icon="renderIcon(ArrowUp)" />
+                    <n-button quaternary circle @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1" :render-icon="renderIcon(ArrowDown)" />
+                  </div>
+                </div>
+
+                <div
+                  v-for="(result, index) in searchResults"
+                  :key="index"
+                  class="search-result-item"
+                  :class="{ active: index === currentResultIndex }"
+                  @click="selectSearchResult(result, index)"
+                >
+                  <div class="mouse-sex" :class="result.mouse.sex === 'F' ? 'sex-female' : (result.mouse.sex === 'Mixed' ? 'sex-mixed' : 'sex-male')">
+                    {{ result.mouse.sex === 'F' ? '♀' : (result.mouse.sex === 'Mixed' ? '⚥' : '♂') }}
+                  </div>
+                  <div class="result-info">
+                    <div class="mouse-id">{{ result.mouse.id }}</div>
+                    <div class="cage-info">{{ result.cage.section }} - {{ result.cage.cage_id }} {{ result.cage.location ? `(${result.cage.location})` : "" }}</div>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div 
-              v-for="(result, index) in searchResults" 
-              :key="index" 
-              class="search-result-item"
-              :class="{ active: index === currentResultIndex }"
-              @click="selectSearchResult(result, index)"
-            >
-              <div class="mouse-sex" :class="result.mouse.sex === 'F' ? 'sex-female' : (result.mouse.sex === 'Mixed' ? 'sex-mixed' : 'sex-male')">
-                {{ result.mouse.sex === 'F' ? '♀' : (result.mouse.sex === 'Mixed' ? '⚥' : '♂') }}
-              </div>
-              <div class="result-info">
-                <div class="mouse-id">{{ result.mouse.id }}</div>
-                <div class="cage-info">{{ result.cage.section }} - {{ result.cage.cage_id }} {{ result.cage.location ? `(${result.cage.location})` : "" }}</div>
-              </div>
+
+            <div class="slot-toolbar">
+              <span class="slot-label">笼位插槽数</span>
+              <n-input-number v-model:value="cageSlotCount" :min="1" />
             </div>
           </div>
-        </div>
 
-        <div class="slot-toolbar">
-          <span class="slot-label">笼位插槽数</span>
-          <n-input-number v-model:value="cageSlotCount" :min="1" />
+          <!-- 第二行：三个操作按钮 -->
+          <div class="controls-row controls-row-2">
+            <n-button secondary @click="fetchCages" :render-icon="renderIcon(Refresh)">刷新数据</n-button>
+            <n-button secondary @click="exportToPDF" :render-icon="renderIcon(DocumentText)">当前位置导出pdf</n-button>
+            <n-button type="primary" @click="openCageModal(null)" :render-icon="renderIcon(Add)">添加笼位</n-button>
+          </div>
         </div>
-
-        <n-space class="action-buttons">
-          <n-button secondary @click="fetchCages">
-            <AppIcon  class="btn-icon" name="refresh" />
-            刷新数据
-          </n-button>
-          <n-button secondary @click="exportToPDF">
-            <AppIcon  class="btn-icon" name="picture_as_pdf" />
-            当前位置导出pdf
-          </n-button>
-          <n-button type="primary" @click="openCageModal(null)">
-            <AppIcon  class="btn-icon" name="add" />
-            添加笼位
-          </n-button>
-        </n-space>
-      </div>
-    </div>
+      </n-gi>
+    </n-grid>
     
     <!-- Section标签页导航 -->
     <div class="section-tabs">
@@ -129,7 +131,15 @@
                       <div class="cage-header" @click.stop="openCageModal(cage)">
                         <div class="cage-header-top">
                           <div class="cage-identifier">
-                            <div class="cage-sex-mark" :class="getCageSexClass(cage)">
+                            <n-tooltip v-if="isCageMixedSexWarning(cage)" trigger="hover">
+                              <template #trigger>
+                                <div class="cage-sex-mark sex-mark-warning">
+                                  <AppIcon name="warning" />
+                                </div>
+                              </template>
+                              非繁殖笼有混合性别
+                            </n-tooltip>
+                            <div v-else class="cage-sex-mark" :class="getCageSexClass(cage)">
                               <AppIcon :name="getCageSexIcon(cage)" />
                             </div>
                             <span class="cage-id-text">{{ cage.cage_id || '-' }}</span>
@@ -265,48 +275,55 @@
 
   <!-- 统一笼位对话框 -->
   <n-modal v-model:show="cageModalVisible" preset="card" style="width: 500px; max-width: 95vw; overflow: visible;" :title="isEditing ? '修改笼位信息' : '添加新笼位'" @close="closeCageModal">
-    <n-grid x-gap="12" y-gap="16" :cols="2">
-      <n-gi>
-        <n-form-item label="笼位ID *" label-placement="top" :show-feedback="false">
-          <n-input v-model:value="currentCage.cage_id" placeholder="输入笼位ID" />
-        </n-form-item>
-      </n-gi>
-      <n-gi>
-        <n-form-item label="区域 *" label-placement="top" :show-feedback="false">
-          <n-select v-model:value="currentCage.section" :options="sectionOptions" placeholder="选择区域" />
-        </n-form-item>
-      </n-gi>
-      <n-gi :span="2">
-        <n-form-item label="位置" label-placement="top" :show-feedback="false">
-          <n-input v-model:value="currentCage.location" placeholder="输入位置" />
-        </n-form-item>
-      </n-gi>
-    </n-grid>
+    <n-form
+      ref="cageFormRef"
+      :model="currentCage"
+      :rules="cageFormRules"
+      label-placement="top"
+    >
+      <n-grid x-gap="12" y-gap="16" :cols="2">
+        <n-gi>
+          <n-form-item label="笼位ID" path="cage_id" required>
+            <n-input v-model:value="currentCage.cage_id" placeholder="输入笼位ID" />
+          </n-form-item>
+        </n-gi>
+        <n-gi>
+          <n-form-item label="区域" path="section" required>
+            <n-select v-model:value="currentCage.section" :options="sectionOptions" placeholder="选择区域" />
+          </n-form-item>
+        </n-gi>
+        <n-gi :span="2">
+          <n-form-item label="位置" :show-feedback="false">
+            <n-input v-model:value="currentCage.location" placeholder="输入位置" />
+          </n-form-item>
+        </n-gi>
+      </n-grid>
 
-    <div class="icon-hr" style="margin: 20px 0;">下面是用于标记的笼位信息</div>
-    
-    <n-grid x-gap="12" y-gap="16" :cols="2">
-      <n-gi>
-        <n-form-item label="笼位类型" label-placement="top" :show-feedback="false">
-          <n-select v-model:value="currentCage.cage_type" :options="cageTypeOptions" placeholder="选择笼位类型" />
-        </n-form-item>
-      </n-gi>
-      <n-gi>
-        <n-form-item label="建笼日期" label-placement="top" :show-feedback="false">
-          <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="currentCage.mice_birth_date" style="width: 100%" />
-        </n-form-item>
-      </n-gi>
-      <n-gi :span="2">
-        <n-form-item label="小鼠基因型" label-placement="top" :show-feedback="false">
-          <n-input v-model:value="currentCage.mice_genotype" placeholder="如: WT/KO/其他" />
-        </n-form-item>
-      </n-gi>
-    </n-grid>
+      <div class="icon-hr" style="margin: 20px 0;">下面是用于标记的笼位信息</div>
+
+      <n-grid x-gap="12" y-gap="16" :cols="2">
+        <n-gi>
+          <n-form-item label="笼位类型" :show-feedback="false">
+            <n-select v-model:value="currentCage.cage_type" :options="cageTypeOptions" placeholder="选择笼位类型" />
+          </n-form-item>
+        </n-gi>
+        <n-gi>
+          <n-form-item label="建笼日期" :show-feedback="false">
+            <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="currentCage.mice_birth_date" style="width: 100%" />
+          </n-form-item>
+        </n-gi>
+        <n-gi :span="2">
+          <n-form-item label="小鼠基因型" :show-feedback="false">
+            <n-input v-model:value="currentCage.mice_genotype" placeholder="如: WT/KO/其他" />
+          </n-form-item>
+        </n-gi>
+      </n-grid>
+    </n-form>
 
     <template #footer>
       <n-space justify="end" class="dialog-buttons">
         <n-button secondary @click="closeCageModal">取消</n-button>
-        <n-button type="primary" @click="isEditing ? updateCage() : addNewCage()" :disabled="isSaving">
+        <n-button type="primary" @click="onSubmitCage" :disabled="isSaving">
           <div v-if="isSaving">{{ isEditing ? '更新中' : '添加中' }}</div>
           <div v-else>{{ isEditing ? '保存设置' : '创建笼位' }}</div>
         </n-button>
@@ -382,9 +399,7 @@
     <n-badge :value="temporaryMice.length" :max="99" :offset="[-5, 5]">
       <n-tooltip trigger="hover">
         <template #trigger>
-          <n-button circle type="primary" @click="showTemporaryDrawer = true">
-            <AppIcon name="file_tray" />
-          </n-button>
+          <n-button circle type="primary" @click="showTemporaryDrawer = true" :render-icon="renderIcon(FileTray)" />
         </template>
         临时区
       </n-tooltip>
@@ -401,19 +416,24 @@ import { normalizeDateValue } from '@/utils/format'
 import MouseDetailModal from './MouseDetailView.vue'
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { useDialog, useMessage } from 'naive-ui';
+import { NIcon, useDialog, useMessage } from 'naive-ui';
+import { Refresh, DocumentText, Add, Close, ArrowUp, ArrowDown, FileTray } from '@vicons/ionicons5';
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 // 设置组件名称
 defineOptions({
   name: 'AnimalLabDashboard'
 })
 
-import { useCageStore } from '@/stores'
+import { useCageStore, useGeneStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 
 const cageStore = useCageStore()
 const {locations, activeSection, cages} = storeToRefs(cageStore)
 const {fetchCages} = cageStore
+const geneStore = useGeneStore()
+const { mice: allMice } = storeToRefs(geneStore)
 const dialog = useDialog()
 const message = useMessage()
 const sectionOptions = computed(() =>
@@ -430,10 +450,15 @@ const miceSexOptions = [
 ]
 
 const survivingMouseCount = computed(() => {
+  // 以全量小鼠列表为准，避免只统计笼位内小鼠导致的漏计（未分配笼位的小鼠仍然存活）
+  if (Array.isArray(allMice.value) && allMice.value.length) {
+    return allMice.value.filter(m => m.live_status === 1).length
+  }
+  // 回退：笼位数据（未加载 mice 列表时保持旧逻辑）
   let count = 0
   for (const cage of cages.value) {
     if (Array.isArray(cage.mice)) {
-      count += cage.mice.filter(m => m.live_status !== false && m.live_status !== 'dead').length
+      count += cage.mice.filter(m => m.live_status === 1).length
     }
   }
   return count
@@ -478,6 +503,40 @@ const sectionContextMenu = reactive({
   index: -1
 })
 const isSaving = ref(false)
+
+// 笼位表单校验（naive-ui 原生 required 规则）
+const cageFormRef = ref(null)
+const cageFormRules = {
+  cage_id: {
+    required: true,
+    trigger: ['input', 'blur'],
+    validator(rule, value) {
+      if (!value || !String(value).trim()) return new Error('请输入笼位ID')
+      return true
+    }
+  },
+  section: {
+    required: true,
+    trigger: ['change', 'blur'],
+    validator(rule, value) {
+      if (!value) return new Error('请选择区域')
+      return true
+    }
+  }
+}
+
+async function onSubmitCage() {
+  try {
+    await cageFormRef.value?.validate()
+  } catch (errors) {
+    return
+  }
+  if (isEditing.value) {
+    await updateCage()
+  } else {
+    await addNewCage()
+  }
+}
 
 // 搜索相关状态
 const searchTerm = ref('')
@@ -678,6 +737,10 @@ const matrixGridStyle = computed(() => ({
 // 生命周期钩子
 onMounted(async () => {
   await fetchTemporaryMice()
+  // 确保小鼠列表已加载（用于存活统计与全局一致性）
+  if (!allMice.value || allMice.value.length === 0) {
+    try { await geneStore.loadMice() } catch (e) { /* ignore */ }
+  }
 })
 
 // 获取临时区小鼠数据
@@ -788,6 +851,9 @@ function openCageModal(cage) {
   }
   
   cageModalVisible.value = true
+  nextTick(() => {
+    cageFormRef.value?.restoreValidation?.()
+  })
 }
 
 function closeCageModal(){
@@ -805,12 +871,8 @@ function closeCageModal(){
   pendingMiceTransfer.value = []
 }
 
-// 添加新笼位
+// 添加新笼位（必填校验由 n-form 完成）
 async function addNewCage() {
-  if (!currentCage.cage_id || !currentCage.section) {
-    message.info('请填写笼位ID和区域')
-    return
-  }
   isSaving.value = true
   try {
     const responseId = await api.post('/cages', currentCage)
@@ -877,20 +939,43 @@ function closeContextMenu() {
   document.removeEventListener('click', closeContextMenu)
 }
 
+// 判定笼位性别显示：empty（空笼，合理的显示边界）、breeding、mixed、F、M、unknown
+function getCageSexState(cage) {
+  if (!cage) return 'empty'
+  if (cage.cage_type === 'breeding') return 'breeding'
+  const miceList = Array.isArray(cage.mice) ? cage.mice : []
+  if (miceList.length === 0) return 'empty'
+  const sexes = new Set(miceList.map(m => m.sex).filter(s => s === 'M' || s === 'F'))
+  if (sexes.size > 1) return 'mixed'
+  if (cage.mice_sex === 'Mixed') return 'mixed'
+  if (sexes.has('F') || cage.mice_sex === 'F') return 'F'
+  if (sexes.has('M') || cage.mice_sex === 'M') return 'M'
+  return 'unknown'
+}
+
 function getCageSexIcon(cage) {
-  if (cage?.cage_type === 'breeding') return 'male_female'
-  if (cage?.mice_sex === 'Mixed') return 'male_female'
-  if (cage?.mice_sex === 'F') return 'female'
-  if (cage?.mice_sex === 'M') return 'male'
-  return 'help'
+  const state = getCageSexState(cage)
+  if (state === 'breeding' || state === 'mixed') return 'male_female'
+  if (state === 'F') return 'female'
+  if (state === 'M') return 'male'
+  return 'help' // empty / unknown — 空笼位是一种合理的已处理边界
 }
 
 function getCageSexClass(cage) {
-  if (cage?.cage_type === 'breeding') return 'sex-mark-mixed'
-  if (cage?.mice_sex === 'Mixed') return 'sex-mark-mixed'
-  if (cage?.mice_sex === 'F') return 'sex-mark-female'
-  if (cage?.mice_sex === 'M') return 'sex-mark-male'
+  const state = getCageSexState(cage)
+  if (state === 'breeding' || state === 'mixed') return 'sex-mark-mixed'
+  if (state === 'F') return 'sex-mark-female'
+  if (state === 'M') return 'sex-mark-male'
   return 'sex-mark-unknown'
+}
+
+// 非繁殖笼 + 混合性别 → 触发黄色警告图标 + tooltip
+function isCageMixedSexWarning(cage) {
+  if (!cage || cage.cage_type === 'breeding') return false
+  const miceList = Array.isArray(cage.mice) ? cage.mice : []
+  if (miceList.length < 2) return false
+  const sexes = new Set(miceList.map(m => m.sex).filter(s => s === 'M' || s === 'F'))
+  return sexes.size > 1
 }
 
 function getGenotypeTagType(genotype) {
@@ -1454,30 +1539,27 @@ function isCageHighlighted(cageId) {
 
 .content-header {
   margin-bottom: 12px;
+  row-gap: 14px;
 }
 
-.header-top-row {
-  margin-bottom: 12px;
+/* 左列：标题 + 统计，左对齐 */
+.header-title-col {
+  display: flex;
+  align-items: center;
 }
 
 .header-title-section {
   display: flex;
   align-items: center;
   gap: 32px;
+  flex-wrap: wrap;
 }
 
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
-}
-
-.header-controls-row {
-  display: grid;
-  grid-template-columns: auto auto 1fr auto;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
+  white-space: nowrap;
 }
 
 .header-stats-panel {
@@ -1499,6 +1581,43 @@ function isCageHighlighted(cageId) {
   font-weight: 600;
 }
 
+/* 右列：5 个控件 —— 宽屏右对齐，窄屏铺满 */
+.header-controls-col {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.header-controls-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: end;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.controls-row-1 .search-container {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 260px;
+}
+
+.controls-row-1 .slot-toolbar {
+  flex: 0 0 auto;
+}
+
+.controls-row-2 :deep(.n-button) {
+  flex: 0 0 auto;
+}
+
 .slot-toolbar {
   display: flex;
   align-items: center;
@@ -1506,7 +1625,7 @@ function isCageHighlighted(cageId) {
 }
 
 .slot-toolbar :deep(.n-input-number) {
-  width: 80px;
+  width: 90px;
 }
 
 .slot-label {
@@ -1515,10 +1634,27 @@ function isCageHighlighted(cageId) {
   white-space: nowrap;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+/* 移动端（<640px）：
+   - 标题 + 统计占一行
+   - 搜索框 + 笼位插槽一行两端对齐
+   - 三个按钮一行两端对齐，隐藏图标以确保不换行 */
+@media (max-width: 768px) {
+ .controls-row-2 :deep(.n-button .n-button__icon) {
+    display: none;
+ }
+}
+
+@media (max-width: 640px) {
+  .controls-row-1 {
+    justify-content: center;
+  }
+  .controls-row-2 {
+    justify-content: center;
+  }
+   .header-title-col {
+    display: none;
+ }
+
 }
 
 .cage-flex-container {
@@ -1578,25 +1714,6 @@ function isCageHighlighted(cageId) {
 }
 
 /* 保持其他样式不变 */
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
 
 /* 笼位卡片样式 */
 .cage-card {
@@ -1734,6 +1851,21 @@ function isCageHighlighted(cageId) {
   color: #808080;
 }
 
+.sex-mark-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background-color: color-mix(in srgb, var(--n-warning-color, #f0a020) 18%, transparent);
+  color: var(--n-warning-color, #f0a020);
+  cursor: help;
+}
+
 .cage-id-text {
   font-size: 20px;
   font-weight: 800;
@@ -1869,7 +2001,6 @@ function isCageHighlighted(cageId) {
 
 .cage-slot-empty:hover {
   border-color: var(--n-primary-color);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--n-primary-color) 15%, transparent);
 }
 
 .cage-slot-empty :deep(.n-card__content) {
@@ -2208,10 +2339,6 @@ function isCageHighlighted(cageId) {
 /* 搜索相关样式 */
 .search-container {
   position: relative;
-  flex: 1;
-  min-width: min(100%, 260px);
-  max-width: 360px;
-  margin: 0;
 }
 
 .search-box {
@@ -2363,29 +2490,6 @@ function isCageHighlighted(cageId) {
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--n-primary-color) 0%, transparent); }
 }
 
-/* 调整内容头部布局 */
-.content-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0px;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.page-title {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: var(--primary);
-  white-space: nowrap;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 @media (max-width: 1200px) {
   .cage-view-container {
     --cage-card-width: 240px;
@@ -2395,11 +2499,6 @@ function isCageHighlighted(cageId) {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  .content-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .cage-matrix-scroll {
     height: calc(100vh - 360px);
     padding: 12px;
@@ -2418,15 +2517,6 @@ function isCageHighlighted(cageId) {
   .cage-mice-table td {
     font-size: 12px;
     padding: 6px 4px;
-  }
-  
-  .search-container {
-    max-width: 100%;
-    margin: 10px 0;
-  }
-  
-  .action-buttons {
-    justify-content: center;
   }
 }
 

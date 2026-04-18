@@ -12,14 +12,8 @@
                 </template>
                 <div class="tab-content">
                     <n-space class="action-buttons">
-              <n-button type="primary" @click="showGroupModal = true" :disabled="!allGroups.id">
-              <AppIcon  name="group" />
-              修改分组
-              </n-button>
-              <n-button type="primary" @click="generateChart">
-              <AppIcon  name="bar_chart" />
-              生成图表
-              </n-button>
+              <n-button type="primary" @click="showGroupModal = true" :disabled="!allGroups.id" :render-icon="renderIcon(People)">修改分组</n-button>
+              <n-button type="primary" @click="generateChart" :render-icon="renderIcon(BarChart)">生成图表</n-button>
                     </n-space>
           <!-- 数据展示区域 -->
           <div v-if="hasData" class="chart-container" id="chart-container">
@@ -34,14 +28,8 @@
                 </template>
                 <div class="tab-content">
                     <n-space class="action-buttons">
-              <n-button type="primary" @click="openRecordModal">
-              <AppIcon  name="note_add" />
-              录入数据
-              </n-button>
-              <n-button type="success" @click="exportData">
-              <AppIcon  name="download" />
-              导出数据
-              </n-button>
+              <n-button type="primary" @click="openRecordModal" :render-icon="renderIcon(Create)">录入数据</n-button>
+              <n-button type="success" @click="exportData" :render-icon="renderIcon(Download)">导出数据</n-button>
                     </n-space>
           
           <!-- 数据表格 -->
@@ -56,9 +44,7 @@
                           placeholder="搜索小鼠编号或数据..."
                           @update:value="onSearchChange"
                       />
-                      <n-button @click="resetFilters" class="filter-reset-trigger" quaternary>
-                          <AppIcon  name="refresh" />
-                      </n-button>
+                      <n-button @click="resetFilters" class="filter-reset-trigger" quaternary :render-icon="renderIcon(Refresh)" />
                   </n-space>
               
                   <!-- 列筛选 -->
@@ -108,9 +94,7 @@
             <div ref="recordTabulatorRef" class="tabulator-table" style="height: 300px;"></div>
             
             <div class="d-grid mt-3">
-                <n-button type="primary" block @click="saveExperimentRecord" :disabled="isSubmitting">
-                <AppIcon  name="save" /> {{ isSubmitting? '保存中...' : '保存记录'}}
-                </n-button>
+                <n-button type="primary" block @click="saveExperimentRecord" :disabled="isSubmitting" :render-icon="renderIcon(Save)">{{ isSubmitting? '保存中...' : '保存记录'}}</n-button>
             </div>
         </div>
     </n-modal>
@@ -129,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
+import { h, ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
 import { useRoute, onBeforeRouteUpdate } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
@@ -140,7 +124,10 @@ import regression from 'regression';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
-import { useDialog, useMessage } from 'naive-ui'
+import { NIcon, useDialog, useMessage } from 'naive-ui'
+import { People, BarChart, Create, Download, Refresh, Save } from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 const geneStore = useGeneStore()
 const {mice} = storeToRefs(geneStore)

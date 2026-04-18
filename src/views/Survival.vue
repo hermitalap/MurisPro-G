@@ -25,22 +25,12 @@
             :disabled="predefinedGroups.length === 0"
             style="min-width: 180px;"
           />
-          <n-button type="primary" @click="fetchData('pred')">
-            <AppIcon  name="insights" />
-            以预设分组生成生存曲线
-          </n-button>
+          <n-button type="primary" @click="fetchData('pred')" :render-icon="renderIcon(TrendingUp)">以预设分组生成生存曲线</n-button>
         </div>
         <div v-if="showChartType === 'temp'" class="d-flex justify-content-between mb-4">
-            <n-button type="primary" @click="fetchData('temp')">
-              <AppIcon  name="insights" />
-              以临时分组生成生存曲线
-            </n-button>
-            <n-button secondary @click="addGroup">
-              <AppIcon  name="add" /> 添加分组
-            </n-button>
-            <n-button id="addGroupBtn" type="error" @click="clearGroups">
-            <AppIcon  name="add" /> 清空分组
-            </n-button>
+            <n-button type="primary" @click="fetchData('temp')" :render-icon="renderIcon(TrendingUp)">以临时分组生成生存曲线</n-button>
+            <n-button secondary @click="addGroup" :render-icon="renderIcon(Add)">添加分组</n-button>
+            <n-button id="addGroupBtn" type="error" @click="clearGroups" :render-icon="renderIcon(Close)">清空分组</n-button>
         </div>
         
         <!-- 分组设置 -->
@@ -55,9 +45,7 @@
               <div class="card">
                 <div class="card-header compact-header d-flex justify-content-between align-items-center">
                   <span>分组 {{ index }}</span>
-                  <n-button quaternary circle @click="removeGroup(index)" v-if="tempGroups.length > 1">
-                    <AppIcon  name="close" />
-                  </n-button>
+                  <n-button quaternary circle @click="removeGroup(index)" v-if="tempGroups.length > 1" :render-icon="renderIcon(Close)" />
                 </div>
                   <div class="card-body">
                     <div class="mb-2">
@@ -203,7 +191,10 @@
 
 <script setup>
 import { h, ref, computed, nextTick } from 'vue';
-import { NTag, useMessage } from 'naive-ui'
+import { NTag, NIcon, useMessage } from 'naive-ui'
+import { TrendingUp, Add, Close } from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api';
 import Chart from 'chart.js/auto';
 import { useGeneStore, useExperimentStore } from '@/stores'

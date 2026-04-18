@@ -29,12 +29,12 @@
           <span>GitHub仓库</span>
         </a>
 
-        <n-button 
+        <n-button
           class="promo-button qr-button"
           tertiary
+          :render-icon="renderIcon(QrCode)"
           @click="showQrModal = true"
         >
-          <AppIcon  name="qr_code_2" />
           <span>实验动物交流群</span>
         </n-button>
       </div>
@@ -53,7 +53,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { h, ref } from 'vue'
+import { NIcon } from 'naive-ui'
+import { QrCode } from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 // 控制二维码弹窗显示
 const showQrModal = ref(false)

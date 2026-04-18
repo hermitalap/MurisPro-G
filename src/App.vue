@@ -1,13 +1,19 @@
 <template>
-  <n-config-provider :theme="naiveTheme">
+  <n-config-provider :theme="naiveTheme" :locale="zhCN" :date-locale="dateZhCN">
     <n-message-provider>
       <n-dialog-provider>
         <n-notification-provider>
           <n-layout class="app-shell">
             <n-layout-header class="app-header">
               <div class="app-header-content">
-                <n-button class="sidebar-toggle" quaternary circle @click="toggleSidebar">
-                  <AppIcon :name="sidebarCollapsed ? 'menu' : 'close'" />
+                <n-button
+                  v-if="isMobile"
+                  class="sidebar-toggle"
+                  quaternary
+                  circle
+                  @click="mobileDrawerVisible = true"
+                >
+                  <AppIcon name="menu" />
                 </n-button>
                 <div class="logo">
                   <img src="@/assets/logo.png" alt="鼠管家Logo" class="logo-icon">
@@ -27,6 +33,7 @@
 
             <n-layout has-sider class="app-body">
               <n-layout-sider
+                v-if="!isMobile"
                 bordered
                 collapse-mode="width"
                 :collapsed="sidebarCollapsed"
@@ -49,10 +56,26 @@
                 />
               </n-layout-sider>
 
-              <n-layout-content class="app-content" @click="handleContentClick">
+              <n-layout-content class="app-content">
                 <router-view></router-view>
               </n-layout-content>
             </n-layout>
+
+            <n-drawer
+              v-if="isMobile"
+              v-model:show="mobileDrawerVisible"
+              :width="260"
+              placement="left"
+            >
+              <n-drawer-content title="导航" closable>
+                <n-menu
+                  class="app-nav-menu"
+                  :options="menuOptions"
+                  :value="activeMenuKey"
+                  @update:value="handleMobileMenuSelect"
+                />
+              </n-drawer-content>
+            </n-drawer>
 
             <n-layout-footer class="app-footer">
               <div class="status-indicators">
@@ -77,10 +100,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, h } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed, h } from 'vue'
 import {
   NIcon,
-  darkTheme
+  darkTheme,
+  zhCN,
+  dateZhCN
 } from 'naive-ui'
 import {
   AnalyticsOutline,
@@ -89,6 +114,7 @@ import {
   GitNetworkOutline,
   GridOutline,
   InformationCircleOutline,
+  InfiniteSharp,
   ListOutline,
   NutritionOutline,
   PlayCircleOutline,
@@ -106,10 +132,16 @@ const router = useRouter()
 
 const sidebarCollapsed = ref(false)
 const themeMode = ref('light')
+const isMobile = ref(false)
+const mobileDrawerVisible = ref(false)
 
 const naiveTheme = computed(() => (themeMode.value === 'dark' ? darkTheme : null))
 
 const isMobileViewport = () => window.matchMedia('(max-width: 992px)').matches
+const updateIsMobile = () => {
+  isMobile.value = isMobileViewport()
+  if (!isMobile.value) mobileDrawerVisible.value = false
+}
 
 const renderIcon = (icon) => () => h(NIcon, null, { default: () => h(icon) })
 
@@ -137,7 +169,7 @@ const menuOptions = computed(() => {
       icon: renderIcon(GitBranchOutline),
       children: [
         { key: 'BreedingProgress', label: '基因型繁配进度', icon: renderIcon(GitNetworkOutline) },
-        { key: 'Genotyping', label: '基因型鉴定', icon: renderIcon(NutritionOutline) }
+        { key: 'Genotyping', label: '基因型鉴定', icon: renderIcon(InfiniteSharp) }
       ]
     },
     ...(experimentChildren.length
@@ -186,6 +218,11 @@ const handleMenuSelect = (key) => {
   router.push({ name: key })
 }
 
+const handleMobileMenuSelect = (key) => {
+  handleMenuSelect(key)
+  mobileDrawerVisible.value = false
+}
+
 const setSidebarCollapsed = (collapsed) => {
   sidebarCollapsed.value = collapsed
   localStorage.setItem('sidebarCollapsed', collapsed)
@@ -198,14 +235,16 @@ const toggleSidebar = () => {
 const toggleTheme = () => {
   themeMode.value = themeMode.value === 'dark' ? 'light' : 'dark'
   localStorage.setItem('themeMode', themeMode.value)
+  window.dispatchEvent(new CustomEvent('app-theme-change', { detail: themeMode.value }))
 }
 
 onMounted(() => {
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+
   const savedState = localStorage.getItem('sidebarCollapsed')
   if (savedState !== null) {
     sidebarCollapsed.value = savedState === 'true'
-  } else {
-    sidebarCollapsed.value = isMobileViewport()
   }
 
   const savedTheme = localStorage.getItem('themeMode')
@@ -227,16 +266,12 @@ onMounted(() => {
   }
 })
 
-const handleContentClick = () => {
-  if (isMobileViewport()) {
-    setSidebarCollapsed(true)
-  }
-}
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile)
+})
 
 watch(() => route.path, () => {
-  if (isMobileViewport()) {
-    setSidebarCollapsed(true)
-  }
+  mobileDrawerVisible.value = false
 })
 </script>
 
@@ -327,23 +362,11 @@ watch(() => route.path, () => {
 }
 
 .sidebar-toggle {
-  display: none;
+  flex: 0 0 auto;
 }
 
 .theme-toggle {
   flex: 0 0 auto;
-}
-
-@media (max-width: 992px) {
-  .app-sider {
-    position: absolute;
-    z-index: 30;
-    height: 100%;
-  }
-
-  .sidebar-toggle {
-    display: inline-flex;
-  }
 }
 
 @media (max-width: 768px) {

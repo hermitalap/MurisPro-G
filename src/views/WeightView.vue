@@ -13,10 +13,7 @@
           <n-input v-model:value="filters.mouse_id" placeholder="小鼠ID" @update:value="loadWeightRecords" clearable />
         </n-form-item>
         
-        <n-button quaternary @click="resetFilters">
-        <AppIcon  name="refresh" />
-        重置
-        </n-button>
+        <n-button quaternary @click="resetFilters" :render-icon="renderIcon(Refresh)">重置</n-button>
         </div>
 
         <div class="filter-group">
@@ -27,10 +24,7 @@
           </div>
         </n-form-item>
         
-        <n-button type="primary" secondary @click="loadWeightRecords">
-        <AppIcon  name="search" />
-        搜索
-        </n-button>
+        <n-button type="primary" secondary @click="loadWeightRecords" :render-icon="renderIcon(Search)">搜索</n-button>
         </div>
     </div>
     
@@ -70,10 +64,15 @@
     
     <!-- 添加/编辑体重记录模态框 -->
     <n-modal v-model:show="showAddModal" :mask-closable="false" preset="card" style="width: 90%; max-width: 600px;" :title="editingRecord ? '编辑体重记录' : '添加体重记录'" closable @close="closeModal">
-        <div class="form-body">
-        
+        <n-form
+          ref="weightFormRef"
+          :model="newRecord"
+          :rules="weightRules"
+          label-placement="top"
+          class="form-body"
+        >
         <div class="form-group">
-            <n-form-item label="选中小鼠信息" label-placement="top">
+            <n-form-item label="选中小鼠信息">
               <div class="mouse-info">
               <p>ID: {{ selectedMouse.id }}</p>
               <p>基因型: {{ selectedMouse.genotype }}</p>
@@ -82,31 +81,27 @@
               </div>
             </n-form-item>
         </div>
-        
+
         <div class="form-group">
-            <n-form-item label="记录日期" label-placement="top">
+            <n-form-item label="记录日期" path="record_date" required>
               <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="newRecord.record_date" />
             </n-form-item>
         </div>
-        
+
         <div class="form-group">
-            <n-form-item label="体重(g)" label-placement="top">
+            <n-form-item label="体重(g)" path="weight" required>
               <n-input-number v-model:value="newRecord.weight" :min="0" :precision="2" :step="0.01" style="width: 100%;" />
             </n-form-item>
         </div>
-        </div>
+        </n-form>
         
         <template #footer>
         <n-space justify="end" class="button-group">
-        <n-button type="primary" @click="saveRecord" :disabled="saving">
-            <AppIcon  :name="editingRecord ? 'save' : 'add'" />
+        <n-button type="primary" @click="saveRecord" :disabled="saving" :render-icon="renderIcon(editingRecord ? Save : Add)">
             <span v-if="saving">保存中...</span>
             <span v-else>{{ editingRecord ? '保存' : '添加' }}</span>
         </n-button>
-        <n-button tertiary @click="closeModal">
-            <AppIcon  name="cancel" />
-            取消
-        </n-button>
+        <n-button tertiary @click="closeModal" :render-icon="renderIcon(CloseCircle)">取消</n-button>
         </n-space>
         </template>
     </n-modal>
@@ -115,9 +110,12 @@
 
 <script setup>
 import { h, ref, computed, onMounted } from 'vue'
-import { NButton, NSpace, useDialog, useMessage } from 'naive-ui'
+import { NButton, NSpace, NIcon, useDialog, useMessage } from 'naive-ui'
+import { Refresh, Search, Save, Add, CloseCircle } from '@vicons/ionicons5'
 import api from '@/utils/api'
 import { formatDate } from '@/utils/format'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 // 状态管理
 const weightRecords = ref([])
@@ -251,19 +249,36 @@ try {
 }
 }
 
+const weightFormRef = ref(null)
+const weightRules = {
+  weight: {
+    required: true,
+    trigger: ['blur', 'change'],
+    validator(rule, value) {
+      if (value === null || value === undefined || value === '' || parseFloat(value) <= 0) {
+        return new Error('请输入有效的体重值')
+      }
+      return true
+    }
+  },
+  record_date: {
+    required: true,
+    trigger: ['blur', 'change'],
+    validator(rule, value) {
+      if (!value) return new Error('请选择记录日期')
+      return true
+    }
+  }
+}
+
 const saveRecord = async () => {
 try {
+    await weightFormRef.value?.validate()
+} catch (errors) { return }
+
+try {
     saving.value = true
-    
-    if (!newRecord.value.weight || parseFloat(newRecord.value.weight) <= 0) {
-    message.error('请输入有效的体重值')
-    return
-    }
-    if (!newRecord.value.record_date) {
-    message.error('请输入记录时间')
-    return
-    }
-    
+
     if (editingRecord.value) {
         // 更新记录
         await api.put(`/weight_records/${editingRecord.value.id}`, newRecord.value)

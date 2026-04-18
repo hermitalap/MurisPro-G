@@ -2,19 +2,16 @@
 <div class="main-content">
 <n-modal :show="true" @mask-click="closeMainModal" preset="card" class="mouse-detail-modal" :bordered="false" role="dialog" aria-modal="true" style="width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto; background-color: var(--n-color-embedded); border-radius: 12px;">
   <n-space justify="space-between" align="center" class="page-header">
-    <n-button class="back-button" type="primary" @click="closeMainModal">
-      <AppIcon  name="arrow_back" />
-      返回
-    </n-button>
+    <n-button class="back-button" type="primary" @click="closeMainModal" :render-icon="renderIcon(ArrowBack)">返回</n-button>
     <!-- 添加返回上一只按钮 -->
-    <n-button 
+    <n-button
       v-if="prevMouseId"
       class="back-button"
       secondary
       type="primary"
       @click="navigateToMouse(prevMouseId)"
+      :render-icon="renderIcon(Refresh)"
     >
-      <AppIcon  name="replay" />
       返回上一只
     </n-button>
     <h2 style="margin: 0;">小鼠详情 #{{ mouseData.id }}</h2>
@@ -52,13 +49,13 @@
     <div class="grid-item status-records">
       <div class="card">
         <h3 class="card-title">状态记录</h3>
-          <n-button 
-            v-if="!showAddRecordForm" 
+          <n-button
+            v-if="!showAddRecordForm"
             class="add-record-button"
             secondary
             type="primary"
+            :render-icon="renderIcon(Add)"
             @click.stop="openAddRecordForm">
-            <AppIcon  name="add" />
             添加记录
           </n-button>
 
@@ -129,10 +126,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { h, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import * as d3 from 'd3'
 import { Chart, registerables } from 'chart.js'
-import { useMessage } from 'naive-ui';
+import { NIcon, useMessage } from 'naive-ui';
+import { ArrowBack, Refresh, Add } from '@vicons/ionicons5'
+
+const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import { useGeneStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import api from '@/utils/api'
@@ -321,6 +321,16 @@ const renderWeightChart = () => {
   })
   }
 
+const resolveCssVar = (name, fallback) => {
+  try {
+    const el = pedigreeChart.value || document.documentElement
+    const v = getComputedStyle(el).getPropertyValue(name).trim()
+    return v || fallback
+  } catch (e) {
+    return fallback
+  }
+}
+
 const renderPedigreeChart = async () => {
   if (!pedigreeChart.value || !mouseData.value.pedigree) return
 
@@ -336,6 +346,22 @@ const renderPedigreeChart = async () => {
   const pedigree = mouseData.value.pedigree || {};
   const width = pedigreeChart.value.clientWidth || 400
   const height = pedigreeChart.value.clientHeight || 220
+
+  // 解析 naive-ui 主题色（支持亮/暗模式切换）
+  const themeColors = {
+    primary: resolveCssVar('--n-primary-color', '#2080f0'),
+    success: resolveCssVar('--n-success-color', '#18a058'),
+    error: resolveCssVar('--n-error-color', '#d03050'),
+    info: resolveCssVar('--n-info-color', '#2080f0'),
+    warning: resolveCssVar('--n-warning-color', '#f0a020'),
+    text1: resolveCssVar('--n-text-color-1', '#333639'),
+    text2: resolveCssVar('--n-text-color-2', '#51555a'),
+    text3: resolveCssVar('--n-text-color-3', '#909399'),
+    border: resolveCssVar('--n-border-color', '#e0e0e6'),
+    disabled: resolveCssVar('--n-text-color-disabled', '#c0c4cc')
+  }
+  const linkArrowColor = themeColors.text2
+  const offspringArrowColor = themeColors.text2
 
   const svg = d3.select(pedigreeChart.value)
     .append('svg')
@@ -353,12 +379,12 @@ const renderPedigreeChart = async () => {
     .attr('viewBox', '0 -5 10 10')
     .attr('refX', 25)
     .attr('refY', 0)
-    .attr('markerWidth', 6)
-    .attr('markerHeight', 6)
+    .attr('markerWidth', 8)
+    .attr('markerHeight', 8)
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', 'var(--n-border-color)');
+    .attr('fill', linkArrowColor);
 
   // 当前小鼠到后代的箭头
   defs.append('marker')
@@ -366,12 +392,12 @@ const renderPedigreeChart = async () => {
     .attr('viewBox', '0 -5 10 10')
     .attr('refX', 25)
     .attr('refY', 0)
-    .attr('markerWidth', 6)
-    .attr('markerHeight', 6)
+    .attr('markerWidth', 8)
+    .attr('markerHeight', 8)
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', 'var(--n-text-color-3)');
+    .attr('fill', offspringArrowColor);
 
   // 创建节点数组
   const nodes = []
@@ -568,17 +594,20 @@ const renderPedigreeChart = async () => {
     }).strength(0.1)) // 水平位置约束强度
     .force('y', d3.forceY().y(height / 2).strength(0.05)) // 垂直居中约束
 
+  const linkColorFor = (type) => {
+    if (type === 'father') return themeColors.success
+    if (type === 'mother') return themeColors.error
+    return themeColors.info
+  }
+
   const link = svg.append('g')
     .selectAll('line')
     .data(links)
     .enter()
     .append('line')
-    .attr('stroke', d => {
-      if (d.type === 'father') return 'var(--n-success-color)' // 父代用绿色
-      if (d.type === 'mother') return 'var(--n-error-color)' // 母代用红色
-      return 'var(--n-text-color-3)' // 后代用灰色
-    })
+    .attr('stroke', d => linkColorFor(d.type))
     .attr('stroke-width', 2)
+    .attr('stroke-opacity', 0.8)
     .attr('marker-end', d => {
       if (d.type === 'father' || d.type === 'mother') {
         return 'url(#arrow-father)';
@@ -601,39 +630,39 @@ const renderPedigreeChart = async () => {
       .on('end', dragEnded)
     );
 
+  const baseColorFor = (type) => {
+    switch (type) {
+      case 'current': return themeColors.primary
+      case 'father': return themeColors.success
+      case 'mother': return themeColors.error
+      case 'offspring': return themeColors.info
+      default: return themeColors.text3
+    }
+  }
+
   // 在节点组内添加圆形
   nodeGroups.append('circle')
-    .attr('r', 20)
+    .attr('r', 22)
+    .attr('stroke', themeColors.border)
+    .attr('stroke-width', 1.5)
     .attr('fill', d => {
-      // 如果 live 为 -1，直接返回灰色
-      if (d.live === -1) {
-        return 'var(--n-border-color)'; // 未知状态用浅灰色
-      }
-      // 根据节点类型设置基础颜色
-      let baseColor = 'var(--n-text-color-3)'; // 默认灰色
-      switch (d.type) {
-        case 'current': baseColor = 'var(--n-primary-color)'; break; // 当前小鼠用蓝色
-        case 'father': baseColor = 'var(--n-success-color)'; break;  // 父代用绿色
-        case 'mother': baseColor = 'var(--n-error-color)'; break;  // 母代用红色
-        case 'offspring': baseColor = 'var(--n-info-color)'; break; // 后代用紫色
-      }
-      // 根据 live 值调整亮度
-      if (d.live === 1) {
-        // live=1: 明亮
-        return baseColor;
-      } else {
-        // live=0或其他: 变暗
-        return d3.color(baseColor).darker(1.5);
-      }
-    });
+      if (d.live === -1) return themeColors.disabled
+      const baseColor = baseColorFor(d.type)
+      if (d.live === 1) return baseColor
+      const darker = d3.color(baseColor)
+      return darker ? darker.darker(1.2).formatHex() : baseColor
+    })
+    .attr('fill-opacity', d => (d.live === 1 ? 1 : 0.85));
 
-  // 在节点组内添加文本标签
+  // 在节点组内添加文本标签（白色文字在彩色圆上清晰可读）
   nodeGroups.append('text')
     .text(d => d.name)
     .attr('font-size', '12px')
+    .attr('font-weight', 600)
     .attr('text-anchor', 'middle')
-    .attr('dy', 5)
-    .attr('fill', 'var(--n-color)');
+    .attr('dy', 4)
+    .attr('fill', '#ffffff')
+    .attr('pointer-events', 'none');
 
   simulation.on('tick', () => {
     link
@@ -699,28 +728,20 @@ const renderPedigreeChart = async () => {
       }
       
       // 高亮当前节点和相关边
-      nodeGroups.attr('stroke-width', 0);
-      d3.select(this).attr('stroke', 'var(--n-text-color-1)').attr('stroke-width', 2);
+      nodeGroups.select('circle').attr('stroke', themeColors.border).attr('stroke-width', 1.5);
+      d3.select(this).select('circle').attr('stroke', themeColors.text1).attr('stroke-width', 3);
       
       link.attr('stroke-opacity', 0.2);
       link.filter(l => l.source.id === d.id || l.target.id === d.id)
         .attr('stroke-opacity', 1)
-        .attr('stroke', d => {
-            if (d.type === 'father') return 'var(--n-success-color)'
-            if (d.type === 'mother') return 'var(--n-error-color)'
-            return 'var(--n-primary-color)'
-          })
+        .attr('stroke', d2 => linkColorFor(d2.type))
       })
     .on('mouseout', function() {
         tooltip.style('visibility', 'hidden')
-        
+
         // 恢复默认样式
-        nodeGroups.attr('stroke-width', 0)
-        link.attr('stroke-opacity', 1).attr('stroke', d => {
-          if (d.type === 'father') return 'var(--n-success-color)'
-          if (d.type === 'mother') return 'var(--n-error-color)'
-          return 'var(--n-text-color-3)'
-        })
+        nodeGroups.select('circle').attr('stroke', themeColors.border).attr('stroke-width', 1.5)
+        link.attr('stroke-opacity', 0.8).attr('stroke', d2 => linkColorFor(d2.type))
       })
     .on('dblclick', (event, d) => {
       if (d.id !== currentMouseID.value) {
@@ -757,9 +778,14 @@ const navigateToMouse = (mouseId) => {
   currentMouseID.value = mouseId
 };
 
+const onThemeChange = () => {
+  nextTick(() => renderPedigreeChart())
+}
+
 onMounted(() => {
   fetchMouseData()
   setupResizeObserver()
+  window.addEventListener('app-theme-change', onThemeChange)
 })
 
 onUnmounted(() => {
@@ -769,6 +795,7 @@ onUnmounted(() => {
     try { simulationRef.value.stop() } catch (e) {}
     simulationRef.value = null
   }
+  window.removeEventListener('app-theme-change', onThemeChange)
 })
 </script>
 
