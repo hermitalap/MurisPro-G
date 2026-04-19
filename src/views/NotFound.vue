@@ -1,20 +1,18 @@
-<template>
-  <n-space vertical align="center" class="not-found">
-    <h2>页面未找到</h2>
-    <p>您访问的页面不存在。</p>
-    <router-link to="/">返回首页</router-link>
-  </n-space>
-</template>
-
-<script>
-export default {
-  name: 'NotFound'
-};
+<script setup>
+import { useRouter } from 'vue-router'
+defineOptions({ name: 'NotFound' })
+const router = useRouter()
 </script>
 
-<style scoped>
-.not-found {
-  text-align: center;
-  margin-top: 80px;
-}
-</style>
+<template>
+  <n-result
+    status="404"
+    title="页面未找到"
+    description="您访问的页面不存在"
+    style="margin-top: 80px;"
+  >
+    <template #footer>
+      <n-button type="primary" @click="router.push('/')">返回首页</n-button>
+    </template>
+  </n-result>
+</template>

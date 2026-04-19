@@ -172,7 +172,7 @@
             <h3>选择Excel文件</h3>
             <div class="file-upload" @dragover.prevent @drop="handleDrop">
                 <div class="upload-area" :class="{ 'dragover': isDragging }">
-                    <AppIcon  name="cloud_upload" />
+                    <n-icon><CloudUploadOutline /></n-icon>
                     <p v-if="!selectedFile">点击或拖拽Excel文件到此处上传</p>
                     <p v-else class="file-info">
                     <span>{{ selectedFile.name }}</span>
@@ -232,8 +232,8 @@
 
     <!-- 实验类型设置 -->
     <n-tab-pane name="experiment" tab="实验类型设置">
-    <n-space vertical size="large" class="form-container">
-        
+    <n-space vertical size="large" class="form-container" ref="experimentSectionEl">
+
         <n-card size="small" class="form-section">
             <h3>可选择预设实验类型</h3>
             <n-form label-placement="top">
@@ -341,7 +341,7 @@
                         </div>
                     </div>
                     <div v-else class="no-fields">
-                        <AppIcon  name="inbox" />
+                        <n-icon><ArchiveOutline /></n-icon>
                         <p>此实验类型尚未定义任何字段</p>
                     </div>
                 </div>
@@ -458,46 +458,48 @@
                                                 <div class="gene-form-group">
                                                     <div class="form-header">
                                                     <div>基因型:
-                                                        <span class="selected-gene" v-if="!gene?.selectedGeneName" v-html="geneStore.selectedGeneName"></span>
-                                                        <span class="selected-gene" v-else v-html="gene.selectedGeneName"></span>
+                                                        <GenotypeLabel v-if="!gene?.selectedGeneName" class="selected-gene" :symbol="geneStore.selectedGeneName" />
+                                                        <GenotypeLabel v-else class="selected-gene" :symbol="gene.selectedGeneName" />
                                                     </div>
                                                     <n-button text v-if="!gene?.selectedGeneName" @click="addGene" :disabled="!geneStore.addable" :render-icon="renderIcon(Add)" />
                                                     <n-button text type="error" v-else @click="removeGeneSelection(subgroupIndex, ruleIndex, geneIndex)" :render-icon="renderIcon(Close)" />
                                                     </div>
 
-                                                    <div v-if="!gene?.selectedGeneName" v-for="(gene, index) in selectedGenes" class="genotype-select-container" :key="gene">
+                                                    <template v-if="!gene?.selectedGeneName">
+                                                    <div v-for="(selectedGene, index) in selectedGenes" :key="selectedGene.locus || index" class="genotype-select-container">
                                                     <div class="locus-control">
                                                         <div class="locus-select">
                                                         <n-select
-                                                            v-model:value="gene.locus"
+                                                            v-model:value="selectedGene.locus"
                                                             :options="getLocusOptions(index)"
-                                                            @update:value="onFormLocusChange(index, gene.locus)"
+                                                            @update:value="onFormLocusChange(index, selectedGene.locus)"
                                                         />
                                                         </div>
                                                         <n-button text type="error" @click="deleteGene(index)" :render-icon="renderIcon(Trash)" />
                                                     </div>
 
                                                     <div class="allele-controls">
-                                                        <div class="allele-group" v-if="gene.locus && gene.locus !== 'WT'">
+                                                        <div class="allele-group" v-if="selectedGene.locus && selectedGene.locus !== 'WT'">
                                                         <div class="n-form-item-label">等位基因 1</div>
                                                         <n-select
-                                                            v-model:value="gene.allele1"
-                                                            :disabled="!gene.locus"
+                                                            v-model:value="selectedGene.allele1"
+                                                            :disabled="!selectedGene.locus"
                                                             :options="getAlleleOptions(index, 0)"
-                                                            @update:value="onFormAlleleChange(true, index, gene.allele1)"
+                                                            @update:value="onFormAlleleChange(true, index, selectedGene.allele1)"
                                                         />
                                                         </div>
-                                                        <div class="allele-group" v-if="gene.locus && gene.locus !== 'WT'">
+                                                        <div class="allele-group" v-if="selectedGene.locus && selectedGene.locus !== 'WT'">
                                                         <div class="n-form-item-label">等位基因 2</div>
                                                         <n-select
-                                                            v-model:value="gene.allele2"
-                                                            :disabled="!gene.locus"
+                                                            v-model:value="selectedGene.allele2"
+                                                            :disabled="!selectedGene.locus"
                                                             :options="getAlleleOptions(index, 1)"
-                                                            @update:value="onFormAlleleChange(false, index, gene.allele2)"
+                                                            @update:value="onFormAlleleChange(false, index, selectedGene.allele2)"
                                                         />
                                                         </div>
                                                     </div>
                                                     </div>
+                                                    </template>
                                                     <div v-if="selectedGenes.length>0 && !gene?.selectedGeneName" class="form-group-row">
                                                         <n-button type="error" @click="deleteGenes" :render-icon="renderIcon(TrashBin)">全部删除</n-button>
                                                         <n-button type="primary" @click="saveGenes(subgroupIndex, ruleIndex, geneIndex)" :render-icon="renderIcon(Archive)">确定基因型</n-button>
@@ -866,8 +868,8 @@
                 <div class="column-grid">
                     <div class="column-item" :class="{ seen: showColumns[column.key] }" v-for="column in mouseColumns" :key="column.key">
                         <n-checkbox v-model:checked="showColumns[column.key]">{{ column.label }}</n-checkbox>
-                        <AppIcon v-if="showColumns[column.key]" name="visibility" />
-                        <AppIcon v-else name="visibility_off" />
+                        <n-icon v-if="showColumns[column.key]"><EyeOutline /></n-icon>
+                        <n-icon v-else><EyeOffOutline /></n-icon>
                     </div>
                 </div>
             </div>
@@ -951,15 +953,15 @@
     <n-modal v-model:show="importResultDialogVisible" preset="card" title="导入结果" style="width: 680px; max-width: 95vw;">
         <div class="import-result">
         <div class="result-item success">
-            <AppIcon  name="check_circle" />
+            <n-icon><CheckmarkCircleOutline /></n-icon>
             <span>成功导入: {{ importResult.successCount }} 条记录</span>
         </div>
         <div class="result-item warning">
-            <AppIcon  name="warning" />
+            <n-icon><WarningOutline /></n-icon>
             <span>跳过重复: {{ importResult.skippedCount }} 条记录</span>
         </div>
         <div class="result-item error" v-if="importResult.errors.length > 0">
-            <AppIcon  name="error" />
+            <n-icon><AlertCircleOutline /></n-icon>
             <span>错误: {{ importResult.errors.length }} 条记录</span>
         </div>
         
@@ -982,7 +984,7 @@
         <div class="import-options">
         <div class="file-upload" @dragover.prevent @drop="handleDbDrop">
             <div class="upload-area" :class="{ 'dragover': isDbDragging }">
-            <AppIcon  name="cloud_upload" />
+            <n-icon><CloudUploadOutline /></n-icon>
             <p v-if="!selectedDbFile">点击或拖拽数据库文件(.db)到此处上传</p>
             <p v-else class="file-info">
                 <span>{{ selectedDbFile.name }}</span>
@@ -1001,7 +1003,7 @@
         </div>
 
         <div v-if="selectedDbFile" class="warning-message">
-            <AppIcon  name="warning" />
+            <n-icon><WarningOutline /></n-icon>
             <span>警告：导入数据库将添加到数据库列表中！</span>
         </div>
         
@@ -1035,14 +1037,15 @@
 </template>
 
 <script setup>
-import { h, ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
+import { h, ref, reactive, onMounted, watch, computed, nextTick, useTemplateRef } from 'vue'
 import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, NIcon, useDialog, useMessage } from 'naive-ui'
-import { Add, Close, Trash, TrashBin, Archive, BookmarkSharp, Save, Refresh, Warning } from '@vicons/ionicons5'
+import { Add, Close, Trash, TrashBin, Archive, BookmarkSharp, Save, Refresh, Warning, CloudUploadOutline, ArchiveOutline, EyeOutline, EyeOffOutline, CheckmarkCircleOutline, WarningOutline, AlertCircleOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api'
 import { normalizeDateValue } from '@/utils/format'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
+import GenotypeLabel from '@/components/GenotypeLabel.vue'
 
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
@@ -1053,6 +1056,7 @@ const experimentStore = useExperimentStore()
 const settingStore = useSettingStore()
 const dialog = useDialog()
 const message = useMessage()
+const experimentSectionEl = useTemplateRef('experimentSectionEl')
 
 const { genotypes, selectedGenes, alleleSuggestions, mice } = storeToRefs(geneStore)
 const { loadGenotypes, colors, onFormLocusChange, onFormAlleleChange, deleteGene, addGene, deleteGenes } = geneStore
@@ -2211,7 +2215,7 @@ const editExperimentType = (experimentID) => {
 
     // 滚动到表单顶部
     nextTick(() => {
-    const formElement = document.querySelector('.form-section')
+    const formElement = experimentSectionEl.value?.$el
     if (formElement) {
         formElement.scrollIntoView({ behavior: 'smooth' })
     }
@@ -2325,7 +2329,7 @@ selectedPreset.value = ''
 
 // 滚动到表单顶部
 nextTick(() => {
-const formElement = document.querySelector('.form-section')
+const formElement = experimentSectionEl.value?.$el
 if (formElement) {
     formElement.scrollIntoView({ behavior: 'smooth' })
 }

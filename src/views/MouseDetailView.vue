@@ -19,36 +19,19 @@
 
   <div class="detail-grid">
     <div class="grid-item basic-info">
-      <div class="card">
-        <h3 class="card-title">小鼠基本信息</h3>
-        <div class="info-grid">
-          <div class="info-row">
-            <span class="info-label">ID:</span>
-            <span class="info-value">{{ mouseData.id }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">性别:</span>
-            <span class="info-value">{{ mouseData.sex === 'M' ? '雄性' : '雌性' }}</span>
-          </div>
-        </div>
-          <div class="info-row">
-            <span class="info-label">基因型:</span>
-            <span class="info-value" v-html="mouseData.genotype?.symbol"></span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">笼位位置:</span>
-            <span class="info-value">{{ mouseData.cage_name ? mouseData.cage_name : '未分配' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">完成实验:</span>
-            <span class="info-value">{{ mouseData.tests_done && mouseData.tests_done.length ? mouseData.tests_done.join(', ') : '无' }}</span>
-        </div>
-      </div>
+      <n-card title="小鼠基本信息" size="small">
+        <n-descriptions :column="1" label-placement="left" :label-style="{ width: '80px' }">
+          <n-descriptions-item label="ID">{{ mouseData.id }}</n-descriptions-item>
+          <n-descriptions-item label="性别">{{ mouseData.sex === 'M' ? '雄性' : '雌性' }}</n-descriptions-item>
+          <n-descriptions-item label="基因型"><GenotypeLabel :symbol="mouseData.genotype?.symbol" /></n-descriptions-item>
+          <n-descriptions-item label="笼位">{{ mouseData.cage_name || '未分配' }}</n-descriptions-item>
+          <n-descriptions-item label="完成实验">{{ mouseData.tests_done?.length ? mouseData.tests_done.join(', ') : '无' }}</n-descriptions-item>
+        </n-descriptions>
+      </n-card>
     </div>
 
     <div class="grid-item status-records">
-      <div class="card">
-        <h3 class="card-title">状态记录</h3>
+      <n-card title="状态记录" size="small">
           <n-button
             v-if="!showAddRecordForm"
             class="add-record-button"
@@ -90,12 +73,9 @@
               <div class="status-description">{{ record.status }}</div>
             </div>
           </div>
-          <div v-else-if="!showAddRecordForm" class="no-data">
-            <AppIcon  name="info" />
-            <p>暂无状态记录</p>
-          </div>
+          <n-empty v-else-if="!showAddRecordForm" description="暂无状态记录" size="small" />
         </div>
-      </div>
+      </n-card>
     </div>
 
     <div class="grid-item pedigree">
@@ -129,7 +109,8 @@
 import { h, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import * as d3 from 'd3'
 import { Chart, registerables } from 'chart.js'
-import { NIcon, useMessage } from 'naive-ui';
+import { NIcon, useMessage, useThemeVars } from 'naive-ui'
+import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import { ArrowBack, Refresh, Add } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
@@ -141,6 +122,7 @@ import { formatDate } from '@/utils/format'
 const geneStore = useGeneStore()
 const { mice } = storeToRefs(geneStore)
 const message = useMessage()
+const themeVars = useThemeVars()
 
 Chart.register(...registerables)
 
@@ -321,16 +303,6 @@ const renderWeightChart = () => {
   })
   }
 
-const resolveCssVar = (name, fallback) => {
-  try {
-    const el = pedigreeChart.value || document.documentElement
-    const v = getComputedStyle(el).getPropertyValue(name).trim()
-    return v || fallback
-  } catch (e) {
-    return fallback
-  }
-}
-
 const renderPedigreeChart = async () => {
   if (!pedigreeChart.value || !mouseData.value.pedigree) return
 
@@ -347,18 +319,19 @@ const renderPedigreeChart = async () => {
   const width = pedigreeChart.value.clientWidth || 400
   const height = pedigreeChart.value.clientHeight || 220
 
-  // 解析 naive-ui 主题色（支持亮/暗模式切换）
+  // 读取 naive-ui 主题色（响应亮/暗模式切换）
+  const tv = themeVars.value
   const themeColors = {
-    primary: resolveCssVar('--n-primary-color', '#2080f0'),
-    success: resolveCssVar('--n-success-color', '#18a058'),
-    error: resolveCssVar('--n-error-color', '#d03050'),
-    info: resolveCssVar('--n-info-color', '#2080f0'),
-    warning: resolveCssVar('--n-warning-color', '#f0a020'),
-    text1: resolveCssVar('--n-text-color-1', '#333639'),
-    text2: resolveCssVar('--n-text-color-2', '#51555a'),
-    text3: resolveCssVar('--n-text-color-3', '#909399'),
-    border: resolveCssVar('--n-border-color', '#e0e0e6'),
-    disabled: resolveCssVar('--n-text-color-disabled', '#c0c4cc')
+    primary: tv.primaryColor,
+    success: tv.successColor,
+    error: tv.errorColor,
+    info: tv.infoColor,
+    warning: tv.warningColor,
+    text1: tv.textColor1,
+    text2: tv.textColor2,
+    text3: tv.textColor3,
+    border: tv.borderColor,
+    disabled: tv.textColorDisabled
   }
   const linkArrowColor = themeColors.text2
   const offspringArrowColor = themeColors.text2

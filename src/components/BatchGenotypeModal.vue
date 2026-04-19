@@ -13,11 +13,15 @@
       <div class="parents-block">
         <div class="parents-title">亲本信息</div>
         <n-space :size="16">
-          <div v-for="p in parentSummaries" :key="p.tid" class="parent-chip">
-            <AppIcon :name="p.sex === 'M' ? 'male' : 'female'" :size="14" />
-            <span class="pid">{{ p.id }}</span>
-            <span class="pgeno" v-html="p.genotype || '—'" />
-          </div>
+          <n-tag v-for="p in parentSummaries" :key="p.tid" size="small" :bordered="false" :type="p.sex === 'M' ? 'info' : 'error'">
+            <template #icon>
+              <n-icon :size="14">
+                <MaleOutline v-if="p.sex === 'M'" />
+                <FemaleOutline v-else />
+              </n-icon>
+            </template>
+            {{ p.id }} · <GenotypeLabel :symbol="p.genotype" />
+          </n-tag>
           <n-tag type="info" size="small" :bordered="false">
             DOB {{ litter.birth_date }} · 共 {{ pendingRows.length }} 只待鉴定
           </n-tag>
@@ -74,9 +78,10 @@
 <script setup>
 import { computed, h, reactive, ref, watch } from 'vue'
 import {
-  NModal, NSelect, NSpace, NButton, NTag, NCheckbox, NDataTable, useMessage
+  NModal, NSelect, NSpace, NButton, NTag, NCheckbox, NDataTable, NIcon, useMessage
 } from 'naive-ui'
-import AppIcon from '@/components/AppIcon.vue'
+import { MaleOutline, FemaleOutline } from '@vicons/ionicons5'
+import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import { useBreedingStore, useGeneStore } from '@/stores'
 import { predictOffspringGenotypes, isPredicted } from '@/utils/mendelianPredictor'
 

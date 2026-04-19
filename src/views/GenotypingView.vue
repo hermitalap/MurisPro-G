@@ -24,15 +24,15 @@
           style="width: 220px;"
         >
           <template #prefix>
-            <AppIcon name="search" />
+            <n-icon><SearchOutline /></n-icon>
           </template>
         </n-input>
         <n-button @click="refreshData" :loading="refreshing" :render-icon="renderIcon(Refresh)">刷新</n-button>
       </n-space>
-      <n-space align="center" :size="16">
-        <span class="legend-item"><span class="dot dot-pregnant" /> 已标记怀孕</span>
-        <span class="legend-item"><span class="dot dot-delivered" /> 已生产</span>
-        <span class="legend-item"><span class="dot dot-pending" /> 有待鉴定仔鼠</span>
+      <n-space align="center" :size="8">
+        <n-tag size="small" :bordered="false" type="error">已标记怀孕</n-tag>
+        <n-tag size="small" :bordered="false" type="info">已生产</n-tag>
+        <n-tag size="small" :bordered="false" type="warning">有待鉴定仔鼠</n-tag>
       </n-space>
     </div>
 
@@ -57,7 +57,7 @@
             <div class="card-header">
               <div class="cage-ident">
                 <div class="sex-mark sex-mark-mixed">
-                  <AppIcon name="male_female" />
+                  <n-icon><MaleFemaleOutline /></n-icon>
                 </div>
                 <span class="cage-id">{{ cage.section }}-{{ cage.cage_id }}</span>
               </div>
@@ -80,8 +80,9 @@
             <div class="status-badge-wrapper" v-if="cage.breeding_status">
               <n-popover trigger="hover" placement="top">
                 <template #trigger>
-                  <div class="status-badge" :class="cage.breeding_status">
-                    <AppIcon :name="cage.breeding_status === 'pregnant' ? 'heart' : 'happy'" :size="16" />
+                    <div class="status-badge" :class="cage.breeding_status">
+                    <n-icon v-if="cage.breeding_status === 'pregnant'" :size="16"><HeartOutline /></n-icon>
+                    <n-icon v-else :size="16"><HappyOutline /></n-icon>
                   </div>
                 </template>
                 <div class="status-popover">
@@ -98,12 +99,12 @@
 
             <div class="breeding-pair">
               <div class="pair-row">
-                <AppIcon name="male" class="pair-icon male" />
+                <n-icon class="pair-icon male"><MaleOutline /></n-icon>
                 <span class="pair-label">父: </span>
                 <span class="pair-value">{{ summarizeMice(getCageMiceBySex(cage, 'M')) || '—' }}</span>
               </div>
               <div class="pair-row">
-                <AppIcon name="female" class="pair-icon female" />
+                <n-icon class="pair-icon female"><FemaleOutline /></n-icon>
                 <span class="pair-label">母: </span>
                 <span class="pair-value">{{ summarizeMice(getCageMiceBySex(cage, 'F')) || '—' }}</span>
               </div>
@@ -111,7 +112,7 @@
 
             <div class="pending-section" v-if="breedingStore.pendingPupsCount(cage.id) > 0">
               <n-tag type="warning" size="small" :bordered="false">
-                <AppIcon name="flask" :size="14" />
+                <n-icon :size="14"><FlaskOutline /></n-icon>
                 待鉴定仔鼠 {{ breedingStore.pendingPupsCount(cage.id) }} 只
               </n-tag>
             </div>
@@ -176,7 +177,7 @@
                   :label="`${m.sex === 'M' ? '♂' : m.sex === 'F' ? '♀' : '?'} ${m.id}`"
                 >
                   <div>
-                    <span v-html="m.genotype || '—'" />
+                    <GenotypeLabel :symbol="m.genotype" />
                     <span v-if="m.days != null" style="margin-left: 8px; color: var(--n-text-color-3);">
                       · 日龄 {{ m.days }}d
                     </span>
@@ -211,7 +212,7 @@
                     :disabled="litter.mice.filter(m => m.genotype_confirmed === false && m.live_status === 1).length === 0"
                     @click="onBatchGenotypeLitter(litter)"
                   >
-                    <AppIcon name="flask" :size="14" />
+                    <n-icon :size="14"><FlaskOutline /></n-icon>
                     批量鉴定此窝
                   </n-button>
                 </div>
@@ -256,9 +257,10 @@ import {
   NDrawer, NDrawerContent, NTabs, NTabPane, NDescriptions, NDescriptionsItem,
   NIcon, useDialog, useMessage
 } from 'naive-ui'
-import AppIcon from '@/components/AppIcon.vue'
+import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import {
-  Heart, Ribbon, Flask, Add, Close, RefreshCircle, LogIn, Refresh, HappySharp
+  Heart, Ribbon, Flask, Add, Close, RefreshCircle, LogIn, Refresh, HappySharp,
+  SearchOutline, MaleFemaleOutline, HeartOutline, HappyOutline, MaleOutline, FemaleOutline, FlaskOutline
 } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })

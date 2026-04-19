@@ -51,13 +51,11 @@
             />
             <div class="mouse-info">
               <div class="mouse-id">{{ mouse.id }}</div>
-              <div class="mouse-details" v-html="mouse.genotype.symbol? mouse.genotype.symbol : mouse.genotype"></div>
+              <GenotypeLabel class="mouse-details" :symbol="mouse.genotype.symbol || mouse.genotype" />
               <div class="mouse-details">{{ mouse.sex }} · {{ mouse.strain }} · {{ mouse.birth_date }}</div>
             </div>
           </div>
-          <div v-if="filteredMice.length === 0" style="color: var(--n-text-color-disabled);">
-            暂无可选小鼠，请在小鼠页面为小鼠添加"完成实验"
-          </div>
+          <n-empty v-if="filteredMice.length === 0" description='暂无可选小鼠，请在小鼠页面为小鼠添加"完成实验"' size="small" />
         </div>
       </div>
       
@@ -88,7 +86,7 @@
                     :style="{ backgroundColor: color }"
                     @click="group.color = color"
                   >
-                    <AppIcon v-if="group.color === color" name="check" />
+                    <n-icon v-if="group.color === color"><CheckmarkOutline /></n-icon>
                   </div>
                 </div>
               </div>
@@ -109,7 +107,7 @@
                 class="assigned-mouse"
               >
                 <div class="mouse-id">{{ mouse.id }}</div>
-                <div class="mouse-details" v-html="mouse.genotype.symbol? mouse.genotype.symbol : mouse.genotype"></div>
+                <GenotypeLabel class="mouse-details" :symbol="mouse.genotype.symbol || mouse.genotype" />
                 <div class="mouse-details">{{ mouse.sex }} · {{ mouse.strain }} · {{ mouse.birth_date }}</div>
                 <div class="mouse-actions">
                   <n-button
@@ -138,10 +136,12 @@
 
 <script setup>
 import { h, ref, computed } from 'vue'
-import { NIcon } from 'naive-ui'
-import { Trash, RemoveCircle, Add, Refresh, Save } from '@vicons/ionicons5'
+import GenotypeLabel from '@/components/GenotypeLabel.vue'
+import { NIcon, useMessage } from 'naive-ui'
+import { Trash, RemoveCircle, Add, Refresh, Save, CheckmarkOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
+const message = useMessage()
 
 // 定义props
 const props = defineProps({
@@ -302,7 +302,7 @@ const removeGroup = (index) => {
 
 const saving = () => {
   if (props.editingGroup.rules.some(group => !group.name)) {
-    alert('请填写分组名称')
+    message.warning('请填写分组名称')
     return
   }
   emit('save-group')

@@ -4,11 +4,7 @@
       <h1 class="page-title">小鼠生存分析</h1>
     </n-space>
     
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">生存曲线分析</h5>
-      </div>
-      <div class="card-body">
+    <n-card title="生存曲线分析">
         <!-- 控制按钮区域 -->
         <div class="d-flex mb-4">
           <n-select
@@ -82,7 +78,7 @@
                                   @update:checked="onCombinationSelect(index, locus, combination)"
                                   class="combination-checkbox"
                                   />
-                                    <span class="combination-name" v-html="`${locus}<sup>${combination}</sup>`"></span>
+                                    <span class="combination-name">{{ locus }}<sup>{{ combination }}</sup></span>
                                 </label>
                                 </div>
                             </div>
@@ -99,7 +95,7 @@
               class="group-card add-card"
               @click="addGroup"
             >
-              <AppIcon  name="add" />
+              <n-icon><AddOutline /></n-icon>
               <span>添加分组</span>
             </div>
           </div>
@@ -116,40 +112,29 @@
                 :key="index"
               >
               <div class="card-body">
-                <div class="d-flex flex-wrap justify-content-around">
+                <n-space wrap justify="space-around" align="center">
                   <!-- 图例 -->
                   <div class="d-flex flex-wrap mt-4">
-                      <span class="legend-color" :style="{backgroundColor: group.color}"></span>
-                      {{ group.name || `分组 ${index}` }}
+                    <span class="legend-color" :style="{backgroundColor: group.color}"></span>
+                    {{ group.name || `分组 ${index}` }}
                   </div>
-                  <div class="stat-card text-center mx-2">
-                    <div class="stat-value">{{ group.allMice }}</div>
-                    <div class="stat-label">总小鼠数</div>
-                  </div>
-                  <div class="stat-card text-center mx-2">
-                    <div class="stat-value">{{ group.deadMice }}</div>
-                    <div class="stat-label">死亡小鼠数</div>
-                  </div>
-                  <div class="stat-card text-center mx-2">
-                    <div class="stat-value">{{ group.censoredMice }}</div>
-                    <div class="stat-label">存活小鼠数</div>
-                  </div>
-                  <div class="stat-card text-center mx-2">
-                    <div class="stat-value">{{ group.maxDays }} 天</div>
-                    <div class="stat-label">最长生存时间</div>
-                  </div>
-                  <div class="stat-card text-center mx-2">
-                    <div class="stat-value">{{ group.ls50 }} 天</div>
-                    <div class="stat-label">中位生存时间</div>
-                  </div>
-                </div>
+                  <n-statistic label="总小鼠数" :value="group.allMice" tabular-nums />
+                  <n-statistic label="死亡小鼠数" :value="group.deadMice" tabular-nums />
+                  <n-statistic label="存活小鼠数" :value="group.censoredMice" tabular-nums />
+                  <n-statistic label="最长生存时间" :value="group.maxDays" tabular-nums>
+                    <template #suffix>天</template>
+                  </n-statistic>
+                  <n-statistic label="中位生存时间" :value="group.ls50" tabular-nums>
+                    <template #suffix>天</template>
+                  </n-statistic>
+                </n-space>
               </div>
             </div>
           </div>
 
           <!-- 图表容器 -->
           <div class="chart-container">
-            <canvas id="survivalChart" height="400"></canvas>
+            <canvas ref="survivalChartEl" height="400"></canvas>
           </div>
 
           <!-- 数据表格 -->
@@ -179,20 +164,19 @@
         <!-- 无数据提示 -->
         <div v-else class="text-center py-5">
           <div class="mb-3">
-            <AppIcon style="font-size: 3rem; color: var(--n-text-color-3);" name="bar_chart" />
+            <n-icon style="font-size: 3rem; color: var(--n-text-color-3);"><BarChartOutline /></n-icon>
           </div>
           <h5 class="text-muted">请设置分组条件并点击"生成生存曲线"按钮</h5>
         </div>
 
-      </div>
-    </div>
+    </n-card>
   </div>
 </template>
 
 <script setup>
-import { h, ref, computed, nextTick } from 'vue';
+import { h, ref, computed, nextTick, useTemplateRef } from 'vue';
 import { NTag, NIcon, useMessage } from 'naive-ui'
-import { TrendingUp, Add, Close } from '@vicons/ionicons5'
+import { TrendingUp, Add, Close, AddOutline, BarChartOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api';
@@ -215,6 +199,7 @@ const predefinedGroupOptions = computed(() =>
 )
 const { getPredefinedGroups } = experimentStore
 const message = useMessage()
+const survivalChartEl = useTemplateRef('survivalChartEl')
 
 // 响应式数据
 const groups = ref([]);
@@ -325,7 +310,7 @@ const fetchData = async (groupType) => {
 
 // 渲染图表
 const renderChart = () => {
-  const ctx = document.getElementById('survivalChart');
+  const ctx = survivalChartEl.value;
   
   // 销毁现有图表实例
   if (chartInstance.value) {
@@ -737,33 +722,8 @@ const displayedMice = computed(() => {
   margin-right: 5px;
 }
 
-.stat-card {
-  text-align: center;
-  padding: 1rem;
-}
-
-.stat-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: var(--n-text-color-1);
-}
-
-.stat-label {
-  font-size: 0.9rem;
-  color: var(--n-text-color-3);
-}
-
 .text-muted {
   color: var(--n-text-color-3);
-}
-
-.mx-2 {
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
-}
-
-.text-center {
-  text-align: center;
 }
 
 .genotype-tree {

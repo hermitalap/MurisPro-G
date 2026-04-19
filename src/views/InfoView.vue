@@ -9,14 +9,14 @@
           target="_blank" 
           class="promo-button primary"
         >
-          <AppIcon  name="play_circle" />
+          <n-icon><PlayCircleOutline /></n-icon>
           <span>视频教程</span>
         </a>
 
         <a 
           class="promo-button secondary"
         >
-          <AppIcon  name="menu_book" />
+          <n-icon><BookOutline /></n-icon>
           <span>使用文档</span>
         </a>
 
@@ -25,7 +25,7 @@
           target="_blank" 
           class="promo-button accent"
         >
-          <AppIcon  name="code" />
+          <n-icon><CodeSlashOutline /></n-icon>
           <span>GitHub仓库</span>
         </a>
 
@@ -55,7 +55,7 @@
 <script setup>
 import { h, ref } from 'vue'
 import { NIcon } from 'naive-ui'
-import { QrCode } from '@vicons/ionicons5'
+import { QrCode, PlayCircleOutline, BookOutline, CodeSlashOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 

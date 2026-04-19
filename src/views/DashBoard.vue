@@ -17,13 +17,13 @@
           <div class="header-stats-panel">
             <n-statistic label="存活小鼠" :value="survivingMouseCount">
               <template #prefix>
-                <AppIcon name="fitness_outline" />
+                <n-icon><FitnessOutline /></n-icon>
               </template>
               <n-number-animation :from="0" :to="survivingMouseCount" />
             </n-statistic>
             <n-statistic label="活跃笼位" :value="activeCageCount">
               <template #prefix>
-                <AppIcon name="grid_view" />
+                <n-icon><GridOutline /></n-icon>
               </template>
               <n-number-animation :from="0" :to="activeCageCount" />
             </n-statistic>
@@ -37,24 +37,24 @@
           <!-- 第一行：搜索框 + 笼位插槽 -->
           <div class="controls-row controls-row-1">
             <div class="search-container">
-              <div class="search-box">
-                <AppIcon name="search" />
-                <n-input
+            <div class="search-box">
+              <n-icon><SearchOutline /></n-icon>
+              <n-input
                   v-model:value="searchTerm"
                   placeholder="搜索小鼠ID..."
                   @update:value="performSearch"
                   @keyup.enter="performSearch"
                   clearable
                 />
-                <n-button v-if="searchTerm" @click="clearSearch" class="search-clear" quaternary circle :render-icon="renderIcon(Close)" />
+                <n-button v-if="searchTerm" @click="clearSearch" class="search-clear" quaternary circle :render-icon="renderIcon(CloseOutline)" />
               </div>
 
               <div v-if="searchResults.length > 0" class="search-results">
                 <div class="search-result-header">
                   <span>找到 {{ searchResults.length }} 个结果</span>
                   <div class="search-nav">
-                    <n-button quaternary circle @click="navigateResults(-1)" :disabled="currentResultIndex <= 0" :render-icon="renderIcon(ArrowUp)" />
-                    <n-button quaternary circle @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1" :render-icon="renderIcon(ArrowDown)" />
+                    <n-button quaternary circle @click="navigateResults(-1)" :disabled="currentResultIndex <= 0" :render-icon="renderIcon(ArrowDownOutline)" />
+                    <n-button quaternary circle @click="navigateResults(1)" :disabled="currentResultIndex >= searchResults.length - 1" :render-icon="renderIcon(ArrowDownOutline)" />
                   </div>
                 </div>
 
@@ -84,9 +84,9 @@
 
           <!-- 第二行：三个操作按钮 -->
           <div class="controls-row controls-row-2">
-            <n-button secondary @click="fetchCages" :render-icon="renderIcon(Refresh)">刷新数据</n-button>
-            <n-button secondary @click="exportToPDF" :render-icon="renderIcon(DocumentText)">当前位置导出pdf</n-button>
-            <n-button type="primary" @click="openCageModal(null)" :render-icon="renderIcon(Add)">添加笼位</n-button>
+            <n-button secondary @click="fetchCages" :render-icon="renderIcon(RefreshOutline)">刷新数据</n-button>
+            <n-button secondary @click="exportToPDF" :render-icon="renderIcon(DocumentTextOutline)">当前位置导出pdf</n-button>
+            <n-button type="primary" @click="openCageModal(null)" :render-icon="renderIcon(AddOutline)">添加笼位</n-button>
           </div>
         </div>
       </n-gi>
@@ -115,7 +115,7 @@
                   <div
                     v-if="cage"
                     class="cage-card"
-                    :data-cage-id="cage.id"
+                    :ref="el => { if (el) cageRefs[cage.id] = el; else delete cageRefs[cage.id] }"
                     :class="{
                       breeding: cage.cage_type === 'breeding',
                       'swap-source': cage.id === sourceCage?.id,
@@ -134,13 +134,13 @@
                             <n-tooltip v-if="isCageMixedSexWarning(cage)" trigger="hover">
                               <template #trigger>
                                 <div class="cage-sex-mark sex-mark-warning">
-                                  <AppIcon name="warning" />
+                                  <n-icon><WarningOutline /></n-icon>
                                 </div>
                               </template>
                               非繁殖笼有混合性别
                             </n-tooltip>
                             <div v-else class="cage-sex-mark" :class="getCageSexClass(cage)">
-                              <AppIcon :name="getCageSexIcon(cage)" />
+                              <n-icon><component :is="getCageSexIcon(cage)" /></n-icon>
                             </div>
                             <span class="cage-id-text">{{ cage.cage_id || '-' }}</span>
                           </div>
@@ -181,12 +181,12 @@
                     </n-card>
                   </div>
 
-                  <n-card v-else size="small" class="cage-slot-empty" :bordered="false" @click="openCageModal(null)">
-                    <div class="empty-slot-content">
-                      <AppIcon name="add" class="slot-icon" />
-                      <span>新增笼位</span>
-                    </div>
-                  </n-card>
+                    <n-card v-else size="small" class="cage-slot-empty" :bordered="false" @click="openCageModal(null)">
+                      <div class="empty-slot-content">
+                        <n-icon class="slot-icon"><AddOutline /></n-icon>
+                        <span>新增笼位</span>
+                      </div>
+                    </n-card>
                 </div>
               </n-flex>
             </n-scrollbar>
@@ -195,26 +195,16 @@
       </n-tabs>
     </div>
 
-    <div
-      v-if="sectionContextMenu.visible"
-      class="section-context-menu"
-      :style="{ top: sectionContextMenu.y + 'px', left: sectionContextMenu.x + 'px' }"
-    >
-      <ul>
-        <li
-          :class="{ disabled: sectionContextMenu.index <= 0 }"
-          @click="moveSection(-1)"
-        >
-          <AppIcon name="chevron_left" /> 向左移
-        </li>
-        <li
-          :class="{ disabled: sectionContextMenu.index >= sortedSections.length - 1 }"
-          @click="moveSection(1)"
-        >
-          <AppIcon name="chevron_right" /> 向右移
-        </li>
-      </ul>
-    </div>
+    <NDropdown
+      trigger="manual"
+      placement="bottom-start"
+      :show="sectionContextMenu.visible"
+      :x="sectionContextMenu.x"
+      :y="sectionContextMenu.y"
+      :options="sectionMenuOptions"
+      @select="onSectionMenuSelect"
+      @clickoutside="closeSectionContextMenu"
+    />
     
     <n-drawer v-model:show="showTemporaryDrawer" placement="bottom" :height="460" resizable>
       <n-drawer-content title="临时区小鼠管理" closable>
@@ -254,24 +244,16 @@
     />
 
     <!-- 笼位右键菜单 -->
-  <div v-if="cageContextMenu.visible" 
-      class="context-menu"
-      :style="{ top: cageContextMenu.y + 'px', left: cageContextMenu.x + 'px' }">
-      <ul>
-          <li @click="openCageModal(cageContextMenu.cage)">
-              <AppIcon  name="edit" /> 编辑笼位信息
-          </li>
-          <li @click="openMoveToTempModal(cageContextMenu.cage)">
-              <AppIcon  name="arrow_downward" /> 移动小鼠到临时区
-          </li>
-          <li @click="exchangeCage(cageContextMenu.cage)">
-              <AppIcon  name="swap_horiz" /> 笼位排序互换
-          </li>
-          <li @click="deleteCage(cageContextMenu.cage)">
-              <AppIcon  name="delete" /> 删除笼位
-          </li>
-      </ul>
-  </div>
+    <NDropdown
+      trigger="manual"
+      placement="bottom-start"
+      :show="cageContextMenu.visible"
+      :x="cageContextMenu.x"
+      :y="cageContextMenu.y"
+      :options="cageMenuOptions"
+      @select="onCageMenuSelect"
+      @clickoutside="closeContextMenu"
+    />
 
   <!-- 统一笼位对话框 -->
   <n-modal v-model:show="cageModalVisible" preset="card" style="width: 500px; max-width: 95vw; overflow: visible;" :title="isEditing ? '修改笼位信息' : '添加新笼位'" @close="closeCageModal">
@@ -356,25 +338,25 @@
   <n-modal :show="swapStatus === 'select-target'" :mask-closable="true" preset="card" class="swap-dialog" style="width: 400px; max-width: 90vw;" title="确认交换以下笼位顺序：" closable @close="cancelSwap">
     <div v-if="sourceCage && targetCage">
         <div class="cage-pair">
-          <div class="selected-cage">
-            <AppIcon  name="cage" />
-            <div class="cage-info">
-              <div class="cage-id">{{ sourceCage.cage_id }}</div>
-              <div class="cage-location">{{ sourceCage.location }}</div>
-            </div>
+        <div class="selected-cage">
+          <n-icon><CubeOutline /></n-icon>
+          <div class="cage-info">
+            <div class="cage-id">{{ sourceCage.cage_id }}</div>
+            <div class="cage-location">{{ sourceCage.location }}</div>
           </div>
+        </div>
 
-          <div class="swap-icon">
-            <AppIcon  name="swap_horiz" />
-          </div>
+        <div class="swap-icon">
+          <n-icon><SwapHorizontalOutline /></n-icon>
+        </div>
 
-          <div class="selected-cage">
-            <AppIcon  name="cage" />
-            <div class="cage-info">
-              <div class="cage-id">{{ targetCage.cage_id }}</div>
-              <div class="cage-location">{{ targetCage.location }}</div>
-            </div>
+        <div class="selected-cage">
+          <n-icon><CubeOutline /></n-icon>
+          <div class="cage-info">
+            <div class="cage-id">{{ targetCage.cage_id }}</div>
+            <div class="cage-location">{{ targetCage.location }}</div>
           </div>
+        </div>
         </div>
     </div>
     <template #footer>
@@ -386,7 +368,7 @@
   </n-modal>
 
   <!-- PDF渲染区域（隐藏） -->
-  <div id="pdf-render-area" class="hidden-pdf-area"></div>
+  <div ref="pdfRenderAreaEl" class="hidden-pdf-area"></div>
   
   <!-- 加载遮罩 -->
   <div class="loading-overlay" v-if="isGeneratingPDF">
@@ -397,12 +379,12 @@
   <!-- 浮动按钮 -->
   <div class="floating-button-group">
     <n-badge :value="temporaryMice.length" :max="99" :offset="[-5, 5]">
-      <n-tooltip trigger="hover">
-        <template #trigger>
-          <n-button circle type="primary" @click="showTemporaryDrawer = true" :render-icon="renderIcon(FileTray)" />
-        </template>
-        临时区
-      </n-tooltip>
+          <n-tooltip trigger="hover">
+            <template #trigger>
+              <n-button circle type="primary" @click="showTemporaryDrawer = true" :render-icon="renderIcon(FileTrayOutline)" />
+            </template>
+            临时区
+          </n-tooltip>
     </n-badge>
   </div>
   </div>
@@ -410,16 +392,36 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, computed, onMounted, watch, h } from 'vue'
+import { ref, reactive, nextTick, computed, onMounted, onUnmounted, watch, h, useTemplateRef } from 'vue'
 import api from '@/utils/api'
 import { normalizeDateValue } from '@/utils/format'
 import MouseDetailModal from './MouseDetailView.vue'
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { NIcon, useDialog, useMessage } from 'naive-ui';
-import { Refresh, DocumentText, Add, Close, ArrowUp, ArrowDown, FileTray } from '@vicons/ionicons5';
-
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
+import { NIcon, NDropdown, useDialog, useMessage } from 'naive-ui'
+import {
+  AddOutline,
+  ArrowDownOutline,
+  ChevronBackOutline,
+  ChevronForwardOutline,
+  CloseOutline,
+  CreateOutline,
+  CubeOutline,
+  DocumentTextOutline,
+  FileTrayOutline,
+  FitnessOutline,
+  GridOutline,
+  HelpCircleOutline,
+  MaleOutline,
+  FemaleOutline,
+  MaleFemaleOutline,
+  RefreshOutline,
+  SearchOutline,
+  SwapHorizontalOutline,
+  TrashOutline,
+  WarningOutline
+} from '@vicons/ionicons5'
+import { renderIcon } from '@/utils/icon'
 
 // 设置组件名称
 defineOptions({
@@ -428,6 +430,9 @@ defineOptions({
 
 import { useCageStore, useGeneStore } from '@/stores'
 import { storeToRefs } from 'pinia'
+
+const pdfRenderAreaEl = useTemplateRef('pdfRenderAreaEl')
+const cageRefs = {}
 
 const cageStore = useCageStore()
 const {locations, activeSection, cages} = storeToRefs(cageStore)
@@ -503,6 +508,39 @@ const sectionContextMenu = reactive({
   index: -1
 })
 const isSaving = ref(false)
+
+const cageMenuOptions = computed(() => [
+  { label: '编辑笼位信息', key: 'edit', icon: renderIcon(CreateOutline) },
+  { label: '移动小鼠到临时区', key: 'moveToTemp', icon: renderIcon(ArrowDownOutline) },
+  { label: '笼位排序互换', key: 'exchange', icon: renderIcon(SwapHorizontalOutline) },
+  { label: '删除笼位', key: 'delete', icon: renderIcon(TrashOutline) },
+])
+
+const sectionMenuOptions = computed(() => [
+  {
+    label: '向左移', key: 'left', disabled: sectionContextMenu.index <= 0,
+    icon: renderIcon(ChevronBackOutline)
+  },
+  {
+    label: '向右移', key: 'right',
+    disabled: sectionContextMenu.index >= sortedSections.value.length - 1,
+    icon: renderIcon(ChevronForwardOutline)
+  },
+])
+
+function onCageMenuSelect(key) {
+  const cage = cageContextMenu.cage
+  closeContextMenu()
+  if (key === 'edit') openCageModal(cage)
+  else if (key === 'moveToTemp') openMoveToTempModal(cage)
+  else if (key === 'exchange') exchangeCage(cage)
+  else if (key === 'delete') deleteCage(cage)
+}
+
+function onSectionMenuSelect(key) {
+  if (key === 'left') moveSection(-1)
+  else if (key === 'right') moveSection(1)
+}
 
 // 笼位表单校验（naive-ui 原生 required 规则）
 const cageFormRef = ref(null)
@@ -743,6 +781,11 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  closeContextMenu()
+  closeSectionContextMenu()
+})
+
 // 获取临时区小鼠数据
 async function fetchTemporaryMice() {
   try {
@@ -906,37 +949,18 @@ async function addNewCage() {
 
 // 打开笼位上下文菜单
 function openCageContextMenu(event, cage) {
-  cageContextMenu.visible = true
-  cageContextMenu.x = event.clientX
-  cageContextMenu.y = event.clientY
-  cageContextMenu.cage = cage
-  // 点击其他地方关闭菜单
-  document.addEventListener('click', closeContextMenu)
-  // 在下一个tick中获取实际菜单尺寸并调整位置
+  cageContextMenu.visible = false
   nextTick(() => {
-    const menu = document.querySelector('.context-menu')
-    if (menu) {
-      const rect = menu.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
-      const viewportWidth = window.innerWidth
-      
-      // 垂直方向避让
-      if (event.pageY + rect.height > viewportHeight) {
-        cageContextMenu.y = event.pageY - rect.height
-      }
-      
-      // 水平方向避让
-      if (event.pageX + rect.width > viewportWidth) {
-        cageContextMenu.x = event.pageX - rect.width
-      }
-    }
+    cageContextMenu.x = event.clientX
+    cageContextMenu.y = event.clientY
+    cageContextMenu.cage = cage
+    cageContextMenu.visible = true
   })
 }
 
 // 关闭上下文菜单
 function closeContextMenu() {
   cageContextMenu.visible = false
-  document.removeEventListener('click', closeContextMenu)
 }
 
 // 判定笼位性别显示：empty（空笼，合理的显示边界）、breeding、mixed、F、M、unknown
@@ -955,10 +979,10 @@ function getCageSexState(cage) {
 
 function getCageSexIcon(cage) {
   const state = getCageSexState(cage)
-  if (state === 'breeding' || state === 'mixed') return 'male_female'
-  if (state === 'F') return 'female'
-  if (state === 'M') return 'male'
-  return 'help' // empty / unknown — 空笼位是一种合理的已处理边界
+  if (state === 'breeding' || state === 'mixed') return MaleFemaleOutline
+  if (state === 'F') return FemaleOutline
+  if (state === 'M') return MaleOutline
+  return HelpCircleOutline
 }
 
 function getCageSexClass(cage) {
@@ -1001,29 +1025,13 @@ function getCageDisplayRows(cage) {
 
 // 打开 section 右键菜单
 function openSectionContextMenu(event, section, index) {
-  sectionContextMenu.visible = true
-  sectionContextMenu.x = event.clientX
-  sectionContextMenu.y = event.clientY
-  sectionContextMenu.sectionId = section.id
-  sectionContextMenu.index = index
-
-  document.addEventListener('click', closeSectionContextMenu)
-
+  sectionContextMenu.visible = false
   nextTick(() => {
-    const menu = document.querySelector('.section-context-menu')
-    if (menu) {
-      const rect = menu.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
-      const viewportWidth = window.innerWidth
-
-      if (event.pageY + rect.height > viewportHeight) {
-        sectionContextMenu.y = event.pageY - rect.height
-      }
-
-      if (event.pageX + rect.width > viewportWidth) {
-        sectionContextMenu.x = event.pageX - rect.width
-      }
-    }
+    sectionContextMenu.x = event.clientX
+    sectionContextMenu.y = event.clientY
+    sectionContextMenu.sectionId = section.id
+    sectionContextMenu.index = index
+    sectionContextMenu.visible = true
   })
 }
 
@@ -1031,7 +1039,6 @@ function closeSectionContextMenu() {
   sectionContextMenu.visible = false
   sectionContextMenu.sectionId = null
   sectionContextMenu.index = -1
-  document.removeEventListener('click', closeSectionContextMenu)
 }
 
 async function moveSection(direction) {
@@ -1273,7 +1280,7 @@ const exportToPDF = async () => {
 
 // 渲染PDF内容到隐藏区域
 const renderPDFContent = (cages, sectionName) => {
-  const pdfRenderArea = document.getElementById('pdf-render-area');
+  const pdfRenderArea = pdfRenderAreaEl.value;
   pdfRenderArea.innerHTML = '';
   
   // 按每页20个笼位分页
@@ -1377,7 +1384,7 @@ const renderPDFContent = (cages, sectionName) => {
 // 生成PDF文件并返回ArrayBuffer
 const generatePDFAsArrayBuffer = () => {
   return new Promise((resolve, reject) => {
-    const pdfRenderArea = document.getElementById('pdf-render-area');
+    const pdfRenderArea = pdfRenderAreaEl.value;
     
     html2canvas(pdfRenderArea, {
       scale: 2,
@@ -1516,7 +1523,7 @@ function highlightSearchResult(result) {
   // 滚动到可见区域
   nextTick(() => {
     // 滚动到笼位
-    const cageElement = document.querySelector(`.cage-card[data-cage-id="${result.cage.id}"]`)
+    const cageElement = cageRefs[result.cage.id]
     if (cageElement) {
       cageElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
@@ -2161,78 +2168,6 @@ function isCageHighlighted(cageId) {
   margin-top: 20px;
 }
 
-/* 右键菜单样式 */
-.context-menu {
-    position: fixed;
-  background: var(--n-color);
-  border: 1px solid var(--n-border-color);
-    border-radius: 6px;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--n-text-color) 15%, transparent);
-    z-index: 1000;
-    min-width: 180px;
-}
-
-.context-menu ul {
-    list-style: none;
-    margin: 0;
-    padding: 5px 0;
-}
-
-.context-menu li {
-    padding: 8px 15px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: background 0.2s;
-}
-
-.context-menu li:hover {
-  background-color: var(--n-info-color-suppl);
-}
-
-.section-context-menu {
-  position: fixed;
-  background: var(--n-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--n-text-color) 15%, transparent);
-  z-index: 1001;
-  min-width: 140px;
-}
-
-.section-context-menu ul {
-  list-style: none;
-  margin: 0;
-  padding: 5px 0;
-}
-
-.section-context-menu li {
-  padding: 8px 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
-
-.section-context-menu li:hover {
-  background-color: var(--n-info-color-suppl);
-}
-
-.section-context-menu li.disabled {
-  color: var(--n-text-color-disabled);
-  cursor: not-allowed;
-}
-
-.section-context-menu li.disabled:hover {
-  background-color: transparent;
-}
-
-.context-menu li i {
-    font-size: 18px;
-    color: var(--n-primary-color);
-}
 
 .cage-card.swap-source {
     border-color: var(--n-primary-color);

@@ -8,7 +8,7 @@
         <n-tabs v-model:value="activeTab" type="line" class="experiment-tabs">
             <n-tab-pane name="visualization">
                 <template #tab>
-                    <span class="tab-label"><AppIcon name="bar_chart" /> 可视化</span>
+                    <span class="tab-label"><n-icon><BarChartOutline /></n-icon> 可视化</span>
                 </template>
                 <div class="tab-content">
                     <n-space class="action-buttons">
@@ -16,15 +16,14 @@
               <n-button type="primary" @click="generateChart" :render-icon="renderIcon(BarChart)">生成图表</n-button>
                     </n-space>
           <!-- 数据展示区域 -->
-          <div v-if="hasData" class="chart-container" id="chart-container">
-              <canvas id="experimentChart"></canvas>
-          </div>
+          <div v-if="hasData" class="chart-container" ref="chartContainerEl"></div>
+          <n-empty v-if="noVizMsg" description="没有配置可视化字段，请在字段设置中指定 x、y 或 column 类型" style="margin-top: 40px;" />
         </div>
       </n-tab-pane>
 
             <n-tab-pane name="data">
                 <template #tab>
-                    <span class="tab-label"><AppIcon name="table_chart" /> 数据列表</span>
+                    <span class="tab-label"><n-icon><GridOutline /></n-icon> 数据列表</span>
                 </template>
                 <div class="tab-content">
                     <n-space class="action-buttons">
@@ -94,7 +93,7 @@
             <div ref="recordTabulatorRef" class="tabulator-table" style="height: 300px;"></div>
             
             <div class="d-grid mt-3">
-                <n-button type="primary" block @click="saveExperimentRecord" :disabled="isSubmitting" :render-icon="renderIcon(Save)">{{ isSubmitting? '保存中...' : '保存记录'}}</n-button>
+                <n-button type="primary" block @click="saveExperimentRecord" :loading="isSubmitting" :render-icon="renderIcon(Save)">保存记录</n-button>
             </div>
         </div>
     </n-modal>
@@ -113,7 +112,7 @@
 </template>
 
 <script setup>
-import { h, ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
+import { h, ref, reactive, computed, onMounted, watch, nextTick, useTemplateRef } from 'vue';
 import { useRoute, onBeforeRouteUpdate } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
@@ -125,7 +124,7 @@ import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
 import { NIcon, useDialog, useMessage } from 'naive-ui'
-import { People, BarChart, Create, Download, Refresh, Save } from '@vicons/ionicons5'
+import { People, BarChart, Create, Download, Refresh, Save, BarChartOutline, GridOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
@@ -169,6 +168,9 @@ const experimentName = ref('');
 
 // 标签页状态
 const activeTab = ref('visualization');
+
+const chartContainerEl = useTemplateRef('chartContainerEl')
+const noVizMsg = ref(false)
 
 // 数据状态
 const experimentData = ref([]);
@@ -615,31 +617,27 @@ try{
 }
 
 async function generateChart() {
+    noVizMsg.value = false
     if (!hasData.value) {
         message.info('暂无实验数据，无法生成图表');
         return;
     }
+    await nextTick()
     // 清空图表容器
-    const chartContainer = document.getElementById('chart-container');
+    const chartContainer = chartContainerEl.value;
     if (!chartContainer) return;
-    
+
     chartContainer.innerHTML = '';
-    
+
     // 获取字段定义
     const xFields = fieldDefinitions.value.filter(f => f.visualize_type === 'x');
     const yFields = fieldDefinitions.value.filter(f => f.visualize_type === 'y');
     const columnFields = fieldDefinitions.value.filter(f => f.visualize_type === 'column');
-    
+
     xFields.push({field_name: '日期', id: 'date', data_type: 'DATE'}); // 添加日期字段作为X轴选项
     // 如果没有可视化字段，提示用户
     if (xFields.length === 0 && yFields.length === 0 && columnFields.length === 0) {
-        const noVizFields = document.createElement('div');
-        noVizFields.className = 'no-data';
-        noVizFields.innerHTML = `
-        <AppIcon  name="bar_chart" />
-        <p>没有配置可视化字段，请在字段设置中指定x、y或column类型</p>
-        `;
-        chartContainer.appendChild(noVizFields);
+        noVizMsg.value = true
         return;
     }
 
@@ -1481,17 +1479,6 @@ border-radius: 8px;
 padding: 15px;
 background: var(--n-color);
 box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
-}
-
-.no-data {
-text-align: center;
-padding: 40px 0;
-color: var(--n-text-color-3);
-}
-
-.no-data i {
-font-size: 3rem;
-margin-bottom: 10px;
 }
 
 .modal-body {

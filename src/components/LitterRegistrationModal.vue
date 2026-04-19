@@ -9,8 +9,9 @@
     closable
   >
     <template v-if="cage">
+      <n-form :model="form" label-placement="top">
       <div class="form-grid">
-        <n-form-item label="所在笼位" label-placement="top" :show-feedback="false">
+        <n-form-item label="所在笼位" :show-feedback="false">
           <n-input :value="`${cage.section}-${cage.cage_id}`" readonly />
         </n-form-item>
         <n-form-item label="品系" label-placement="top" :show-feedback="false">
@@ -107,6 +108,7 @@
         :max-height="280"
         style="margin-top: 12px;"
       />
+      </n-form>
     </template>
 
     <template #footer>

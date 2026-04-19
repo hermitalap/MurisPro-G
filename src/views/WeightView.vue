@@ -47,7 +47,7 @@
     
     <!-- 空状态 -->
     <div v-if="filteredRecords.length === 0 && !loading" class="empty-state">
-        <AppIcon  name="monitor_weight" />
+        <n-icon><ScaleOutline /></n-icon>
         <p>没有找到体重记录</p>
     </div>
     
@@ -111,7 +111,7 @@
 <script setup>
 import { h, ref, computed, onMounted } from 'vue'
 import { NButton, NSpace, NIcon, useDialog, useMessage } from 'naive-ui'
-import { Refresh, Search, Save, Add, CloseCircle } from '@vicons/ionicons5'
+import { Refresh, Search, Save, Add, CloseCircle, ScaleOutline } from '@vicons/ionicons5'
 import api from '@/utils/api'
 import { formatDate } from '@/utils/format'
 

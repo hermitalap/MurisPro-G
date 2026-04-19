@@ -45,3 +45,19 @@ export function normalizeDateValue(value) {
 export function renderEmpty(value) {
   return value != null && value !== '' ? String(value) : '-'
 }
+
+/**
+ * 将基因型字符串（含 <sup> 标签）渲染为 VNode 数组，替代 v-html。
+ * 格式示例："Kras<sup>LSL-G12D/+</sup>; Trp53<sup>fl/fl</sup>"
+ * @param {string|null|undefined} symbol
+ * @returns {import('vue').VNode|string}
+ */
+export function renderGenotypeSymbol(symbol) {
+  if (!symbol) return '—'
+  const parts = symbol.split(/(<sup>.*?<\/sup>)/g)
+  const nodes = parts.map(part => {
+    const match = part.match(/^<sup>(.*?)<\/sup>$/)
+    return match ? h('sup', match[1]) : part
+  })
+  return h('span', nodes)
+}

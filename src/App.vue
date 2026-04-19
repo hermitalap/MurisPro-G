@@ -1,5 +1,6 @@
 <template>
   <n-config-provider :theme="naiveTheme" :locale="zhCN" :date-locale="dateZhCN">
+    <n-loading-bar-provider>
     <n-message-provider>
       <n-dialog-provider>
         <n-notification-provider>
@@ -13,7 +14,9 @@
                   circle
                   @click="mobileDrawerVisible = true"
                 >
-                  <AppIcon name="menu" />
+                  <template #icon>
+                    <n-icon><MenuOutline /></n-icon>
+                  </template>
                 </n-button>
                 <div class="logo">
                   <img src="@/assets/logo.png" alt="鼠管家Logo" class="logo-icon">
@@ -23,7 +26,9 @@
                 <n-tooltip>
                   <template #trigger>
                     <n-button class="theme-toggle" quaternary circle @click="toggleTheme">
-                      <AppIcon :name="themeMode === 'dark' ? 'light_mode' : 'dark_mode'" />
+                      <template #icon>
+                        <n-icon><SunnyOutline v-if="themeMode === 'dark'" /><MoonOutline v-else /></n-icon>
+                      </template>
                     </n-button>
                   </template>
                   {{ themeMode === 'dark' ? '切换到亮色模式' : '切换到暗色模式' }}
@@ -80,11 +85,11 @@
             <n-layout-footer class="app-footer">
               <div class="status-indicators">
                 <div class="status-item">
-                  <AppIcon class="status-icon online" name="cloud_done" />
+                  <n-icon class="status-icon online"><CloudDoneOutline /></n-icon>
                   <span>当前数据库正常</span>
                 </div>
                 <div class="status-item">
-                  <AppIcon class="status-icon" name="save" />
+                  <n-icon class="status-icon"><SaveOutline /></n-icon>
                   <span>自动保存</span>
                 </div>
               </div>
@@ -96,6 +101,7 @@
         </n-notification-provider>
       </n-dialog-provider>
     </n-message-provider>
+    </n-loading-bar-provider>
   </n-config-provider>
 </template>
 
@@ -109,6 +115,7 @@ import {
 } from 'naive-ui'
 import {
   AnalyticsOutline,
+  CloudDoneOutline,
   FlaskOutline,
   GitBranchOutline,
   GitNetworkOutline,
@@ -116,15 +123,19 @@ import {
   InformationCircleOutline,
   InfiniteSharp,
   ListOutline,
+  MenuOutline,
+  MoonOutline,
   NutritionOutline,
   PlayCircleOutline,
+  SaveOutline,
   ScaleOutline,
   SettingsOutline,
+  SunnyOutline,
   TrendingDownOutline
 } from '@vicons/ionicons5'
 import { useExperimentStore } from '@/stores'
 import { useRoute, useRouter } from 'vue-router'
-import AppIcon from '@/components/AppIcon.vue'
+import { renderIcon } from '@/utils/icon'
 
 const experimentStore = useExperimentStore()
 const route = useRoute()
@@ -142,8 +153,6 @@ const updateIsMobile = () => {
   isMobile.value = isMobileViewport()
   if (!isMobile.value) mobileDrawerVisible.value = false
 }
-
-const renderIcon = (icon) => () => h(NIcon, null, { default: () => h(icon) })
 
 const menuOptions = computed(() => {
   const experimentChildren = experimentStore.showedExperiments.map((expr) => ({

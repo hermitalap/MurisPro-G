@@ -12,12 +12,6 @@
         </div>
       </div>
       
-      <!-- 加载状态 -->
-      <div v-if="loading" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <span>加载中...</span>
-      </div>
-      
       <!-- 筛选区 -->
       <div class="filter-section">
         <!-- 第一行：核心搜索 -->
@@ -178,6 +172,7 @@
         ref="dataTableRef"
         :columns="miceColumns"
         :data="filteredMice"
+        :loading="loading"
         :pagination="pagination"
         :bordered="false"
         :single-line="false"
@@ -238,25 +233,16 @@
       </div>
       
       <!-- 右键上下文菜单 -->
-      <div v-if="contextMenu.visible" 
-          class="context-menu" 
-          :style="{top: contextMenu.y + 'px', left: contextMenu.x + 'px'}"
-          @click.stop>
-        <ul>
-          <li @click="openMouseDetail(contextMenu.mouse.tid)">
-            <AppIcon  name="visibility" /> 查看详情
-          </li>
-          <li @click="openModal('edit', contextMenu.mouse)">
-            <AppIcon  name="edit" /> 编辑信息
-          </li>
-          <li @click="openModal('template', contextMenu.mouse)">
-            <AppIcon  name="playlist_add" /> 以此为模板批量创建小鼠
-          </li>
-          <li @click="deleteMouse(contextMenu.mouse.tid)" class="danger">
-            <AppIcon  name="delete" /> 删除小鼠
-          </li>
-        </ul>
-      </div>
+      <NDropdown
+        trigger="manual"
+        placement="bottom-start"
+        :show="contextMenu.visible"
+        :x="contextMenu.x"
+        :y="contextMenu.y"
+        :options="contextMenuOptions"
+        @select="onContextMenuSelect"
+        @clickoutside="closeContextMenu"
+      />
       
       <!-- 空状态 -->
       <div v-if="filteredMice.length === 0 && !loading" class="empty-state">
@@ -359,7 +345,7 @@
           <div class="genotype-section">
             <div class="genotype-head">
               <div class="genotype-preview">
-                当前: <span class="selected-gene" v-html="geneStore.selectedGeneName || '—'"></span>
+                当前: <GenotypeLabel class="selected-gene" :symbol="geneStore.selectedGeneName" />
               </div>
               <n-space :size="8">
                 <n-button size="small" type="primary" :render-icon="renderIcon(Add)" @click="addGene" :disabled="!geneStore.addable">
@@ -486,7 +472,7 @@
     <n-modal v-model:show="showModal" v-if="modalMode === 'template' && templateMouse" :mask-closable="false" preset="card" style="width: 90%; max-width: 600px;" title="基于模板批量创建小鼠" closable @close="closeModal">
         <div class="form-body">
         <div class="template-info">
-          <h3><AppIcon  name="pets" /> 模板小鼠信息</h3>
+          <h3><n-icon><PawOutline /></n-icon> 模板小鼠信息</h3>
           <div class="template-details">
             <div class="detail-item">
               <span class="detail-label">小鼠ID</span>
@@ -494,7 +480,7 @@
             </div>
             <div class="detail-item">
               <span class="detail-label">基因型</span>
-              <span class="detail-value" v-html="templateMouse.genotype.symbol"></span>
+              <GenotypeLabel class="detail-value" :symbol="templateMouse.genotype.symbol" />
             </div>
             <div class="detail-item">
               <span class="detail-label">品系</span>
@@ -581,11 +567,12 @@ import api from '@/utils/api'
 import { formatDate, renderEmpty, normalizeDateValue } from '@/utils/format'
 import { fuzzySearch } from '@/utils/search'
 import MouseDetailModal from './MouseDetailView.vue'
+import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
-import { useDialog, useMessage, NTag, NIcon } from 'naive-ui'
+import { useDialog, useMessage, NTag, NIcon, NDropdown } from 'naive-ui'
 import {
-  Add, Search, Refresh, CloseCircle, Save, Trash, TrashBin, BanSharp
+  Add, Search, Refresh, CloseCircle, Save, Trash, TrashBin, BanSharp, PawOutline
 } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
@@ -619,6 +606,24 @@ const contextMenu = reactive({
   y: 0,
   mouse: null
 })
+
+const contextMenuOptions = [
+  { label: '查看详情', key: 'detail' },
+  { label: '编辑信息', key: 'edit' },
+  { label: '以此为模板批量创建', key: 'template' },
+  { type: 'divider', key: 'd1' },
+  { label: '删除小鼠', key: 'delete' }
+]
+
+function onContextMenuSelect(key) {
+  closeContextMenu()
+  const mouse = contextMenu.mouse
+  if (!mouse) return
+  if (key === 'detail') openMouseDetail(mouse.tid)
+  else if (key === 'edit') openModal('edit', mouse)
+  else if (key === 'template') openModal('template', mouse)
+  else if (key === 'delete') deleteMouse(mouse.tid)
+}
 
 // Naive UI原生选择功能
 const dataTableRef = ref(null)
@@ -1555,29 +1560,12 @@ const deleteMouse = async (mouseId) => {
 }
 
 const showContextMenu = (event, mouse) => {
-  contextMenu.visible = true
-  contextMenu.mouse = mouse
-  contextMenu.x = event.pageX
-  contextMenu.y = event.pageY
-  
-  // 在下一个tick中获取实际菜单尺寸并调整位置
+  contextMenu.visible = false
   nextTick(() => {
-    const menu = document.querySelector('.context-menu')
-    if (menu) {
-      const rect = menu.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
-      const viewportWidth = window.innerWidth
-      
-      // 垂直方向避让
-      if (event.pageY + rect.height > viewportHeight) {
-        contextMenu.y = event.pageY - rect.height
-      }
-      
-      // 水平方向避让
-      if (event.pageX + rect.width > viewportWidth) {
-        contextMenu.x = event.pageX - rect.width
-      }
-    }
+    contextMenu.mouse = mouse
+    contextMenu.x = event.clientX
+    contextMenu.y = event.clientY
+    contextMenu.visible = true
   })
 }
 
@@ -1986,34 +1974,6 @@ onUnmounted(() => {
   background: var(--n-color);
 }
 
-/* 加载状态 */
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: color-mix(in srgb, var(--n-color) 80%, transparent);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
-.loading-spinner {
-  border: 4px solid color-mix(in srgb, var(--n-text-color) 10%, transparent);
-  border-left-color: var(--n-primary-color);
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 15px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 /* 空状态 */
 .empty-state {
@@ -2042,46 +2002,6 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.context-menu {
-  position: fixed;
-  background: var(--n-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 4px;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--n-text-color) 10%, transparent);
-  z-index: 1000;
-  max-height: 300px;
-  overflow-y: auto;
-  /* 确保菜单不会超出视口 */
-  max-width: 100vw;
-  max-height: 100vh;
-}
-
-.context-menu ul {
-  list-style: none;
-  margin: 0;
-  padding: 5px 0;
-  min-width: 150px;
-}
-
-.context-menu li {
-  padding: 8px 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.context-menu li:hover {
-  background-color: var(--n-hover-color);
-}
-
-.context-menu li.danger {
-  color: var(--n-error-color);
-}
-
-.context-menu li i {
-  font-size: 18px;
-}
 
 /* 父本母本选择样式 */
 .autocomplete {
