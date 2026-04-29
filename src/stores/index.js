@@ -3,9 +3,17 @@ import { useCageStore } from './cageStore'
 import { useExperimentStore } from './experimentStore'
 import { useSettingStore } from './settingStore'
 import { useBreedingStore } from './breedingStore'
+import { useBreedingPlanStore } from './breedingPlanStore'
 
 // 统一导出所有 Store
-export { useGeneStore, useCageStore, useExperimentStore, useSettingStore, useBreedingStore }
+export {
+  useGeneStore,
+  useCageStore,
+  useExperimentStore,
+  useSettingStore,
+  useBreedingStore,
+  useBreedingPlanStore
+}
 
 // // 工具函数
 // export const resetAllStores = () => {

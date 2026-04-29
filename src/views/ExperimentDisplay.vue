@@ -68,31 +68,31 @@
     <!-- 录入数据模态框 -->
     <n-modal v-model:show="showRecordModal" preset="card" title="录入实验数据" style="width: 90%; max-width: 800px;" :mask-closable="true">
         <div class="modal-body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                <div class="form-group">
-                    <label for="recordDate" class="form-label">记录日期</label>
-                    <n-date-picker
-                        id="recordDate"
-                        class="record-date-picker"
-                        type="date"
-                        value-format="yyyy-MM-dd"
-                        v-model:formatted-value="recordDate"
-                    />
-                </div>
-                </div>
-                <div class="col-md-6">
-                <div class="form-group">
-                    <label for="researcher" class="form-label">实验人员</label>
-                    <n-input type="text" class="researcher-input" id="researcher" v-model:value="researcher" />
-                </div>
-                </div>
-            </div>
-            
+            <n-grid :cols="2" :x-gap="16" :y-gap="0" responsive="screen" :collapsed-rows="1" style="margin-bottom: 16px;">
+                <n-gi>
+                    <div class="form-group">
+                        <label for="recordDate" class="form-label">记录日期</label>
+                        <n-date-picker
+                            id="recordDate"
+                            class="record-date-picker"
+                            type="date"
+                            value-format="yyyy-MM-dd"
+                            v-model:formatted-value="recordDate"
+                        />
+                    </div>
+                </n-gi>
+                <n-gi>
+                    <div class="form-group">
+                        <label for="researcher" class="form-label">实验人员</label>
+                        <n-input type="text" class="researcher-input" id="researcher" v-model:value="researcher" />
+                    </div>
+                </n-gi>
+            </n-grid>
+
             <!-- 录入数据表格 -->
             <div ref="recordTabulatorRef" class="tabulator-table" style="height: 300px;"></div>
-            
-            <div class="d-grid mt-3">
+
+            <div style="margin-top: 16px;">
                 <n-button type="primary" block @click="saveExperimentRecord" :loading="isSubmitting" :render-icon="renderIcon(Save)">保存记录</n-button>
             </div>
         </div>
@@ -123,7 +123,7 @@ import regression from 'regression';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
-import { NIcon, useDialog, useMessage } from 'naive-ui'
+import { NIcon, NGrid, NGi, useDialog, useMessage } from 'naive-ui'
 import { People, BarChart, Create, Download, Refresh, Save, BarChartOutline, GridOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
@@ -1500,13 +1500,6 @@ font-weight: 500;
  width: 100%;
 }
 
-.mt-3 {
-margin-top: 1rem;
-}
-
-.d-grid {
-display: grid;
-}
 
 .experiment-tabs {
 margin-bottom: 20px;

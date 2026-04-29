@@ -12,8 +12,21 @@
         </div>
       </div>
       
-      <!-- 筛选区 -->
-      <div class="filter-section">
+      <!-- 筛选区：桌面展开，移动端默认折叠 -->
+      <n-collapse
+        class="filter-collapse"
+        display-directive="show"
+        :expanded-names="filterExpanded"
+        @update:expanded-names="onFilterExpandChange"
+      >
+        <n-collapse-item name="filters">
+          <template #header>
+            <n-flex align="center" style="gap: 6px;">
+              <n-icon><FunnelOutline /></n-icon>
+              筛选条件
+            </n-flex>
+          </template>
+          <div class="filter-section">
         <!-- 第一行：核心搜索 -->
         <div class="filter-row filter-row-search">
           <n-button @click="openModal('add')" type="success" :render-icon="renderIcon(Add)">
@@ -148,43 +161,53 @@
             />
           </div>
           <div class="filter-item range-item" v-if="showColumns.weeks_old">
-            <n-input-number 
-              v-model:value="filters.weeks_old_min" 
-              @update:value="applyFilters" 
-              placeholder="最小周龄" 
-              :min="0" 
-              style="width: 100%;" 
+            <n-input-number
+              v-model:value="filters.weeks_old_min"
+              @update:value="applyFilters"
+              placeholder="最小周龄"
+              :min="0"
+              style="width: 100%;"
             />
             <span class="range-separator">-</span>
-            <n-input-number 
-              v-model:value="filters.weeks_old_max" 
-              @update:value="applyFilters" 
-              placeholder="最大周龄" 
-              :min="0" 
-              style="width: 100%;" 
+            <n-input-number
+              v-model:value="filters.weeks_old_max"
+              @update:value="applyFilters"
+              placeholder="最大周龄"
+              :min="0"
+              style="width: 100%;"
             />
           </div>
         </div>
-      </div>
+          </div>
+        </n-collapse-item>
+      </n-collapse>
 
       <!-- 小鼠列表表格 -->
-      <n-data-table
-        ref="dataTableRef"
-        :columns="miceColumns"
-        :data="filteredMice"
-        :loading="loading"
-        :pagination="pagination"
-        :bordered="false"
-        :single-line="false"
-        :row-key="(row) => row.tid"
-        :row-props="rowProps"
-        @update:sorter="handleSorterChange"
-        :sorter="sorterState"
-        @update:checked-row-keys="handleCheckedRowKeysChange"
-        :checked-row-keys="checkedRowKeys"
-        :flex-height="true"
-        class="mouse-table"
-      />
+      <div class="table-scroll-wrapper" ref="tableScrollRef" @scroll="handleTableScroll">
+        <n-data-table
+          ref="dataTableRef"
+          :columns="miceColumns"
+          :data="filteredMice"
+          :loading="loading"
+          :pagination="pagination"
+          :bordered="false"
+          :single-line="false"
+          :row-key="(row) => row.tid"
+          :row-props="rowProps"
+          @update:sorter="handleSorterChange"
+          :sorter="sorterState"
+          @update:checked-row-keys="handleCheckedRowKeysChange"
+          :checked-row-keys="checkedRowKeys"
+          :flex-height="true"
+          class="mouse-table"
+        />
+        <div class="scroll-hint scroll-hint-left" v-show="showLeftScrollHint">
+          <n-icon><ChevronBackOutline /></n-icon>
+        </div>
+        <div class="scroll-hint scroll-hint-right" v-show="showRightScrollHint">
+          <n-icon><ChevronForwardOutline /></n-icon>
+        </div>
+      </div>
       
       <!-- 批量操作栏 -->
       <div class="batch-actions" v-if="checkedRowKeys.length > 0">
@@ -342,59 +365,10 @@
 
           <!-- 基因型分组 -->
           <n-divider title-placement="left" class="form-divider">基因型</n-divider>
-          <div class="genotype-section">
-            <div class="genotype-head">
-              <div class="genotype-preview">
-                当前: <GenotypeLabel class="selected-gene" :symbol="geneStore.selectedGeneName" />
-              </div>
-              <n-space :size="8">
-                <n-button size="small" type="primary" :render-icon="renderIcon(Add)" @click="addGene" :disabled="!geneStore.addable">
-                  添加位点
-                </n-button>
-                <n-button v-if="selectedGenes.length>0" size="small" type="error" secondary :render-icon="renderIcon(TrashBin)" @click="deleteGenes">
-                  全部删除
-                </n-button>
-              </n-space>
-            </div>
-            <div v-if="selectedGenes.length === 0" class="genotype-empty">暂未选择基因位点</div>
-            <n-grid v-else :cols="4" x-gap="12" y-gap="8" responsive="screen" item-responsive>
-              <template v-for="(gene, index) in selectedGenes" :key="index">
-                <n-gi :span="2">
-                  <n-form-item label="基因位点" :show-feedback="false">
-                    <n-input-group>
-                      <n-select
-                        v-model:value="gene.locus"
-                        :options="geneStore.locusSuggestions[index].map(locus => ({ label: locus.symbol, value: locus.symbol }))"
-                        @update:value="onFormLocusChange(index, gene.locus)"
-                      />
-                      <n-button type="error" ghost :render-icon="renderIcon(Trash)" @click="deleteGene(index)" />
-                    </n-input-group>
-                  </n-form-item>
-                </n-gi>
-                <n-gi v-if="gene.locus && gene.locus !== 'WT'">
-                  <n-form-item label="等位基因 1" :show-feedback="false">
-                    <n-select
-                      v-model:value="gene.allele1"
-                      :disabled="!gene.locus"
-                      :options="alleleSuggestions[index][0].map(allele => ({ label: allele.symbol, value: allele.id }))"
-                      @update:value="onFormAlleleChange(true, index, gene.allele1)"
-                    />
-                  </n-form-item>
-                </n-gi>
-                <n-gi v-if="gene.locus && gene.locus !== 'WT'">
-                  <n-form-item label="等位基因 2" :show-feedback="false">
-                    <n-select
-                      v-model:value="gene.allele2"
-                      :disabled="!gene.locus"
-                      :options="alleleSuggestions[index][1].map(allele => ({ label: allele.symbol, value: allele.id }))"
-                      @update:value="onFormAlleleChange(false, index, gene.allele2)"
-                    />
-                  </n-form-item>
-                </n-gi>
-                <n-gi v-else :span="2"><div /></n-gi>
-              </template>
-            </n-grid>
-          </div>
+          <GenotypeComboBuilder
+            v-model="selectedGenes"
+            :genotypes="genotypes"
+          />
 
           <!-- 血统分组 -->
           <n-divider title-placement="left" class="form-divider">血统</n-divider>
@@ -568,14 +542,38 @@ import { formatDate, renderEmpty, normalizeDateValue } from '@/utils/format'
 import { fuzzySearch } from '@/utils/search'
 import MouseDetailModal from './MouseDetailView.vue'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
+import GenotypeComboBuilder from '@/components/GenotypeComboBuilder.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import { useDialog, useMessage, NTag, NIcon, NDropdown } from 'naive-ui'
 import {
-  Add, Search, Refresh, CloseCircle, Save, Trash, TrashBin, BanSharp, PawOutline
+  Add, Search, Refresh, CloseCircle, Save, Trash, TrashBin, BanSharp, PawOutline, FunnelOutline, ChevronBackOutline, ChevronForwardOutline
 } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
+
+const isMobile = ref(window.innerWidth < 640)
+const filterExpandedMobile = ref([]) // collapsed by default on mobile
+const filterExpanded = computed(() =>
+  isMobile.value ? filterExpandedMobile.value : ['filters']
+)
+const onFilterExpandChange = (val) => {
+  if (isMobile.value) filterExpandedMobile.value = val
+}
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 640
+}
+
+const tableScrollRef = ref(null)
+const showLeftScrollHint = ref(false)
+const showRightScrollHint = ref(false)
+
+const handleTableScroll = () => {
+  if (!tableScrollRef.value) return
+  const { scrollLeft, scrollWidth, clientWidth } = tableScrollRef.value
+  showLeftScrollHint.value = scrollLeft > 5
+  showRightScrollHint.value = scrollLeft < scrollWidth - clientWidth - 5
+}
 
 const geneStore = useGeneStore()
 const { mice, loading, genotypes, selectedGenes, alleleSuggestions } = storeToRefs(geneStore)
@@ -1730,11 +1728,16 @@ onMounted(async () => {
   applyFilters()
   document.addEventListener('click', closeContextMenu)
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', handleResize)
+  nextTick(() => {
+    handleTableScroll()
+  })
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', closeContextMenu)
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -1795,12 +1798,46 @@ onUnmounted(() => {
 }
 
 /* 筛选区样式 */
+/* 桌面端：隐藏 collapse 头部，内容始终展开，视觉与原先一致 */
+@media (min-width: 640px) {
+  .filter-collapse :deep(.n-collapse-item__header) {
+    display: none;
+  }
+  .filter-collapse :deep(.n-collapse-item-body__content) {
+    padding: 0;
+  }
+  .filter-collapse :deep(.n-collapse-item) {
+    border-bottom: none;
+  }
+}
+
 .filter-section {
   margin-bottom: 20px;
   padding: 16px;
   background: var(--n-color-embedded);
   border-radius: 10px;
   border: 1px solid var(--n-border-color);
+}
+
+/* 移动端：collapse 本身作为筛选容器的外壳，filter-section 去掉自身 box 样式 */
+@media (max-width: 639px) {
+  .filter-collapse {
+    margin-bottom: 8px;
+    background: var(--n-color-embedded);
+    border-radius: 10px;
+    border: 1px solid var(--n-border-color);
+    overflow: hidden;
+  }
+  .filter-collapse :deep(.n-collapse-item-body__content) {
+    padding: 0 16px 16px;
+  }
+  .filter-section {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    margin-bottom: 0;
+    padding: 0;
+  }
 }
 
 .filter-row {
@@ -1860,11 +1897,23 @@ onUnmounted(() => {
 }
 
 /* 表格样式 */
+.table-scroll-wrapper {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 .mouse-table {
   border: 1px solid var(--n-border-color);
   border-radius: 10px;
-  flex: 1 1 auto;
-  min-height: 0;
+  height: 100%;
+}
+
+.mouse-table :deep(.n-data-table-wrapper) {
+  height: 100%;
 }
 
 .mouse-table :deep(.n-data-table) {
@@ -1872,49 +1921,107 @@ onUnmounted(() => {
   font-size: 0.9rem;
 }
 
-.table-scroll :deep(.n-data-table-th) {
+/* 移动端：减小表格最小宽度以适应小屏幕，启用横向滚动 */
+@media (max-width: 768px) {
+  .mouse-table :deep(.n-data-table) {
+    min-width: 1040px;
+    font-size: 0.85rem;
+  }
+  
+  .table-scroll-wrapper {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mouse-table :deep(.n-data-table) {
+    min-width: 1040px;
+    font-size: 0.8rem;
+  }
+}
+
+/* 滚动提示箭头 */
+.scroll-hint {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  background: var(--n-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 15%, transparent);
+  pointer-events: none;
+  z-index: 10;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.scroll-hint-left {
+  left: 8px;
+}
+
+.scroll-hint-right {
+  right: 8px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; transform: translateY(-50%) scale(1); }
+  50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
+}
+
+.mouse-table :deep(.n-data-table-th) {
   user-select: none;
   font-weight: 600;
 }
 
 /* 表格列对齐 */
-.table-scroll :deep(.col-align-right) {
+.col-align-right {
   text-align: right;
 }
 
-.table-scroll :deep(.col-align-center) {
+.col-align-center {
   text-align: center;
 }
 
-.table-scroll :deep(.col-align-right .n-data-table-td-text),
-.table-scroll :deep(.col-align-center .n-data-table-td-text) {
+.col-align-right .n-data-table-td-text,
+.col-align-center .n-data-table-td-text {
   display: block;
   text-align: inherit;
 }
 
+/* 单元格内容截断，防止换行过多 */
+.mouse-table :deep(.n-data-table-td) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 空数据占位符样式 */
-.table-scroll :deep(td) {
+.mouse-table :deep(td) {
   color: var(--n-text-color-1);
 }
 
-.table-scroll :deep(td:has(span:only-child:not(.mouse-sex))) {
+.mouse-table :deep(td:has(span:only-child:not(.mouse-sex))) {
   white-space: nowrap;
 }
 
 /* 选中行样式 */
-:deep(.n-data-table-tr.selected > td) {
+.mouse-table :deep(.n-data-table-tr.selected > td) {
   background-color: var(--n-info-color-suppl);
 }
 
-:deep(.n-data-table-tr.selected-multiple > td) {
+.mouse-table :deep(.n-data-table-tr.selected-multiple > td) {
   background-color: var(--n-info-color-suppl);
 }
 
-:deep(.n-data-table-tr.selected:hover > td) {
+.mouse-table :deep(.n-data-table-tr.selected:hover > td) {
   background-color: color-mix(in srgb, var(--n-info-color) 35%, var(--n-color));
 }
 
-:deep(.n-data-table-tr.selected-multiple:hover > td) {
+.mouse-table :deep(.n-data-table-tr.selected-multiple:hover > td) {
   background-color: color-mix(in srgb, var(--n-info-color) 30%, var(--n-color));
 }
 
@@ -2347,10 +2454,6 @@ onUnmounted(() => {
 
   .range-item {
     flex-wrap: wrap;
-  }
-
-  .table-scroll :deep(.n-data-table) {
-    min-width: 1040px;
   }
 }
 

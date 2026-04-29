@@ -20,7 +20,7 @@
   <div class="detail-grid">
     <div class="grid-item basic-info">
       <n-card title="小鼠基本信息" size="small">
-        <n-descriptions :column="1" label-placement="left" :label-style="{ width: '80px' }">
+        <n-descriptions :column="1" :label-placement="isMobile ? 'top' : 'left'" :label-style="isMobile ? {} : { width: '80px' }">
           <n-descriptions-item label="ID">{{ mouseData.id }}</n-descriptions-item>
           <n-descriptions-item label="性别">{{ mouseData.sex === 'M' ? '雄性' : '雌性' }}</n-descriptions-item>
           <n-descriptions-item label="基因型"><GenotypeLabel :symbol="mouseData.genotype?.symbol" /></n-descriptions-item>
@@ -141,6 +141,7 @@ const mouseData = ref({})
 const weightChart = ref(null)
 const pedigreeChart = ref(null)
 const liveOnly = ref(false)
+const isMobile = ref(window.innerWidth < 768)
 
 // chart / d3 refs
 let chartInstance = null
@@ -755,10 +756,15 @@ const onThemeChange = () => {
   nextTick(() => renderPedigreeChart())
 }
 
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
 onMounted(() => {
   fetchMouseData()
   setupResizeObserver()
   window.addEventListener('app-theme-change', onThemeChange)
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
@@ -769,6 +775,7 @@ onUnmounted(() => {
     simulationRef.value = null
   }
   window.removeEventListener('app-theme-change', onThemeChange)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 

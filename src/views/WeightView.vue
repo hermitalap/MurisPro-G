@@ -4,29 +4,36 @@
     <div class="section">
   <n-space justify="space-between" align="center" class="header-with-button">
         <h2>体重数据管理</h2>
+        <n-button type="primary" @click="openStandaloneAdd" :render-icon="renderIcon(Add)">新增记录</n-button>
   </n-space>
     
     <!-- 搜索和筛选控件 -->
-    <div class="search-controls">
-        <div class="filter-group">
+    <n-grid :cols="'1 s:2 m:4'" :x-gap="12" :y-gap="0" responsive="screen">
+      <n-gi>
         <n-form-item label="小鼠ID" label-placement="top">
-          <n-input v-model:value="filters.mouse_id" placeholder="小鼠ID" @update:value="loadWeightRecords" clearable />
+          <n-input v-model:value="filters.mouse_id" placeholder="请输入小鼠ID" clearable style="width:100%" />
         </n-form-item>
-        
-        <n-button quaternary @click="resetFilters" :render-icon="renderIcon(Refresh)">重置</n-button>
-        </div>
-
-        <div class="filter-group">
-        <n-form-item label="日期范围" label-placement="top">
-          <div class="date-range">
-            <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.start_date" /> 至
-            <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.end_date" />
-          </div>
+      </n-gi>
+      <n-gi>
+        <n-form-item label="开始日期" label-placement="top">
+          <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.start_date" style="width:100%" />
         </n-form-item>
-        
-        <n-button type="primary" secondary @click="loadWeightRecords" :render-icon="renderIcon(Search)">搜索</n-button>
-        </div>
-    </div>
+      </n-gi>
+      <n-gi>
+        <n-form-item label="结束日期" label-placement="top">
+          <n-date-picker type="date" value-format="yyyy-MM-dd" v-model:formatted-value="filters.end_date" style="width:100%" />
+        </n-form-item>
+      </n-gi>
+      <n-gi>
+        <n-form-item label-placement="top">
+          <template #label><span style="visibility:hidden">占位</span></template>
+          <n-flex :gap="8" style="width:100%">
+            <n-button type="primary" secondary @click="loadWeightRecords" :render-icon="renderIcon(Search)" style="flex:1">搜索</n-button>
+            <n-button quaternary @click="resetFilters" :render-icon="renderIcon(Refresh)">重置</n-button>
+          </n-flex>
+        </n-form-item>
+      </n-gi>
+    </n-grid>
     
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-overlay">
@@ -43,12 +50,6 @@
         :single-line="false"
         :row-key="(row) => row.id"
       />
-    </div>
-    
-    <!-- 空状态 -->
-    <div v-if="filteredRecords.length === 0 && !loading" class="empty-state">
-        <n-icon><ScaleOutline /></n-icon>
-        <p>没有找到体重记录</p>
     </div>
     
     <!-- 分页控件 -->
@@ -71,7 +72,7 @@
           label-placement="top"
           class="form-body"
         >
-        <div class="form-group">
+        <div v-if="selectedMouse" class="form-group">
             <n-form-item label="选中小鼠信息">
               <div class="mouse-info">
               <p>ID: {{ selectedMouse.id }}</p>
@@ -79,6 +80,11 @@
               <p>性别: {{ selectedMouse.sex === 'M' ? '雄性' : '雌性' }}</p>
               <p>生日: {{ formatDate(selectedMouse.birth_date) }}</p>
               </div>
+            </n-form-item>
+        </div>
+        <div v-else class="form-group">
+            <n-form-item label="小鼠ID" path="mouse_id" required>
+              <n-input v-model:value="newRecord.mouse_id" placeholder="请输入小鼠ID" clearable />
             </n-form-item>
         </div>
 
@@ -111,7 +117,7 @@
 <script setup>
 import { h, ref, computed, onMounted } from 'vue'
 import { NButton, NSpace, NIcon, useDialog, useMessage } from 'naive-ui'
-import { Refresh, Search, Save, Add, CloseCircle, ScaleOutline } from '@vicons/ionicons5'
+import { Refresh, Search, Save, Add, CloseCircle, ScaleOutline, CreateOutline, TrashOutline, AddCircleOutline } from '@vicons/ionicons5'
 import api from '@/utils/api'
 import { formatDate } from '@/utils/format'
 
@@ -166,6 +172,17 @@ const weightColumns = computed(() => [
   render: (row) => row.mouse_info?.id || ''
 },
 {
+  title: '性别',
+  key: 'sex',
+  width: 70,
+  render: (row) => row.mouse_info?.sex === 'M' ? '♂ 雄' : row.mouse_info?.sex === 'F' ? '♀ 雌' : '-'
+},
+{
+  title: '基因型',
+  key: 'genotype',
+  render: (row) => row.mouse_info?.genotype || '-'
+},
+{
   title: '生日',
   key: 'birth_date',
   sorter: (a, b) => String(getSortValue(a, 'birth_date')).localeCompare(String(getSortValue(b, 'birth_date'))),
@@ -190,26 +207,30 @@ const weightColumns = computed(() => [
 {
   title: '操作',
   key: 'actions',
-  render: (row) => h(NSpace, { size: 6 }, {
+  width: 120,
+  render: (row) => h(NSpace, { size: 4 }, {
   default: () => [
     h(NButton, {
     circle: true,
     quaternary: true,
     type: 'primary',
+    title: '添加记录',
     onClick: () => addRecord(row)
-    }, { default: () => '+' }),
+    }, { default: () => h(NIcon, null, { default: () => h(AddCircleOutline) }) }),
     h(NButton, {
     circle: true,
     quaternary: true,
     type: 'warning',
+    title: '编辑',
     onClick: () => editRecord(row)
-    }, { default: () => 'E' }),
+    }, { default: () => h(NIcon, null, { default: () => h(CreateOutline) }) }),
     h(NButton, {
     circle: true,
     quaternary: true,
     type: 'error',
+    title: '删除',
     onClick: () => deleteRecord(row.id)
-    }, { default: () => 'D' })
+    }, { default: () => h(NIcon, null, { default: () => h(TrashOutline) }) })
   ]
   })
 }
@@ -251,6 +272,16 @@ try {
 
 const weightFormRef = ref(null)
 const weightRules = {
+  mouse_id: {
+    required: true,
+    trigger: ['blur', 'change'],
+    validator(rule, value) {
+      if (!selectedMouse.value && (!value || !value.trim())) {
+        return new Error('请输入小鼠ID')
+      }
+      return true
+    }
+  },
   weight: {
     required: true,
     trigger: ['blur', 'change'],
@@ -296,6 +327,17 @@ try {
     }
     closeModal()
     loadWeightRecords()
+}
+
+const openStandaloneAdd = () => {
+  newRecord.value = {
+    mouse_id: '',
+    record_date: new Date().toISOString().split('T')[0],
+    weight: ''
+  }
+  selectedMouse.value = null
+  editingRecord.value = null
+  showAddModal.value = true
 }
 
 const addRecord = (record) => {
@@ -422,18 +464,6 @@ margin-top: 20px;
 gap: 15px;
 }
 
-/* 响应式设计 */
-@media (max-width: 1200px) {
-.search-controls {
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.filter-group {
-    margin-bottom: 10px;
-    width: 100%;
-}
-}
 
 @media (max-width: 768px) {
 .header-with-button {
@@ -569,27 +599,6 @@ gap: 15px;
   margin-bottom: 20px;
 }
 
-/* 搜索控件 */
-.search-controls {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 25px;
-  flex-wrap: wrap;
-  align-items: stretch;
-}
-
-.filter-group {
-display: flex;
-align-items: center;
-flex: 1 1 320px;
-flex-wrap: wrap;
-gap: 12px;
-margin-right: 0;
-padding: 14px 16px;
-background: var(--n-color-embedded);
-border: 1px solid var(--n-border-color);
-border-radius: 12px;
-}
 
 @media (max-width: 768px) {
 .section {

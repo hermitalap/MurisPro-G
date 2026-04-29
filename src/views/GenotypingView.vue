@@ -56,9 +56,6 @@
           <n-card size="small" :bordered="true">
             <div class="card-header">
               <div class="cage-ident">
-                <div class="sex-mark sex-mark-mixed">
-                  <n-icon><MaleFemaleOutline /></n-icon>
-                </div>
                 <span class="cage-id">{{ cage.section }}-{{ cage.cage_id }}</span>
               </div>
               <div class="header-tags">
@@ -81,8 +78,8 @@
               <n-popover trigger="hover" placement="top">
                 <template #trigger>
                     <div class="status-badge" :class="cage.breeding_status">
-                    <n-icon v-if="cage.breeding_status === 'pregnant'" :size="16"><HeartOutline /></n-icon>
-                    <n-icon v-else :size="16"><HappyOutline /></n-icon>
+                    <n-icon v-if="cage.breeding_status === 'pregnant'" :size="16"><Heart /></n-icon>
+                    <n-icon v-else :size="16"><HappySharp /></n-icon>
                   </div>
                 </template>
                 <div class="status-popover">
@@ -108,13 +105,6 @@
                 <span class="pair-label">母: </span>
                 <span class="pair-value">{{ summarizeMice(getCageMiceBySex(cage, 'F')) || '—' }}</span>
               </div>
-            </div>
-
-            <div class="pending-section" v-if="breedingStore.pendingPupsCount(cage.id) > 0">
-              <n-tag type="warning" size="small" :bordered="false">
-                <n-icon :size="14"><FlaskOutline /></n-icon>
-                待鉴定仔鼠 {{ breedingStore.pendingPupsCount(cage.id) }} 只
-              </n-tag>
             </div>
 
             <!-- 快捷操作 -->
@@ -143,16 +133,25 @@
                   <n-button strong secondary size="small" type="error" :render-icon="renderIcon(Close)" @click="onRevertToPregnant(cage)">
                     取消标记
                   </n-button>
-                  <n-button
-                    strong secondary
+                  <n-tooltip
                     v-if="breedingStore.pendingPupsCount(cage.id) > 0"
-                    size="small"
-                    type="warning"
-                    :render-icon="renderIcon(Flask)"
-                    @click="onOpenBatchGenotype(cage)"
+                    placement="top"
                   >
-                    批量鉴定
-                  </n-button>
+                    <template #trigger>
+                      <n-badge :value="breedingStore.pendingPupsCount(cage.id)" type="warning">
+                        <n-button
+                          strong secondary
+                          size="small"
+                          type="warning"
+                          :render-icon="renderIcon(Flask)"
+                          @click="onOpenBatchGenotype(cage)"
+                        >
+                          批量鉴定
+                        </n-button>
+                      </n-badge>
+                    </template>
+                    共 {{ breedingStore.pendingPupsCount(cage.id) }} 只待鉴定仔鼠
+                  </n-tooltip>
                 </template>
               </n-space>
             </div>
@@ -255,7 +254,7 @@ import { ref, computed, onMounted, nextTick, h } from 'vue'
 import {
   NSpace, NSelect, NInput, NButton, NCard, NTag, NPopover, NFlex, NEmpty,
   NDrawer, NDrawerContent, NTabs, NTabPane, NDescriptions, NDescriptionsItem,
-  NIcon, useDialog, useMessage
+  NIcon, NBadge, NTooltip, useDialog, useMessage
 } from 'naive-ui'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import {
@@ -564,16 +563,6 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
 }
-.sex-mark {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-}
-.sex-mark-mixed { background: linear-gradient(135deg, #1890ff 50%, #eb2f96 50%); }
 .cage-id { font-weight: 600; }
 
 .header-tags {
@@ -622,9 +611,6 @@ onMounted(async () => {
   flex: 1;
 }
 
-.pending-section {
-  margin-top: 8px;
-}
 .quick-actions {
   margin-top: 10px;
   padding-top: 8px;

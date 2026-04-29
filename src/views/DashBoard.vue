@@ -296,7 +296,12 @@
         </n-gi>
         <n-gi :span="2">
           <n-form-item label="小鼠基因型" :show-feedback="false">
-            <n-input v-model:value="currentCage.mice_genotype" placeholder="如: WT/KO/其他" />
+            <n-auto-complete
+              v-model:value="currentCage.mice_genotype"
+              :options="cageGenotypeOptions"
+              placeholder="选择常用值或自由输入，如 +/-、f/f;Cre/+"
+              clearable
+            />
           </n-form-item>
         </n-gi>
       </n-grid>
@@ -398,7 +403,7 @@ import { normalizeDateValue } from '@/utils/format'
 import MouseDetailModal from './MouseDetailView.vue'
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { NIcon, NDropdown, useDialog, useMessage } from 'naive-ui'
+import { NIcon, NDropdown, NAutoComplete, useDialog, useMessage } from 'naive-ui'
 import {
   AddOutline,
   ArrowDownOutline,
@@ -448,6 +453,18 @@ const cageTypeOptions = [
   { label: '普通笼', value: 'normal' },
   { label: '繁殖笼', value: 'breeding' }
 ]
+// 笼位基因型自动补全：取已有笼位中已使用的非空值，去重
+const cageGenotypeOptions = computed(() => {
+  const seen = new Set()
+  for (const c of cages.value || []) {
+    const v = (c.mice_genotype || '').trim()
+    if (v) seen.add(v)
+  }
+  // 常用模板补充
+  const presets = ['WT', '+/+', '+/-', '-/-', 'f/f', 'f/+', 'f/-', 'Cre/+', 'f/f;Cre/+', 'f/-;Cre/+']
+  for (const p of presets) seen.add(p)
+  return Array.from(seen).map(v => ({ label: v, value: v }))
+})
 const miceSexOptions = [
   { label: '雄性', value: 'M' },
   { label: '雌性', value: 'F' },

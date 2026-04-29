@@ -6,27 +6,27 @@
 
     <n-card title="体重趋势分析">
         <!-- 控制按钮区域 -->
-        <n-flex align="center" style="margin-bottom: 16px; gap: 8px;">
+        <n-flex align="center" wrap :size="[8, 8]" style="margin-bottom: 16px;">
           <n-select
             v-model:value="showChartType"
             :options="chartTypeOptions"
-            style="min-width: 200px;"
+            style="width: 200px;"
           />
           <n-button type="primary" @click="openRecordModal" :render-icon="renderIcon(Add)">录入体重</n-button>
         </n-flex>
 
-        <n-flex v-if="showChartType === 'pred'" justify="space-between" align="center" style="margin-bottom: 16px;">
+        <n-flex v-if="showChartType === 'pred'" wrap align="center" :size="[12, 8]" style="margin-bottom: 16px;">
             <n-select
               v-model:value="selectedPredefinedGroupId"
               :options="predefinedGroupOptions"
               placeholder="请在设置中确定预设分组"
               :disabled="predefinedGroups.length === 0"
-              style="min-width: 180px;"
+              style="flex: 1; min-width: 180px;"
             />
             <n-button type="primary" @click="showChart('pred')" :render-icon="renderIcon(TrendingUp)">以预设分组生成图表</n-button>
         </n-flex>
 
-        <n-flex v-if="showChartType === 'temp'" align="center" style="margin-bottom: 16px; gap: 8px;">
+        <n-flex v-if="showChartType === 'temp'" wrap align="center" :size="[8, 8]" style="margin-bottom: 16px;">
             <n-button type="primary" @click="showChart('temp')" :render-icon="renderIcon(TrendingUp)">以临时分组生成图表</n-button>
             <n-button secondary @click="addGroup" :render-icon="renderIcon(Add)">添加分组</n-button>
             <n-button type="error" @click="clearGroups" :render-icon="renderIcon(Close)">清空分组</n-button>
@@ -879,14 +879,15 @@ onUnmounted(() => {
 /* 分组容器 */
 .groups-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 15px;
   margin-bottom: 20px;
 }
 
 .group-card {
-  width: 200px;
-  height: 210px;
+  width: 100%;
+  min-height: 210px;
+  height: auto;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 4px color-mix(in srgb, var(--n-text-color) 5%, transparent);
@@ -939,12 +940,11 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .groups-container {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
-  .group-card { width: 130px; height: 130px; }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 480px) {
   .groups-container { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

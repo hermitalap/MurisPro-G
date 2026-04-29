@@ -1,182 +1,169 @@
 <template>
   <div class="main-content">
-    <n-space justify="space-between" align="center" class="content-header">
+    <n-flex justify="space-between" align="center" class="content-header">
       <h1 class="page-title">小鼠生存分析</h1>
-    </n-space>
-    
+    </n-flex>
+
     <n-card title="生存曲线分析">
-        <!-- 控制按钮区域 -->
-        <div class="d-flex mb-4">
-          <n-select
-            v-model:value="showChartType"
-            :options="chartTypeOptions"
-            style="min-width: 200px;"
-          />
-        </div>
-        <div v-if="showChartType === 'pred'" class="d-flex justify-content-between mb-4">
-          <n-select
-            v-model:value="selectedPredefinedGroupId"
-            :options="predefinedGroupOptions"
-            placeholder="请在设置中确定预设分组"
-            :disabled="predefinedGroups.length === 0"
-            style="min-width: 180px;"
-          />
-          <n-button type="primary" @click="fetchData('pred')" :render-icon="renderIcon(TrendingUp)">以预设分组生成生存曲线</n-button>
-        </div>
-        <div v-if="showChartType === 'temp'" class="d-flex justify-content-between mb-4">
-            <n-button type="primary" @click="fetchData('temp')" :render-icon="renderIcon(TrendingUp)">以临时分组生成生存曲线</n-button>
-            <n-button secondary @click="addGroup" :render-icon="renderIcon(Add)">添加分组</n-button>
-            <n-button id="addGroupBtn" type="error" @click="clearGroups" :render-icon="renderIcon(Close)">清空分组</n-button>
-        </div>
-        
-        <!-- 分组设置 -->
-        <div v-if="showChartType === 'temp'" class="mb-4">
-          <h5>分组设置</h5>
-          <div class="groups-container">
-            <div 
-              v-for="(group, index) in tempGroups" 
-              :key="index" 
-              class="group-card"
-            >
-              <div class="card">
-                <div class="card-header compact-header d-flex justify-content-between align-items-center">
+      <!-- 图表类型选择 -->
+      <n-flex align="center" :size="[8, 8]" style="margin-bottom: 16px;">
+        <n-select
+          v-model:value="showChartType"
+          :options="chartTypeOptions"
+          style="width: 200px;"
+        />
+      </n-flex>
+
+      <!-- 预设分组操作行 -->
+      <n-flex v-if="showChartType === 'pred'" wrap align="center" :size="[12, 8]" style="margin-bottom: 16px;">
+        <n-select
+          v-model:value="selectedPredefinedGroupId"
+          :options="predefinedGroupOptions"
+          placeholder="请在设置中确定预设分组"
+          :disabled="predefinedGroups.length === 0"
+          style="flex: 1; min-width: 180px;"
+        />
+        <n-button type="primary" @click="fetchData('pred')" :render-icon="renderIcon(TrendingUp)">以预设分组生成生存曲线</n-button>
+      </n-flex>
+
+      <!-- 临时分组操作行 -->
+      <n-flex v-if="showChartType === 'temp'" wrap align="center" :size="[8, 8]" style="margin-bottom: 16px;">
+        <n-button type="primary" @click="fetchData('temp')" :render-icon="renderIcon(TrendingUp)">以临时分组生成生存曲线</n-button>
+        <n-button secondary @click="addGroup" :render-icon="renderIcon(Add)">添加分组</n-button>
+        <n-button type="error" @click="clearGroups" :render-icon="renderIcon(Close)">清空分组</n-button>
+      </n-flex>
+
+      <!-- 分组设置 -->
+      <div v-if="showChartType === 'temp'" style="margin-bottom: 16px;">
+        <h5 style="margin: 0 0 12px;">分组设置</h5>
+        <div class="groups-container">
+          <div
+            v-for="(group, index) in tempGroups"
+            :key="index"
+            class="group-card"
+          >
+            <n-card size="small" class="group-inner-card">
+              <template #header>
+                <n-flex justify="space-between" align="center">
                   <span>分组 {{ index }}</span>
-                  <n-button quaternary circle @click="removeGroup(index)" v-if="tempGroups.length > 1" :render-icon="renderIcon(Close)" />
+                  <n-button v-if="tempGroups.length > 1" quaternary circle size="tiny" @click="removeGroup(index)" :render-icon="renderIcon(Close)" />
+                </n-flex>
+              </template>
+              <n-flex vertical size="small">
+                <div>
+                  <div class="group-label">性别</div>
+                  <n-flex wrap :size="[12, 4]">
+                    <n-checkbox v-model:checked="group.sex.M">雄性</n-checkbox>
+                    <n-checkbox v-model:checked="group.sex.F">雌性</n-checkbox>
+                  </n-flex>
                 </div>
-                  <div class="card-body">
-                    <div class="mb-2">
-                    <label class="form-label">性别</label>
-                    <div class="d-flex flex-wrap">
-                        <div class="form-check me-3">
-                        <n-checkbox v-model:checked="group.sex.M">雄性</n-checkbox>
+                <div>
+                  <div class="group-label">基因型包含：</div>
+                  <div class="genotype-tree">
+                    <div v-for="(combinations, locus) in geneStore.allGenotypes" :key="locus" class="locus-item">
+                      <div class="locus-header">
+                        <label class="locus-label">
+                          <n-checkbox
+                            :checked="group.genotype.includes(locus)"
+                            @update:checked="onLocusSelect(index, locus)"
+                            class="locus-checkbox"
+                          />
+                          <span class="locus-name">{{ locus }}</span>
+                        </label>
+                      </div>
+                      <div v-if="combinations && combinations.length" class="combinations-list">
+                        <div v-for="combination in combinations" :key="combination" class="combination-item">
+                          <label class="combination-label">
+                            <n-checkbox
+                              :checked="group.genotype.includes(`${locus}<sup>${combination}</sup>`)"
+                              @update:checked="onCombinationSelect(index, locus, combination)"
+                              class="combination-checkbox"
+                            />
+                            <span class="combination-name">{{ locus }}<sup>{{ combination }}</sup></span>
+                          </label>
                         </div>
-                        <div class="form-check">
-                        <n-checkbox v-model:checked="group.sex.F">雌性</n-checkbox>
-                        </div>
+                      </div>
                     </div>
-                    </div>
-                    <div class="mb-2">
-                        <div class="form-group">
-                        <label class="form-label">基因型包含：（需要更加复杂的逻辑请使用预设分组）</label>
-                        <div class="genotype-tree">
-                            <div v-for="(combinations, locus) in geneStore.allGenotypes" :key="locus" class="locus-item">
-                            <div class="locus-header">
-                                <label class="locus-label">
-                              <n-checkbox
-                                :checked="group.genotype.includes(locus)"
-                                @update:checked="onLocusSelect(index, locus)"
-                                class="locus-checkbox"
-                              />
-                                <span class="locus-name">{{ locus }}</span>
-                                </label>
-                            </div>
-                            <div v-if="combinations && combinations.length" class="combinations-list">
-                                <div v-for="combination in combinations" :key="combination" class="combination-item">
-                                <label class="combination-label">
-                                  <n-checkbox
-                                  :checked="group.genotype.includes(`${locus}<sup>${combination}</sup>`)"
-                                  @update:checked="onCombinationSelect(index, locus, combination)"
-                                  class="combination-checkbox"
-                                  />
-                                    <span class="combination-name">{{ locus }}<sup>{{ combination }}</sup></span>
-                                </label>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                </div>
-              </div>
-            </div>
-            
-            <div 
-              v-if="tempGroups.length < 8" 
-              class="group-card add-card"
-              @click="addGroup"
-            >
-              <n-icon><AddOutline /></n-icon>
-              <span>添加分组</span>
-            </div>
-          </div>
-        </div>
-        
-        <div v-if="hasData">
-          <!-- 统计信息卡片 -->
-          <div class="card mb-4">
-            <div class="card-header">
-              统计摘要
-            </div>
-              <div 
-                v-for="(group, index) in groups" 
-                :key="index"
-              >
-              <div class="card-body">
-                <n-space wrap justify="space-around" align="center">
-                  <!-- 图例 -->
-                  <div class="d-flex flex-wrap mt-4">
-                    <span class="legend-color" :style="{backgroundColor: group.color}"></span>
-                    {{ group.name || `分组 ${index}` }}
                   </div>
-                  <n-statistic label="总小鼠数" :value="group.allMice" tabular-nums />
-                  <n-statistic label="死亡小鼠数" :value="group.deadMice" tabular-nums />
-                  <n-statistic label="存活小鼠数" :value="group.censoredMice" tabular-nums />
-                  <n-statistic label="最长生存时间" :value="group.maxDays" tabular-nums>
-                    <template #suffix>天</template>
-                  </n-statistic>
-                  <n-statistic label="中位生存时间" :value="group.ls50" tabular-nums>
-                    <template #suffix>天</template>
-                  </n-statistic>
-                </n-space>
-              </div>
-            </div>
+                </div>
+              </n-flex>
+            </n-card>
           </div>
 
-          <!-- 图表容器 -->
-          <div class="chart-container">
-            <canvas ref="survivalChartEl" height="400"></canvas>
-          </div>
-
-          <!-- 数据表格 -->
-          <div class="card mt-4">
-            <div class="card-header">
-              生存数据详情
-            </div>
-            <div class="card-body">
-              <n-data-table
-                :columns="survivalColumns"
-                :data="displayedMice"
-                :single-line="false"
-                :bordered="false"
-                :row-key="(row) => `${row.groupName}-${row.mouse_id}`"
-              />
-
-              <div v-if="filteredMice.length > pageSize" class="pagination-wrapper">
-                <n-pagination
-                  v-model:page="currentPage"
-                  :page-count="totalPages"
-                  :page-size="pageSize"
-                />
-              </div>
-            </div>
+          <div
+            v-if="tempGroups.length < 8"
+            class="group-card add-card"
+            @click="addGroup"
+          >
+            <n-icon><AddOutline /></n-icon>
+            <span>添加分组</span>
           </div>
         </div>
-        <!-- 无数据提示 -->
-        <div v-else class="text-center py-5">
-          <div class="mb-3">
-            <n-icon style="font-size: 3rem; color: var(--n-text-color-3);"><BarChartOutline /></n-icon>
-          </div>
-          <h5 class="text-muted">请设置分组条件并点击"生成生存曲线"按钮</h5>
+      </div>
+
+      <template v-if="hasData">
+        <!-- 统计摘要 -->
+        <n-card
+          v-for="(group, index) in groups"
+          :key="index"
+          size="small"
+          style="margin-bottom: 12px;"
+        >
+          <n-flex wrap align="center" justify="space-around" :size="[24, 12]">
+            <n-flex align="center" :size="8">
+              <span class="legend-color" :style="{ backgroundColor: group.color }"></span>
+              <span style="font-weight: 600;">{{ group.name || `分组 ${index}` }}</span>
+            </n-flex>
+            <n-statistic label="总小鼠数" :value="group.allMice" tabular-nums />
+            <n-statistic label="死亡小鼠数" :value="group.deadMice" tabular-nums />
+            <n-statistic label="存活小鼠数" :value="group.censoredMice" tabular-nums />
+            <n-statistic label="最长生存时间" :value="group.maxDays" tabular-nums>
+              <template #suffix>天</template>
+            </n-statistic>
+            <n-statistic label="中位生存时间" :value="group.ls50" tabular-nums>
+              <template #suffix>天</template>
+            </n-statistic>
+          </n-flex>
+        </n-card>
+
+        <!-- 图表容器 -->
+        <div class="chart-container">
+          <canvas ref="survivalChartEl" height="400"></canvas>
         </div>
 
+        <!-- 数据表格 -->
+        <n-card size="small" title="生存数据详情" style="margin-top: 16px;">
+          <n-data-table
+            :columns="survivalColumns"
+            :data="displayedMice"
+            :single-line="false"
+            :bordered="false"
+            :row-key="(row) => `${row.groupName}-${row.mouse_id}`"
+          />
+          <n-flex v-if="filteredMice.length > pageSize" justify="center" style="margin-top: 12px;">
+            <n-pagination
+              v-model:page="currentPage"
+              :page-count="totalPages"
+              :page-size="pageSize"
+            />
+          </n-flex>
+        </n-card>
+      </template>
+
+      <!-- 无数据提示 -->
+      <n-empty v-else description="请设置分组条件并点击「生成生存曲线」按钮" style="padding: 40px 0;" />
     </n-card>
   </div>
 </template>
 
 <script setup>
 import { h, ref, computed, nextTick, useTemplateRef } from 'vue';
-import { NTag, NIcon, useMessage } from 'naive-ui'
-import { TrendingUp, Add, Close, AddOutline, BarChartOutline } from '@vicons/ionicons5'
+import {
+  NTag, NIcon, NCard, NFlex, NSelect, NButton, NCheckbox,
+  NStatistic, NDataTable, NPagination, NEmpty,
+  useMessage
+} from 'naive-ui'
+import { TrendingUp, Add, Close, AddOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api';
@@ -498,30 +485,7 @@ const displayedMice = computed(() => {
 </script>
 
 <style scoped>
-/* 使用与bodyweight.vue一致的卡片样式 */
-.card {
-  margin-bottom: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--n-text-color) 10%, transparent);
-  background-color: var(--n-color);
-  overflow: hidden;
-}
-
-.card-header {
-  padding: 1rem;
-  background-color: var(--n-color-embedded);
-  border-bottom: 1px solid var(--n-border-color);
-  font-weight: 600;
-}
-
-.card-body {
-  padding: 1.5rem;
-}
-
 .content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -531,173 +495,68 @@ const displayedMice = computed(() => {
   margin: 0;
 }
 
-.btn-icon {
-  margin-right: 5px;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-control {
-  display: block;
-  width: 100%;
-  padding: 0.5rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: var(--n-text-color-2);
-  background-color: var(--n-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 4px;
-  transition: border-color 0.15s;
-}
-
-.form-select {
-  display: block;
-  width: 100%;
-  padding: 0.5rem;
-  font-size: 1rem;
-  background-color: var(--n-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 4px;
-  height: auto;
-}
-
-.mb-4 {
-  margin-bottom: 1.5rem;
-}
-
-.me-2 {
-  margin-right: 0.5rem;
-}
-
-/* 添加分组容器样式 */
+/* 分组容器 */
 .groups-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 每行最多四个 */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 15px;
   margin-bottom: 20px;
 }
 
-/* 分组卡片样式 */
 .group-card {
-  width: 200px;
-  height: 210px;
+  width: 100%;
+  min-height: 210px;
+  height: auto;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 4px color-mix(in srgb, var(--n-text-color) 5%, transparent);
   transition: all 0.3s ease;
 }
 
 .group-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 5px 10px color-mix(in srgb, var(--n-text-color) 10%, transparent);
 }
 
-/* 添加分组卡片样式 */
+.group-inner-card {
+  height: 100%;
+}
+
+.group-inner-card :deep(.n-card__content) {
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.group-inner-card :deep(.n-card-header) {
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}
+
+.group-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
 .add-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-height: 210px;
   background-color: var(--n-color-embedded);
   border: 1px dashed var(--n-border-color);
+  border-radius: 8px;
   cursor: pointer;
+  transition: border-color 0.2s;
 }
 
 .add-card:hover {
-  background-color: var(--n-color-embedded);
   border-color: var(--n-text-color-3);
-}
-
-.add-card i {
-  font-size: 2rem;
-  margin-bottom: 8px;
-  color: var(--n-text-color-3);
 }
 
 .add-card span {
   font-weight: 500;
   color: var(--n-text-color-2);
-}
-
-/* 卡片内部调整 */
-.group-card .card {
-  height: 100%;
-  margin: 0;
-}
-
-.group-card .card-header {
-  padding: 8px;
-  font-size: 0.9rem;
-}
-
-.group-card .card-body {
-  padding: 10px;
-  height: calc(100% - 40px); /* 减去头部高度 */
-  overflow-y: auto;
-}
-
-.group-card .form-label {
-  font-size: 0.8rem;
-  margin-bottom: 4px;
-}
-
-.group-card .form-select {
-  font-size: 0.8rem;
-  height: 80px;
-}
-
-.group-card .form-check {
-  font-size: 0.8rem;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .groups-container {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  }
-  
-  .group-card {
-    width: 130px;
-    height: 130px;
-  }
-}
-
-@media (max-width: 576px) {
-  .groups-container {
-    grid-template-columns: repeat(2, 1fr); /* 小屏幕每行两个 */
-  }
-}
-
-.compact-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.3rem 0.5rem;
-  background-color: var(--n-color-embedded);
-  border-bottom: 1px solid var(--n-color-embedded);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.compact-header button {
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--n-text-color-3);
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.compact-header button:hover {
-  color: var(--n-error-color);
+  margin-top: 6px;
 }
 
 /* 图表容器 */
@@ -705,27 +564,18 @@ const displayedMice = computed(() => {
   position: relative;
   height: 400px;
   width: 100%;
-  margin-bottom: 1.5rem;
-}
-
-.legend-item {
-  display: inline-block;
-  margin-right: 20px;
-  font-size: 0.9rem;
+  margin-bottom: 16px;
 }
 
 .legend-color {
   display: inline-block;
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   border-radius: 3px;
-  margin-right: 5px;
+  flex-shrink: 0;
 }
 
-.text-muted {
-  color: var(--n-text-color-3);
-}
-
+/* 基因型树 */
 .genotype-tree {
   border: 1px solid var(--n-border-color);
   border-radius: 4px;
@@ -743,9 +593,8 @@ const displayedMice = computed(() => {
 }
 
 .locus-header {
-  padding: 8px 12px;
+  padding: 6px 10px;
   background-color: var(--n-color-embedded);
-  border-bottom: 1px solid var(--n-color-embedded);
 }
 
 .locus-label {
@@ -761,7 +610,7 @@ const displayedMice = computed(() => {
 }
 
 .locus-name {
-    font-size: 0.8rem;
+  font-size: 0.8rem;
   color: var(--n-text-color-2);
 }
 
@@ -770,7 +619,7 @@ const displayedMice = computed(() => {
 }
 
 .combination-item {
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-bottom: 1px solid var(--n-color-embedded);
 }
 
@@ -791,22 +640,17 @@ const displayedMice = computed(() => {
 
 .combination-name {
   color: var(--n-text-color-3);
-  font-size: 0.7em;
+  font-size: 0.75em;
 }
 
-/* 悬停效果 */
-.locus-label:hover,
-.combination-label:hover {
-  background-color: var(--n-color-embedded);
+@media (max-width: 768px) {
+  .groups-container {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .chart-container { height: 300px; }
 }
 
-/* 选中状态 */
-.locus-checkbox:checked + .locus-name {
-  color: var(--n-info-color);
-}
-
-.combination-checkbox:checked + .combination-name {
-  color: var(--n-success-color);
-  font-weight: 500;
+@media (max-width: 480px) {
+  .groups-container { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

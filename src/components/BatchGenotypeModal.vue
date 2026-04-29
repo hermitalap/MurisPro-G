@@ -3,7 +3,7 @@
     :show="show"
     @update:show="v => $emit('update:show', v)"
     preset="card"
-    style="width: 95%; max-width: 1000px;"
+    style="width: 95%; max-width: 1100px;"
     title="批量基因型鉴定"
     :mask-closable="false"
     closable
@@ -11,8 +11,11 @@
     <template v-if="litter && cage">
       <!-- 亲本信息 -->
       <div class="parents-block">
-        <div class="parents-title">亲本信息</div>
-        <n-space :size="16">
+        <div class="parents-title">
+          <n-icon :size="14"><GitNetworkOutline /></n-icon>
+          亲本信息
+        </div>
+        <n-space :size="10" wrap>
           <n-tag v-for="p in parentSummaries" :key="p.tid" size="small" :bordered="false" :type="p.sex === 'M' ? 'info' : 'error'">
             <template #icon>
               <n-icon :size="14">
@@ -28,30 +31,61 @@
         </n-space>
       </div>
 
+      <!-- 命中计划摘要 -->
+      <div class="plans-hint" v-if="relevantPlans.length">
+        <n-icon :size="14"><FlagOutline /></n-icon>
+        <span class="plans-hint-label">关联计划：</span>
+        <n-tag
+          v-for="plan in relevantPlans"
+          :key="plan.id"
+          size="small"
+          type="success"
+          :bordered="false"
+          class="plan-chip"
+          :title="plan.name"
+        >
+          {{ plan.name }}
+        </n-tag>
+      </div>
+
       <!-- 批量动作 -->
       <div class="bulk-actions">
-        <n-space align="center" :size="10">
-          <span style="font-size: 12px; color: var(--n-text-color-3);">批量设为：</span>
+        <n-space align="center" :size="12" wrap style="flex:1;">
+          <span class="bulk-title">快速批量应用：</span>
           <template v-for="locus in lociInPlay" :key="locus.symbol">
-            <span class="bulk-locus">{{ locus.symbol }}</span>
-            <n-select
-              :value="bulkPick[locus.symbol] || null"
-              :options="optionsForLocus(locus.symbol)"
-              :render-label="renderOptionLabel"
-              placeholder="选择组合"
-              size="small"
-              clearable
-              style="width: 220px;"
-              @update:value="v => (bulkPick[locus.symbol] = v)"
+            <span class="bulk-locus-label">{{ locus.symbol }}</span>
+            <GenotypePicker
+              :model-value="bulkValue(locus.symbol)"
+              :genotypes="[locus]"
+              :lock-locus="true"
+              compact
+              @update:model-value="v => setBulk(locus.symbol, v)"
             />
           </template>
-          <n-button size="small" type="primary" ghost :disabled="!canApplyBulk" @click="applyBulk">
-            应用到所有
+          <n-button
+            size="small"
+            type="primary"
+            ghost
+            :disabled="!canApplyBulk"
+            @click="applyBulk"
+          >
+            <template #icon><n-icon><CopyOutline /></n-icon></template>
+            应用到全部仔鼠
           </n-button>
           <n-button size="small" type="warning" ghost :disabled="!hasTargetSet" @click="cullNonTarget">
-            非目标全部勾淘汰
+            <template #icon><n-icon><CutOutline /></n-icon></template>
+            非目标勾淘汰
           </n-button>
         </n-space>
+        <n-button
+          size="small"
+          :type="editMode ? 'primary' : 'default'"
+          :secondary="editMode"
+          @click="editMode = !editMode"
+        >
+          <template #icon><n-icon><CreateOutline /></n-icon></template>
+          编辑
+        </n-button>
       </div>
 
       <!-- 仔鼠表格 -->
@@ -59,15 +93,37 @@
         :columns="columns"
         :data="pendingRows"
         :bordered="true"
-        :max-height="420"
+        :max-height="440"
         size="small"
+        :row-class-name="rowClass"
       />
+
+      <!-- 底部统计 -->
+      <div class="stats-row">
+        <span class="stat-item">
+          <n-icon :size="14"><CheckmarkDoneOutline /></n-icon>
+          已录入：<strong>{{ filledCount }}</strong> / {{ pendingRows.length }}
+        </span>
+        <span class="stat-item" v-if="impossibleCount > 0">
+          <n-icon :size="14" color="#d03050"><WarningOutline /></n-icon>
+          <span class="warn-text">非预测组合 {{ impossibleCount }} 行</span>
+        </span>
+        <span class="stat-item" v-if="cullCount > 0">
+          <n-icon :size="14"><TrashOutline /></n-icon>
+          待淘汰 {{ cullCount }} 只
+        </span>
+        <span class="stat-item" v-for="p in planHitStats" :key="p.id">
+          <n-icon :size="14" color="#18a058"><FlagOutline /></n-icon>
+          命中「{{ p.name }}」{{ p.count }} 只
+        </span>
+      </div>
     </template>
 
     <template #footer>
       <n-space justify="end">
         <n-button @click="$emit('update:show', false)">取消</n-button>
         <n-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="onSubmit">
+          <template #icon><n-icon><SaveOutline /></n-icon></template>
           提交鉴定
         </n-button>
       </n-space>
@@ -78,12 +134,18 @@
 <script setup>
 import { computed, h, reactive, ref, watch } from 'vue'
 import {
-  NModal, NSelect, NSpace, NButton, NTag, NCheckbox, NDataTable, NIcon, useMessage
+  NModal, NSpace, NButton, NTag, NCheckbox, NDataTable, NIcon, NInput, useMessage
 } from 'naive-ui'
-import { MaleOutline, FemaleOutline } from '@vicons/ionicons5'
+import {
+  MaleOutline, FemaleOutline, GitNetworkOutline, FlagOutline,
+  CopyOutline, CutOutline, CheckmarkDoneOutline, WarningOutline,
+  TrashOutline, SaveOutline, CreateOutline
+} from '@vicons/ionicons5'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
-import { useBreedingStore, useGeneStore } from '@/stores'
-import { predictOffspringGenotypes, isPredicted } from '@/utils/mendelianPredictor'
+import GenotypePicker from '@/components/GenotypePicker.vue'
+import { useBreedingStore, useGeneStore, useBreedingPlanStore } from '@/stores'
+import { predictOffspringGenotypes } from '@/utils/mendelianPredictor'
+import { matchesTargets } from '@/utils/pedigree'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -94,11 +156,14 @@ const emit = defineEmits(['update:show', 'submitted'])
 
 const breedingStore = useBreedingStore()
 const geneStore = useGeneStore()
+const planStore = useBreedingPlanStore()
 const message = useMessage()
 const submitting = ref(false)
+const editMode = ref(false)
 
-// 待鉴定仔鼠行（本地可编辑副本）
+// 可编辑副本
 const rows = ref([])
+/** bulkPick: { [locusSymbol]: {locus, allele1, allele2} } */
 const bulkPick = reactive({})
 
 function buildRow(m) {
@@ -107,17 +172,15 @@ function buildRow(m) {
     id: m.id,
     sex: m.sex,
     toe_mark: m.toe_mark,
-    // 以位点为键的 {allele1, allele2}
-    genotypes: {},
+    genotypes: {}, // locusSym -> {allele1, allele2}
     cull: false
   }
 }
 
-// 亲本小鼠
+// 亲本
 const parentSummaries = computed(() => {
   if (!props.litter) return []
-  const pups = props.litter.mice || []
-  const first = pups[0]
+  const first = (props.litter.mice || [])[0]
   if (!first) return []
   const fathers = (first.father || []).map(tid => geneStore.mice.find(x => x.tid === tid)).filter(Boolean)
   const mothers = (first.mother || []).map(tid => geneStore.mice.find(x => x.tid === tid)).filter(Boolean)
@@ -135,117 +198,261 @@ function getParentGeneEntities(sex) {
   if (!first) return []
   const ids = sex === 'M' ? first.father || [] : first.mother || []
   const parents = ids.map(tid => geneStore.mice.find(x => x.tid === tid)).filter(Boolean)
-  // 合并每位点（多父/多母场景：简化为取第一个）
   return parents[0]?.genotype?.geneEntity || []
 }
 
-// 孟德尔预测
 const predictions = computed(() => {
   const fGenes = getParentGeneEntities('M')
   const mGenes = getParentGeneEntities('F')
   return predictOffspringGenotypes(fGenes, mGenes)
 })
 
-// 本窝需鉴定的全部位点
+// 本窝涉及的位点
 const lociInPlay = computed(() => {
   const symbols = new Set()
   getParentGeneEntities('M').forEach(g => symbols.add(g.locus))
   getParentGeneEntities('F').forEach(g => symbols.add(g.locus))
-  // 兼容：若亲本缺，退化为使用全部位点
-  if (!symbols.size) {
-    return geneStore.genotypes.filter(g => g.symbol !== 'WT')
-  }
+  if (!symbols.size) return geneStore.genotypes.filter(g => g.symbol !== 'WT')
   return geneStore.genotypes.filter(g => symbols.has(g.symbol))
 })
 
 const pendingRows = computed(() => rows.value)
 
-function optionsForLocus(locusSymbol) {
-  const locus = geneStore.genotypes.find(g => g.symbol === locusSymbol)
-  if (!locus) return []
-  const alleles = locus.alleles
-  const predicted = predictions.value[locusSymbol] || []
-  const seen = new Set()
-  const opts = []
-  for (const a1 of alleles) {
-    for (const a2 of alleles) {
-      const [lo, hi] = [a1.id, a2.id].sort((x, y) => x - y)
-      const key = `${lo}-${hi}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const s1 = alleles.find(x => x.id === lo).symbol
-      const s2 = alleles.find(x => x.id === hi).symbol
-      const predictedFlag = predicted.some(p => p.key === key)
-      opts.push({
-        label: `${s1}/${s2}`,
-        value: key,
-        allele1: lo,
-        allele2: hi,
-        predicted: predictedFlag
-      })
+// ===== 批量预选 =====
+
+function bulkValue(symbol) {
+  return bulkPick[symbol] || null
+}
+function setBulk(symbol, v) {
+  if (!v || !v.allele1 || !v.allele2) {
+    delete bulkPick[symbol]
+  } else {
+    bulkPick[symbol] = { ...v, locus: symbol }
+  }
+}
+const hasTargetSet = computed(() => Object.keys(bulkPick).length > 0)
+const canApplyBulk = computed(() => hasTargetSet.value && rows.value.length > 0)
+
+function applyBulk() {
+  for (const row of rows.value) {
+    for (const [sym, pick] of Object.entries(bulkPick)) {
+      row.genotypes[sym] = { allele1: pick.allele1, allele2: pick.allele2 }
     }
   }
-  // 推断组合排前面
-  opts.sort((a, b) => (b.predicted ? 1 : 0) - (a.predicted ? 1 : 0))
-  return opts
+  rows.value = [...rows.value]
 }
 
-function renderOptionLabel(option) {
-  return h(
-    'div',
-    { style: 'display:flex;align-items:center;gap:6px;' },
-    [
-      h('span', {}, option.label),
-      option.predicted
-        ? h(NTag, { type: 'success', size: 'small', bordered: false }, { default: () => '可能' })
-        : null
-    ]
-  )
+function cullNonTarget() {
+  for (const row of rows.value) {
+    const matchesAll = Object.entries(bulkPick).every(([sym, pick]) => {
+      const cur = row.genotypes[sym]
+      if (!cur) return false
+      const k1 = pairKey(cur.allele1, cur.allele2)
+      const k2 = pairKey(pick.allele1, pick.allele2)
+      return k1 === k2
+    })
+    row.cull = !matchesAll
+  }
+  rows.value = [...rows.value]
 }
+
+function pairKey(a, b) {
+  if (a == null || b == null) return null
+  const [lo, hi] = [a, b].sort((x, y) => x - y)
+  return `${lo}-${hi}`
+}
+
+// ===== 相关计划 / 命中 =====
+
+const relevantPlans = computed(() => {
+  const lociSet = new Set(lociInPlay.value.map(l => l.symbol))
+  return planStore.activePlans.filter(p =>
+    p.targets.some(t => lociSet.has(t.locus))
+  )
+})
+
+function rowToMouseLike(row) {
+  const geneEntity = Object.entries(row.genotypes).map(([locus, g]) => ({
+    locus,
+    allele1: g.allele1,
+    allele2: g.allele2
+  }))
+  return {
+    genotype: { geneEntity },
+    sex: row.sex,
+    live_status: 1,
+    genotype_confirmed: true,
+    strain: null
+  }
+}
+
+function planHitsForRow(row) {
+  if (row.cull) return []
+  return relevantPlans.value.filter(p => {
+    if (p.sex && p.sex !== 'any' && p.sex !== row.sex) return false
+    return matchesTargets(rowToMouseLike(row), p.targets)
+  })
+}
+
+const planHitStats = computed(() => {
+  const counts = new Map()
+  for (const r of rows.value) {
+    for (const p of planHitsForRow(r)) {
+      counts.set(p.id, (counts.get(p.id) || 0) + 1)
+    }
+  }
+  return Array.from(counts.entries()).map(([id, count]) => {
+    const p = relevantPlans.value.find(x => x.id === id)
+    return { id, name: p?.name || '—', count }
+  })
+})
+
+// ===== 不可能组合判定 =====
+
+function isImpossible(row, locusSym) {
+  const cur = row.genotypes[locusSym]
+  if (!cur) return false
+  const preds = predictions.value[locusSym] || []
+  if (!preds.length) return false
+  const k = pairKey(cur.allele1, cur.allele2)
+  return !preds.some(p => p.key === k)
+}
+
+const impossibleCount = computed(() => {
+  let n = 0
+  for (const r of rows.value) {
+    for (const locus of lociInPlay.value) {
+      if (isImpossible(r, locus.symbol)) { n++; break }
+    }
+  }
+  return n
+})
+
+const filledCount = computed(() =>
+  rows.value.filter(r =>
+    lociInPlay.value.every(l => r.genotypes[l.symbol])
+  ).length
+)
+
+const cullCount = computed(() => rows.value.filter(r => r.cull).length)
+
+function rowClass(row) {
+  if (row.cull) return 'row-cull'
+  const hits = planHitsForRow(row)
+  if (hits.length) return 'row-hit'
+  return ''
+}
+
+// ===== 表列 =====
 
 const columns = computed(() => {
+  const C = { align: 'center', titleAlign: 'center' }
   const cols = [
-    { title: 'ID', key: 'id', width: 120 },
+    {
+      title: '#',
+      key: 'idx',
+      width: 36,
+      ...C,
+      render: (_r, i) => i + 1
+    },
+    { title: 'ID', key: 'id', width: 100, ...C },
     {
       title: '性别',
       key: 'sex',
-      width: 80,
-      render: (row) => (row.sex === 'M' ? '♂' : row.sex === 'F' ? '♀' : '—')
+      width: 70,
+      ...C,
+      render: (row) => h('span', {}, row.sex === 'M' ? '♂' : row.sex === 'F' ? '♀' : '—')
     }
   ]
   if (pendingRows.value.some(r => r.toe_mark)) {
-    cols.push({ title: '脚趾号', key: 'toe_mark', width: 90 })
+    cols.push({ title: '脚趾', key: 'toe_mark', width: 70, ...C })
   }
   for (const locus of lociInPlay.value) {
     cols.push({
       title: locus.symbol,
       key: `gene_${locus.symbol}`,
+      minWidth: 220,
+      ...C,
       render: (row) => {
-        const current = row.genotypes[locus.symbol]
-        const val = current ? `${Math.min(current.allele1, current.allele2)}-${Math.max(current.allele1, current.allele2)}` : null
-        return h(NSelect, {
-          value: val,
-          size: 'small',
-          options: optionsForLocus(locus.symbol),
-          renderLabel: renderOptionLabel,
-          placeholder: '选择',
-          clearable: true,
-          'onUpdate:value': (v, opt) => {
-            if (!v) {
+        const cur = row.genotypes[locus.symbol]
+        const picker = h(GenotypePicker, {
+          modelValue: cur ? { locus: locus.symbol, allele1: cur.allele1, allele2: cur.allele2 } : { locus: locus.symbol },
+          genotypes: [locus],
+          lockLocus: true,
+          compact: true,
+          'onUpdate:modelValue': (v) => {
+            if (!v || !v.allele1 || !v.allele2) {
               delete row.genotypes[locus.symbol]
             } else {
-              row.genotypes[locus.symbol] = { allele1: opt.allele1, allele2: opt.allele2 }
+              row.genotypes[locus.symbol] = { allele1: v.allele1, allele2: v.allele2 }
             }
           }
         })
+        if (!cur) return picker
+        const bad = isImpossible(row, locus.symbol)
+        if (bad) {
+          return h('div', { style: 'display:flex;align-items:center;justify-content:center;gap:4px;' }, [
+            picker,
+            h(NTag, { size: 'tiny', type: 'error', bordered: false }, {
+              icon: () => h(NIcon, null, { default: () => h(WarningOutline) }),
+              default: () => '非预测'
+            })
+          ])
+        }
+        return picker
       }
     })
   }
   cols.push({
+    title: '命中',
+    key: 'hit',
+    width: 100,
+    ...C,
+    render: (row) => {
+      const hits = planHitsForRow(row)
+      if (!hits.length) return h('span', { style: 'color: var(--n-text-color-3);' }, '—')
+      return h('div', { style: 'display:flex;flex-wrap:wrap;gap:2px;justify-content:center;' },
+        hits.map(p => h(NTag, {
+          size: 'tiny',
+          type: 'success',
+          bordered: false,
+          title: p.name
+        }, { default: () => p.name.length > 6 ? p.name.slice(0, 6) + '…' : p.name }))
+      )
+    }
+  })
+  if (editMode.value) cols.push({
+    title: '编辑',
+    key: '_edit',
+    width: 190,
+    ...C,
+    render: (row) => h('div', { style: 'display:inline-flex;align-items:center;gap:6px;' }, [
+      h(NButton, {
+        size: 'tiny',
+        type: row.sex === 'M' ? 'info' : 'default',
+        secondary: row.sex !== 'M',
+        onClick: () => { row.sex = 'M' }
+      }, { default: () => '♂' }),
+      h(NButton, {
+        size: 'tiny',
+        type: row.sex === 'F' ? 'error' : 'default',
+        secondary: row.sex !== 'F',
+        onClick: () => { row.sex = 'F' }
+      }, { default: () => '♀' }),
+      h(NInput, {
+        value: row.id,
+        size: 'tiny',
+        style: 'width:90px;',
+        placeholder: 'ID',
+        'onUpdate:value': v => { row.id = v }
+      })
+    ])
+  })
+  cols.push({
     title: '淘汰',
     key: 'cull',
-    width: 70,
-    align: 'center',
+    width: 60,
+    ...C,
     render: (row) =>
       h(NCheckbox, {
         checked: row.cull,
@@ -255,53 +462,21 @@ const columns = computed(() => {
   return cols
 })
 
-const hasTargetSet = computed(() =>
-  lociInPlay.value.some(l => bulkPick[l.symbol])
-)
-const canApplyBulk = computed(() => hasTargetSet.value && rows.value.length > 0)
 const canSubmit = computed(() => rows.value.length > 0)
-
-function applyBulk() {
-  for (const row of rows.value) {
-    for (const locus of lociInPlay.value) {
-      const pick = bulkPick[locus.symbol]
-      if (!pick) continue
-      const [a1, a2] = pick.split('-').map(Number)
-      row.genotypes[locus.symbol] = { allele1: a1, allele2: a2 }
-    }
-  }
-  // 强制触发表格刷新
-  rows.value = [...rows.value]
-}
-
-function cullNonTarget() {
-  for (const row of rows.value) {
-    const matchesAll = lociInPlay.value.every(locus => {
-      const target = bulkPick[locus.symbol]
-      if (!target) return true
-      const cur = row.genotypes[locus.symbol]
-      if (!cur) return false
-      const key = `${Math.min(cur.allele1, cur.allele2)}-${Math.max(cur.allele1, cur.allele2)}`
-      return key === target
-    })
-    row.cull = !matchesAll
-  }
-  rows.value = [...rows.value]
-}
 
 watch(
   () => [props.show, props.litter],
   () => {
     if (!props.show || !props.litter) {
       rows.value = []
+      for (const k of Object.keys(bulkPick)) delete bulkPick[k]
       return
     }
     const pending = (props.litter.mice || []).filter(
       m => m.genotype_confirmed === false && m.live_status === 1
     )
     rows.value = pending.map(buildRow)
-    // 清空批量选择
-    for (const key of Object.keys(bulkPick)) delete bulkPick[key]
+    for (const k of Object.keys(bulkPick)) delete bulkPick[k]
   },
   { immediate: true }
 )
@@ -331,34 +506,77 @@ async function onSubmit() {
 <style scoped>
 .parents-block {
   padding: 10px 12px;
-  background: var(--n-color-embedded, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--n-border-color);
   border-radius: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .parents-title {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--n-text-color-3);
   margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
-.parent-chip {
-  display: inline-flex;
+
+.plans-hint {
+  display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px;
-  border-radius: 14px;
-  background: var(--n-card-color);
-  border: 1px solid var(--n-border-color);
-  font-size: 12px;
+  padding: 6px 10px;
+  background: rgba(24, 160, 88, 0.08);
+  border-left: 3px solid #18a058;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
-.pid { font-weight: 600; }
-.pgeno :deep(sup) { font-size: 0.75em; }
+.plans-hint-label { color: var(--n-text-color-3); }
+.plan-chip { cursor: help; }
 
 .bulk-actions {
-  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 12px;
+  border-bottom: 1px dashed var(--n-border-color);
+  margin-bottom: 10px;
 }
-.bulk-locus {
-  font-size: 12px;
+.bulk-title {
+  font-size: 13px;
+  color: var(--n-text-color-3);
+  font-weight: 600;
+}
+.bulk-locus-label {
+  font-size: 13px;
   font-weight: 600;
   margin-right: 2px;
+}
+
+.stats-row {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--n-border-color);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--n-text-color-2);
+}
+.stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.warn-text { color: #d03050; }
+
+:deep(.row-cull) {
+  background-color: rgba(208, 48, 80, 0.06) !important;
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+:deep(.row-hit) {
+  background-color: rgba(24, 160, 88, 0.06) !important;
 }
 </style>
