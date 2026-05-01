@@ -30,9 +30,15 @@ export class StoreUtils {
       useExperimentStore, 
       useSettingStore
     ]
-  
-    for (const Store of stores) {
-      await Store().loadInitialData()
-    }
+
+    const results = await Promise.allSettled(
+      stores.map((Store) => Store().loadInitialData())
+    )
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error('初始化 store 失败:', stores[index].name, result.reason)
+      }
+    })
   }
 }

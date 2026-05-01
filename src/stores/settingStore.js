@@ -5,7 +5,7 @@ import api from '@/utils/api'
 export const useSettingStore = defineStore('setting', () => {
 
     const loadInitialData = async () => {
-        loadSettings()
+        await loadSettings()
     }
 
     const databaseNotChanged = ref(true)

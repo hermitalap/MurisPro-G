@@ -11,16 +11,26 @@ export const useGeneStore = defineStore('genotype', () => {
 
     const mice = ref([])
     const loading = ref(false)
+    let loadMicePromise = null
 
     const loadMice = async () => {
+        if (loadMicePromise) return loadMicePromise
+
         loading.value = true
-        try {
+        loadMicePromise = (async () => {
             const response = await api.get('/mice')
             mice.value = response.data
+            return response.data
+        })()
+
+        try {
+            return await loadMicePromise
         } catch (error) {
             console.error('加载小鼠失败:', error)
+            return []
         } finally {
             loading.value = false
+            loadMicePromise = null
         }
     }
     const loadSurvival = async () => {
@@ -255,26 +265,40 @@ export const useGeneStore = defineStore('genotype', () => {
     }
 
     // 处理位点选择
-    const onLocusSelect = (index, locus) => {
-        const isSelected = tempGroups.value[index].genotype.includes(locus)
-        if (isSelected) {
-        // 如果选择了位点，移除该位点下的所有组合
-        tempGroups.value[index].genotype = tempGroups.value[index].genotype.filter(g => 
-            !allGenotypes.value[locus].some(al => g === locus+'<sup>'+al+'</sup>')
-        )
+    const onLocusSelect = (index, locus, checked) => {
+        const group = tempGroups.value[index]
+        if (!group) return
+
+        const isSelected = group.genotype.includes(locus)
+        const nextChecked = typeof checked === 'boolean' ? checked : !isSelected
+        const combinationValues = (allGenotypes.value[locus] || []).map(al => `${locus}<sup>${al}</sup>`)
+
+        if (nextChecked) {
+            group.genotype = [
+                ...group.genotype.filter(g => g !== locus && !combinationValues.includes(g)),
+                locus
+            ]
         } else {
-        // 如果取消选择位点，不做额外处理
+            group.genotype = group.genotype.filter(g => g !== locus)
         }
     }
 
     // 处理组合选择
-    const onCombinationSelect = (index, locus, combination) => {
-        const isSelected = tempGroups.value[index].genotype.includes(locus+'<sup>'+combination+'</sup>')
-        if (isSelected) {
-        // 如果选择了组合，移除对应的位点
-        tempGroups.value[index].genotype = tempGroups.value[index].genotype.filter(g => g !== locus)
+    const onCombinationSelect = (index, locus, combination, checked) => {
+        const group = tempGroups.value[index]
+        if (!group) return
+
+        const value = `${locus}<sup>${combination}</sup>`
+        const isSelected = group.genotype.includes(value)
+        const nextChecked = typeof checked === 'boolean' ? checked : !isSelected
+
+        if (nextChecked) {
+            group.genotype = [
+                ...group.genotype.filter(g => g !== locus && g !== value),
+                value
+            ]
         } else {
-        // 如果取消选择组合，不做额外处理
+            group.genotype = group.genotype.filter(g => g !== value)
         }
     }
 

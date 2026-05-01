@@ -14,12 +14,16 @@ app.use(pinia).use(router).use(naive)
 // 在应用启动时检查是否在pywebview环境中
 const startApp = async () => {
     try {
-        // 先初始化store
-        await StoreUtils.initializeStores();
-        console.log('内容初始化完成');
-        
-        // 挂载应用
+        // 先挂载应用，让页面骨架和路由视图尽早出现；数据初始化放到后台异步完成。
         app.mount('#app');
+
+        StoreUtils.initializeStores()
+            .then(() => {
+                console.log('内容初始化完成');
+            })
+            .catch((error) => {
+                console.error('内容初始化失败:', error);
+            });
     } catch (error) {
         console.error('应用启动失败:', error);
     } finally {

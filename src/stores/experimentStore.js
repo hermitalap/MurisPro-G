@@ -5,9 +5,11 @@ import api from '@/utils/api'
 export const useExperimentStore = defineStore('experiment', () => {
 
     const loadInitialData = async () => {
-        fetchExperiments()
-        fetchExperimentPresets()
-        fetchPredefinedGroups()
+        await Promise.all([
+            fetchExperiments(),
+            fetchExperimentPresets(),
+            fetchPredefinedGroups()
+        ])
     }
 
     const experiments = ref([])

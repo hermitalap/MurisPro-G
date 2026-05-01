@@ -582,6 +582,30 @@ def get_all_cages():
     """使用预加载一次性获取所有笼子及其小鼠"""
     try:
         cages = Cage.query.options(joinedload(Cage.mice)).order_by(Cage.order.asc()).all()
+        live_mouse_ids = [
+            mouse.tid
+            for cage in cages
+            for mouse in cage.mice
+            if mouse.live_status == 1
+        ]
+        genotype_by_mouse = {mouse_id: [] for mouse_id in live_mouse_ids}
+        if live_mouse_ids:
+            genotypes = (
+                Genotype.query
+                .options(
+                    joinedload(Genotype.locus),
+                    joinedload(Genotype.allele1),
+                    joinedload(Genotype.allele2)
+                )
+                .filter(Genotype.mouse_id.in_(live_mouse_ids))
+                .all()
+            )
+            for genotype in genotypes:
+                genotype_by_mouse.setdefault(genotype.mouse_id, []).append(
+                    genotype.get_genotype_description()
+                )
+
+        today = datetime.now().date()
         cage_data = []
         for cage in cages:
             mice_info = []
@@ -590,9 +614,9 @@ def get_all_cages():
                     mice_info.append({
                         'tid': mouse.tid,
                         'id': mouse.id,
-                        'genotype': mouse.get_full_genotype(),
+                        'genotype': "; ".join(genotype_by_mouse.get(mouse.tid, [])),
                         'sex': mouse.sex,
-                        'days': (datetime.now().date() - mouse.birth_date).days if mouse.birth_date else None
+                        'days': (today - mouse.birth_date).days if mouse.birth_date else None
                     })
             # 动态计算笼内小鼠的数量和性别情况
             dynamic_count = len(mice_info)

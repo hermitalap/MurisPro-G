@@ -61,25 +61,23 @@
                       <div class="genotype-tree">
                         <div v-for="(combinations, locus) in geneStore.allGenotypes" :key="locus" class="locus-item">
                           <div class="locus-header">
-                            <label class="locus-label">
-                              <n-checkbox
-                                :checked="group.genotype.includes(locus)"
-                                @update:checked="onLocusSelect(index, locus)"
-                                class="locus-checkbox"
-                              />
+                            <n-checkbox
+                              :checked="group.genotype.includes(locus)"
+                              @update:checked="checked => onLocusSelect(index, locus, checked)"
+                              class="locus-checkbox"
+                            >
                               <span class="locus-name">{{ locus }}</span>
-                            </label>
+                            </n-checkbox>
                           </div>
                           <div v-if="combinations && combinations.length" class="combinations-list">
                             <div v-for="combination in combinations" :key="combination" class="combination-item">
-                              <label class="combination-label">
-                                <n-checkbox
-                                  :checked="group.genotype.includes(`${locus}<sup>${combination}</sup>`)"
-                                  @update:checked="onCombinationSelect(index, locus, combination)"
-                                  class="combination-checkbox"
-                                />
+                              <n-checkbox
+                                :checked="group.genotype.includes(`${locus}<sup>${combination}</sup>`)"
+                                @update:checked="checked => onCombinationSelect(index, locus, combination, checked)"
+                                class="combination-checkbox"
+                              >
                                 <span class="combination-name">{{ locus }}<sup>{{ combination }}</sup></span>
-                              </label>
+                              </n-checkbox>
                             </div>
                           </div>
                         </div>

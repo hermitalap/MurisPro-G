@@ -132,7 +132,11 @@ export function renderTargetSymbol(targets, genotypes) {
     if (!locus) return t.locus
     const s1 = locus.alleles.find(a => a.id === t.allele1)?.symbol || '?'
     const s2 = locus.alleles.find(a => a.id === t.allele2)?.symbol || '?'
-    const sorted = [s1, s2].sort()
+    const _ord = { f: 0, flox: 0, Tg: 1, '-': 3, KO: 3 }
+    const sorted = [s1, s2].sort((a, b) => {
+      const pa = _ord[a] ?? 2, pb = _ord[b] ?? 2
+      return pa !== pb ? pa - pb : a.localeCompare(b)
+    })
     return `${t.locus}<sup>${sorted[0]}/${sorted[1]}</sup>`
   }).join('; ')
 }

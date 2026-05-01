@@ -219,7 +219,9 @@ class Genotype(db.Model):
         elif self.allele2.symbol == "+":
             alleles = [self.allele1.symbol, self.allele2.symbol]
         else:
-            alleles = sorted([self.allele1.symbol, self.allele2.symbol])
+            _ORDER = {'f': 0, 'flox': 0, 'Tg': 1, '-': 3, 'KO': 3}
+            alleles = sorted([self.allele1.symbol, self.allele2.symbol],
+                             key=lambda s: (_ORDER.get(s, 2), s))
         return f"{self.locus.symbol}<sup>{alleles[0]}/{alleles[1]}</sup>"
     
     def to_dict(self):

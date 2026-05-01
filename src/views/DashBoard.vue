@@ -15,26 +15,34 @@
         <div class="header-title-section">
           <h1 class="page-title">笼位视图</h1>
           <div class="header-stats-panel">
-            <n-statistic label="存活小鼠" :value="survivingMouseCount">
+            <n-statistic label="存活小鼠" tabular-nums>
               <template #prefix>
                 <n-icon><FitnessOutline /></n-icon>
               </template>
-              <n-number-animation :from="0" :to="survivingMouseCount" />
+              <n-number-animation
+                :from="survivingMouseCountFrom"
+                :to="survivingMouseCount"
+                :duration="800"
+              />
             </n-statistic>
-            <n-statistic label="活跃笼位" :value="activeCageCount">
+            <n-statistic label="活跃笼位" tabular-nums>
               <template #prefix>
                 <n-icon><GridOutline /></n-icon>
               </template>
-              <n-number-animation :from="0" :to="activeCageCount" />
+              <n-number-animation
+                :from="activeCageCountFrom"
+                :to="activeCageCount"
+                :duration="800"
+              />
             </n-statistic>
           </div>
         </div>
       </n-gi>
 
-      <!-- 右：5 个控件（两行） -->
+      <!-- 右：搜索与操作控件（两行） -->
       <n-gi span="24 s:12" class="header-controls-col">
         <div class="header-controls-block">
-          <!-- 第一行：搜索框 + 笼位插槽 -->
+          <!-- 第一行：搜索框 -->
           <div class="controls-row controls-row-1">
             <div class="search-container">
             <div class="search-box">
@@ -75,16 +83,11 @@
                 </div>
               </div>
             </div>
-
-            <div class="slot-toolbar">
-              <span class="slot-label">笼位插槽数</span>
-              <n-input-number v-model:value="cageSlotCount" :min="1" />
-            </div>
           </div>
 
           <!-- 第二行：三个操作按钮 -->
           <div class="controls-row controls-row-2">
-            <n-button secondary @click="fetchCages" :render-icon="renderIcon(RefreshOutline)">刷新数据</n-button>
+            <n-button secondary @click="refreshCages" :render-icon="renderIcon(RefreshOutline)">刷新数据</n-button>
             <n-button secondary @click="exportToPDF" :render-icon="renderIcon(DocumentTextOutline)">当前位置导出pdf</n-button>
             <n-button type="primary" @click="openCageModal(null)" :render-icon="renderIcon(AddOutline)">添加笼位</n-button>
           </div>
@@ -111,27 +114,27 @@
           <div class="cage-scroll-container">
             <n-scrollbar trigger="hover" :size="8">
               <n-flex class="cage-flex-container" wrap="wrap" justify="center" :size="16">
-                <div v-for="(cage, idx) in getMatrixCellsForSection(element.identifier)" :key="`matrix-cell-${idx}`" class="matrix-cell">
+                <div v-for="cell in getMatrixCellsForSection(element.identifier)" :key="cell.key" class="matrix-cell">
                   <div
-                    v-if="cage"
+                    v-if="cell.type === 'cage'"
                     class="cage-card"
-                    :ref="el => { if (el) cageRefs[cage.id] = el; else delete cageRefs[cage.id] }"
+                    :ref="el => { if (el) cageRefs[cell.cage.id] = el; else delete cageRefs[cell.cage.id] }"
                     :class="{
-                      breeding: cage.cage_type === 'breeding',
-                      'swap-source': cage.id === sourceCage?.id,
-                      'swap-target': cage.id === targetCage?.id,
-                      'search-highlight': isCageHighlighted(cage.id)
+                      breeding: cell.cage.cage_type === 'breeding',
+                      'swap-source': cell.cage.id === sourceCage?.id,
+                      'swap-target': cell.cage.id === targetCage?.id,
+                      'search-highlight': isCageHighlighted(cell.cage.id)
                     }"
                     @dragover.prevent
-                    @drop="handleDrop($event, cage.id)"
-                    @contextmenu.prevent="openCageContextMenu($event, cage)"
-                    @click="handleCageClick(cage)"
+                    @drop="handleDrop($event, cell.cage.id)"
+                    @contextmenu.prevent="openCageContextMenu($event, cell.cage)"
+                    @click="handleCageClick(cell.cage)"
                   >
                     <n-card size="small" :bordered="true" class="cage-card-body">
-                      <div class="cage-header" @click.stop="openCageModal(cage)">
+                      <div class="cage-header" @click.stop="openCageModal(cell.cage)">
                         <div class="cage-header-top">
                           <div class="cage-identifier">
-                            <n-tooltip v-if="isCageMixedSexWarning(cage)" trigger="hover">
+                            <n-tooltip v-if="isCageMixedSexWarning(cell.cage)" trigger="hover">
                               <template #trigger>
                                 <div class="cage-sex-mark sex-mark-warning">
                                   <n-icon><WarningOutline /></n-icon>
@@ -139,28 +142,42 @@
                               </template>
                               非繁殖笼有混合性别
                             </n-tooltip>
-                            <div v-else class="cage-sex-mark" :class="getCageSexClass(cage)">
-                              <n-icon><component :is="getCageSexIcon(cage)" /></n-icon>
-                            </div>
-                            <span class="cage-id-text">{{ cage.cage_id || '-' }}</span>
+                            <n-tooltip v-else trigger="hover">
+                              <template #trigger>
+                                <div class="cage-sex-mark" :class="getCageSexClass(cell.cage)">
+                                  <n-icon><component :is="getCageSexIcon(cell.cage)" /></n-icon>
+                                </div>
+                              </template>
+                              {{ getCageSexLabel(cell.cage) }}
+                            </n-tooltip>
+                            <span class="cage-id-text">{{ cell.cage.cage_id || '-' }}</span>
                           </div>
                           <div class="cage-actions-right">
-                            <n-tag 
-                              v-if="cage.mice_genotype"
-                              size="small" 
-                              :type="getGenotypeTagType(cage.mice_genotype)" 
-                              :bordered="false"
-                              class="cage-genotype-badge"
+                            <n-tooltip
+                              v-if="cell.cage.mice_genotype"
+                              trigger="hover"
+                              placement="top"
+                              :style="{ maxWidth: '320px', whiteSpace: 'normal', wordBreak: 'break-word' }"
                             >
-                              {{ cage.mice_genotype }}
-                            </n-tag>
+                              <template #trigger>
+                                <n-tag
+                                  size="small"
+                                  :type="getGenotypeTagType(cell.cage.mice_genotype)"
+                                  :bordered="false"
+                                  class="cage-genotype-badge"
+                                >
+                                  {{ cell.cage.mice_genotype }}
+                                </n-tag>
+                              </template>
+                              {{ cell.cage.mice_genotype }}
+                            </n-tooltip>
                             <n-tag 
                               size="small" 
-                              :type="getCageCountType(cage)" 
+                              :type="getCageCountType(cell.cage)" 
                               :bordered="false"
                               class="cage-count-badge"
                             >
-                              {{ cage.mice?.length ?? cage.mice_count ?? 0 }}只
+                              {{ cell.cage.mice?.length ?? cell.cage.mice_count ?? 0 }}只
                             </n-tag>
                           </div>
                         </div>
@@ -169,7 +186,7 @@
                       <div class="cage-table-wrapper">
                         <n-data-table
                           :columns="mouseTableColumns"
-                          :data="getCageDisplayRows(cage)"
+                          :data="getCageDisplayRows(cell.cage)"
                           size="small"
                           :bordered="false"
                           :single-line="false"
@@ -180,6 +197,18 @@
                       </div>
                     </n-card>
                   </div>
+
+                    <n-card v-else-if="cell.type === 'skeleton'" size="small" class="cage-card-skeleton" :bordered="true">
+                      <div class="skeleton-card-content">
+                        <div class="skeleton-card-header">
+                          <n-skeleton circle :width="28" :height="28" />
+                          <n-skeleton text :width="110" />
+                          <n-skeleton :width="46" :height="22" :sharp="false" />
+                        </div>
+                        <n-skeleton :height="32" :sharp="false" />
+                        <n-skeleton text :repeat="5" />
+                      </div>
+                    </n-card>
 
                     <n-card v-else size="small" class="cage-slot-empty" :bordered="false" @click="openCageModal(null)">
                       <div class="empty-slot-content">
@@ -403,7 +432,7 @@ import { normalizeDateValue } from '@/utils/format'
 import MouseDetailModal from './MouseDetailView.vue'
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { NIcon, NDropdown, NAutoComplete, useDialog, useMessage } from 'naive-ui'
+import { NIcon, NDropdown, NAutoComplete, useDialog, useLoadingBar, useMessage } from 'naive-ui'
 import {
   AddOutline,
   ArrowDownOutline,
@@ -445,6 +474,7 @@ const {fetchCages} = cageStore
 const geneStore = useGeneStore()
 const { mice: allMice } = storeToRefs(geneStore)
 const dialog = useDialog()
+const loadingBar = useLoadingBar()
 const message = useMessage()
 const sectionOptions = computed(() =>
   locations.value.map(section => ({ label: section.identifier, value: section.identifier }))
@@ -491,6 +521,14 @@ const activeCageCount = computed(() => {
     const mouseCount = Array.isArray(cage.mice) ? cage.mice.length : (cage.mice_count ?? 0)
     return mouseCount > 0
   }).length
+})
+
+const survivingMouseCountFrom = ref(0)
+const activeCageCountFrom = ref(0)
+
+watch([survivingMouseCount, activeCageCount], (counts, previousCounts = []) => {
+  survivingMouseCountFrom.value = previousCounts[0] ?? 0
+  activeCageCountFrom.value = previousCounts[1] ?? 0
 })
 
 // 响应式状态
@@ -602,9 +640,12 @@ const highlightedCageId = ref(null)
 const swapStatus = ref(null)
 const sourceCage = ref(null)
 const targetCage = ref(null)
-const cageSlotCount = ref(12)
 
 const showTemporaryDrawer = ref(false)
+const renderedCageCounts = ref({})
+const CAGE_RENDER_BATCH_SIZE = 3
+let cageRenderFrame = null
+let cageRenderToken = 0
 
 // ========= 临时区穿梭框相关 =========
 const drawerTransferSelected = ref([])
@@ -747,7 +788,7 @@ const mouseTableColumns = [
     align: 'center',
     render(row) {
       if (row.type !== 'mouse') return null
-      return !row.mouse.days || row.mouse.days === 'none' ? 'NA' : `${row.mouse.days}天`
+      return formatMouseAge(row.mouse.days)
     }
   }
 ]
@@ -769,28 +810,121 @@ const sortedSections = computed(() => {
 })
 
 const filteredSectionCages = computed(() => cageStore.filteredCages || [])
+const activeSectionCageIds = computed(() =>
+  getCagesBySection(activeSection.value).map(cage => cage.id).join(',')
+)
 
 function getCagesBySection(sectionIdentifier) {
   return cages.value.filter(cage => cage.section === sectionIdentifier)
 }
 
+function getCageSlotCountForSection(sectionIdentifier) {
+  return getCagesBySection(sectionIdentifier).length + 1
+}
+
 const matrixCells = computed(() => {
-  const total = Math.max(1, Number(cageSlotCount.value) || 1)
-  return Array.from({ length: total }, (_, index) => filteredSectionCages.value[index] || null)
+  return buildMatrixCells(activeSection.value, filteredSectionCages.value)
 })
 
 function getMatrixCellsForSection(sectionIdentifier) {
-  const sectionCages = getCagesBySection(sectionIdentifier)
-  const total = Math.max(1, Number(cageSlotCount.value) || 1)
-  return Array.from({ length: total }, (_, index) => sectionCages[index] || null)
+  return buildMatrixCells(sectionIdentifier, getCagesBySection(sectionIdentifier))
+}
+
+function buildMatrixCells(sectionIdentifier, sectionCages) {
+  const visibleCount = Math.min(
+    renderedCageCounts.value[sectionIdentifier] ?? 0,
+    sectionCages.length
+  )
+  const cells = sectionCages.map((cage, index) => {
+    if (index < visibleCount) {
+      return { type: 'cage', key: `cage-${cage.id}`, cage }
+    }
+    return { type: 'skeleton', key: `skeleton-${sectionIdentifier}-${cage.id}` }
+  })
+
+  cells.push(
+    visibleCount >= sectionCages.length
+      ? { type: 'empty', key: `empty-${sectionIdentifier}` }
+      : { type: 'skeleton', key: `skeleton-${sectionIdentifier}-empty-slot` }
+  )
+
+  return cells
 }
 const matrixGridStyle = computed(() => ({
   gridTemplateColumns: `repeat(${effectiveMatrixCols.value}, var(--cage-card-width))`,
   gridTemplateRows: `repeat(${effectiveMatrixRows.value}, var(--cage-card-height))`
 }))
 
+function setRenderedCageCount(sectionIdentifier, count) {
+  renderedCageCounts.value = {
+    ...renderedCageCounts.value,
+    [sectionIdentifier]: count
+  }
+}
+
+function stopProgressiveCageRender({ finishLoadingBar = false } = {}) {
+  cageRenderToken += 1
+  if (cageRenderFrame) {
+    cancelAnimationFrame(cageRenderFrame)
+    cageRenderFrame = null
+  }
+  if (finishLoadingBar) {
+    loadingBar.finish()
+  }
+}
+
+function scheduleProgressiveCageRender(sectionIdentifier) {
+  stopProgressiveCageRender()
+
+  if (!sectionIdentifier) {
+    return
+  }
+
+  const sectionCages = getCagesBySection(sectionIdentifier)
+  const total = sectionCages.length
+  setRenderedCageCount(sectionIdentifier, 0)
+
+  const token = cageRenderToken
+  loadingBar.start()
+
+  const renderNextBatch = () => {
+    if (token !== cageRenderToken) return
+
+    const currentCount = renderedCageCounts.value[sectionIdentifier] ?? 0
+    const nextCount = Math.min(currentCount + CAGE_RENDER_BATCH_SIZE, total)
+    setRenderedCageCount(sectionIdentifier, nextCount)
+
+    if (nextCount >= total) {
+      cageRenderFrame = null
+      loadingBar.finish()
+      return
+    }
+
+    cageRenderFrame = requestAnimationFrame(renderNextBatch)
+  }
+
+  cageRenderFrame = requestAnimationFrame(renderNextBatch)
+}
+
+async function refreshCages() {
+  loadingBar.start()
+  try {
+    await fetchCages()
+    scheduleProgressiveCageRender(activeSection.value)
+  } catch (error) {
+    loadingBar.error()
+    throw error
+  }
+}
+
+watch([activeSection, activeSectionCageIds], () => {
+  scheduleProgressiveCageRender(activeSection.value)
+})
+
 // 生命周期钩子
 onMounted(async () => {
+  await nextTick()
+  scheduleProgressiveCageRender(activeSection.value)
   await fetchTemporaryMice()
   // 确保小鼠列表已加载（用于存活统计与全局一致性）
   if (!allMice.value || allMice.value.length === 0) {
@@ -799,6 +933,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  stopProgressiveCageRender({ finishLoadingBar: true })
   closeContextMenu()
   closeSectionContextMenu()
 })
@@ -980,10 +1115,9 @@ function closeContextMenu() {
   cageContextMenu.visible = false
 }
 
-// 判定笼位性别显示：empty（空笼，合理的显示边界）、breeding、mixed、F、M、unknown
+// 判定笼位性别显示：图标只表达笼内小鼠性别状态，笼类型由卡片样式表达。
 function getCageSexState(cage) {
   if (!cage) return 'empty'
-  if (cage.cage_type === 'breeding') return 'breeding'
   const miceList = Array.isArray(cage.mice) ? cage.mice : []
   if (miceList.length === 0) return 'empty'
   const sexes = new Set(miceList.map(m => m.sex).filter(s => s === 'M' || s === 'F'))
@@ -996,18 +1130,29 @@ function getCageSexState(cage) {
 
 function getCageSexIcon(cage) {
   const state = getCageSexState(cage)
-  if (state === 'breeding' || state === 'mixed') return MaleFemaleOutline
+  if (state === 'mixed') return MaleFemaleOutline
   if (state === 'F') return FemaleOutline
   if (state === 'M') return MaleOutline
+  if (state === 'empty') return CubeOutline
   return HelpCircleOutline
 }
 
 function getCageSexClass(cage) {
   const state = getCageSexState(cage)
-  if (state === 'breeding' || state === 'mixed') return 'sex-mark-mixed'
+  if (state === 'mixed') return 'sex-mark-mixed'
   if (state === 'F') return 'sex-mark-female'
   if (state === 'M') return 'sex-mark-male'
+  if (state === 'empty') return 'sex-mark-empty'
   return 'sex-mark-unknown'
+}
+
+function getCageSexLabel(cage) {
+  const state = getCageSexState(cage)
+  if (state === 'mixed') return '混合性别'
+  if (state === 'F') return '雌性'
+  if (state === 'M') return '雄性'
+  if (state === 'empty') return '空笼'
+  return '性别未知'
 }
 
 // 非繁殖笼 + 混合性别 → 触发黄色警告图标 + tooltip
@@ -1038,6 +1183,16 @@ function getCageCountType(cage) {
 function getCageDisplayRows(cage) {
   const mice = Array.isArray(cage?.mice) ? cage.mice : []
   return mice.map(mouse => ({ type: 'mouse', mouse }))
+}
+
+function formatMouseAge(days) {
+  if (!days || days === 'none') return 'NA'
+
+  const dayCount = Number(days)
+  if (!Number.isFinite(dayCount)) return 'NA'
+  if (dayCount <= 42) return `${dayCount}d`
+
+  return `${Math.floor(dayCount / 7)}w`
 }
 
 // 打开 section 右键菜单
@@ -1373,7 +1528,7 @@ const renderPDFContent = (cages, sectionName) => {
           if (!mouse.days || mouse.days === 'none') {
             mouseDays.textContent = 'NA';
           } else {
-            mouseDays.textContent = `${mouse.days}天`;
+            mouseDays.textContent = formatMouseAge(mouse.days);
           }
           
           mouseItem.appendChild(mouseSex);
@@ -1399,15 +1554,22 @@ const renderPDFContent = (cages, sectionName) => {
 };
 
 // 生成PDF文件并返回ArrayBuffer
-const generatePDFAsArrayBuffer = () => {
-  return new Promise((resolve, reject) => {
-    const pdfRenderArea = pdfRenderAreaEl.value;
-    
-    html2canvas(pdfRenderArea, {
+const generatePDFAsArrayBuffer = async () => {
+  const pdfRenderArea = pdfRenderAreaEl.value;
+
+  try {
+    await document.fonts?.ready;
+
+    const canvas = await html2canvas(pdfRenderArea, {
       scale: 2,
       useCORS: true,
-      logging: false
-    }).then(canvas => {
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: pdfRenderArea.scrollWidth,
+      windowHeight: pdfRenderArea.scrollHeight
+    });
+
+    return await new Promise((resolve, reject) => {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const imgWidth = 210; // A4宽度（毫米）
@@ -1443,11 +1605,11 @@ const generatePDFAsArrayBuffer = () => {
       };
       
       reader.readAsArrayBuffer(blob);
-      
-      // 清空渲染区域
-      pdfRenderArea.innerHTML = '';
-    }).catch(reject);
-  });
+
+    });
+  } finally {
+    pdfRenderArea.innerHTML = '';
+  }
 };
 
 // 添加搜索方法
@@ -1629,38 +1791,18 @@ function isCageHighlighted(cageId) {
 }
 
 .controls-row-1 .search-container {
-  flex: 1 1 auto;
+  flex: 1 1 100%;
   min-width: 0;
-  max-width: 260px;
-}
-
-.controls-row-1 .slot-toolbar {
-  flex: 0 0 auto;
+  max-width: none;
 }
 
 .controls-row-2 :deep(.n-button) {
   flex: 0 0 auto;
 }
 
-.slot-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.slot-toolbar :deep(.n-input-number) {
-  width: 90px;
-}
-
-.slot-label {
-  color: var(--n-text-color-2);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
 /* 移动端（<640px）：
    - 标题 + 统计占一行
-   - 搜索框 + 笼位插槽一行两端对齐
+   - 搜索框独占一行
    - 三个按钮一行两端对齐，隐藏图标以确保不换行 */
 @media (max-width: 768px) {
  .controls-row-2 :deep(.n-button .n-button__icon) {
@@ -1714,6 +1856,33 @@ function isCageHighlighted(cageId) {
   align-items: center;
   justify-content: center;
   color: var(--n-text-color-disabled);
+}
+
+.cage-card-skeleton {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.cage-card-skeleton :deep(.n-card__content) {
+  height: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.skeleton-card-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skeleton-card-header {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 46px;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Section标签页样式 */
@@ -1850,9 +2019,15 @@ function isCageHighlighted(cageId) {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  font-size: 23px;
+  font-size: 16px;
   flex-shrink: 0;
   box-sizing: border-box;
+}
+
+.cage-sex-mark :deep(.n-icon) {
+  width: 16px;
+  height: 16px;
+  line-height: 1;
 }
 
 .sex-mark-mixed {
@@ -1875,6 +2050,11 @@ function isCageHighlighted(cageId) {
   color: #808080;
 }
 
+.sex-mark-empty {
+  background-color: color-mix(in srgb, #909399 14%, transparent);
+  color: #606266;
+}
+
 .sex-mark-warning {
   display: flex;
   align-items: center;
@@ -1882,7 +2062,7 @@ function isCageHighlighted(cageId) {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  font-size: 20px;
+  font-size: 15px;
   flex-shrink: 0;
   box-sizing: border-box;
   background-color: color-mix(in srgb, var(--n-warning-color, #f0a020) 18%, transparent);
@@ -2543,6 +2723,7 @@ p {
       top: -9999px;
       width: 794px; /* A4宽度(像素) */
       background: white;
+      color: #1f2933;
       padding: 20px;
     }
     
@@ -2551,14 +2732,14 @@ p {
       padding: 15px;
       margin-bottom: 20px;
       background: white;
-      box-shadow: 0 0 5px color-mix(in srgb, var(--n-text-color) 10%, transparent);
+      box-shadow: 0 0 5px rgba(31, 41, 51, 0.1);
     }
     
     .pdf-header {
       text-align: center;
       margin-bottom: 20px;
       padding-bottom: 10px;
-      border-bottom: 2px solid var(--n-text-color-1);
+      border-bottom: 2px solid #1f2933;
     }
     
     .pdf-cage-grid {
@@ -2569,7 +2750,7 @@ p {
     }
     
     .pdf-cage-card {
-      border: 1px solid var(--n-border-color);
+      border: 1px solid #d7dde4;
       border-radius: 4px;
       padding: 8px;
       width: 220px;
@@ -2577,6 +2758,8 @@ p {
       display: flex;
       flex-direction: column;
       page-break-inside: avoid;
+      background: #ffffff;
+      color: #1f2933;
     }
     
     .pdf-cage-id {
@@ -2584,7 +2767,7 @@ p {
       text-align: center;
       font-size: 14px;
       margin-bottom: 5px;
-      border-bottom: 1px solid var(--n-border-color);
+      border-bottom: 1px solid #d7dde4;
       padding-bottom: 3px;
     }
     
@@ -2600,17 +2783,17 @@ p {
       gap: 1px;
       font-size: 11px;
       box-sizing: border-box;
-      background-color: var(--n-color-embedded); /* 添加底纹 */
-      border: 1px solid var(--n-color-embedded);
+      background-color: #f4f6f8; /* 添加底纹 */
+      border: 1px solid #f4f6f8;
     }
 
     /* 添加斑马条纹效果 */
 .pdf-mouse-item:nth-child(odd) {
-  background-color: var(--n-color-embedded);
+  background-color: #f4f6f8;
 }
 
 .pdf-mouse-item:nth-child(even) {
-  background-color: var(--n-color-embedded);
+  background-color: #ffffff;
 }
     
     .pdf-mouse-sex {
@@ -2622,8 +2805,18 @@ p {
       justify-content: center;
       margin-right: 5px;
       font-size: 10px;
-      color: var(--n-text-color-1);
+      color: #1f2933;
       flex-shrink: 0;
+    }
+
+    .hidden-pdf-area .sex-female {
+      background-color: #fbe8ec;
+      color: #d03050;
+    }
+
+    .hidden-pdf-area .sex-male {
+      background-color: #e8f2ff;
+      color: #2080f0;
     }
     
     .pdf-mouse-info {
@@ -2642,7 +2835,7 @@ p {
     }
     
     .pdf-mouse-genotype {
-      color: var(--n-text-color-3);
+      color: #6b7280;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -2650,7 +2843,7 @@ p {
     
     .pdf-empty-cage {
       text-align: center;
-      color: var(--n-text-color-3);
+      color: #6b7280;
       font-style: italic;
       margin-top: 20px;
     }
