@@ -497,11 +497,11 @@
             </div>
             <div class="detail-item">
               <span class="detail-label">已完成测试</span>
-              <span class="detail-value" v-for="(test_done) in templateMouse.tests_done" :key="tests_done">{{ experiments.find(e => e.id === test_done).name }} </span>
+              <span class="detail-value" v-for="test_done in templateMouse.tests_done" :key="test_done">{{ experiments.find(e => e.id === test_done)?.name || test_done }} </span>
             </div>
             <div class="detail-item">
               <span class="detail-label">计划测试</span>
-              <span class="detail-value" v-for="(test_planned) in templateMouse.tests_planned" :key="tests_planned">{{ experiments.find(e => e.id === test_planned).name }} </span>
+              <span class="detail-value" v-for="test_planned in templateMouse.tests_planned" :key="test_planned">{{ experiments.find(e => e.id === test_planned)?.name || test_planned }} </span>
             </div>
           </div>
         </div>
@@ -538,19 +538,18 @@
 <script setup>
 import { h, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import api from '@/utils/api'
-import { formatDate, renderEmpty, normalizeDateValue } from '@/utils/format'
+import { formatDate, renderEmpty, normalizeDateValue, renderGenotypeSymbol } from '@/utils/format'
 import { fuzzySearch } from '@/utils/search'
 import MouseDetailModal from './MouseDetailView.vue'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import GenotypeComboBuilder from '@/components/GenotypeComboBuilder.vue'
 import { useGeneStore, useCageStore, useExperimentStore, useSettingStore } from '@/stores'
 import { storeToRefs } from 'pinia'
-import { useDialog, useMessage, NTag, NIcon, NDropdown } from 'naive-ui'
+import { useDialog, useMessage } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import {
   Add, Search, Refresh, CloseCircle, Save, Trash, TrashBin, BanSharp, PawOutline, FunnelOutline, ChevronBackOutline, ChevronForwardOutline
 } from '@vicons/ionicons5'
-
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 const isMobile = ref(window.innerWidth < 640)
 const filterExpandedMobile = ref([]) // collapsed by default on mobile
@@ -757,7 +756,7 @@ const miceColumns = computed(() => {
       key: 'genotype',
       sorter: true,
       sortOrder: sorterState.value.columnKey === 'genotype' ? sorterState.value.order : false,
-      render: (row) => h('span', { innerHTML: row.genotype?.symbol || '-' })
+      render: (row) => renderGenotypeSymbol(row.genotype?.symbol || '-')
     })
   }
   if (showColumns.value.strain) {

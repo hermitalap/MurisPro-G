@@ -109,11 +109,11 @@
 import { h, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import * as d3 from 'd3'
 import { Chart, registerables } from 'chart.js'
-import { NIcon, useMessage, useThemeVars } from 'naive-ui'
+import { useMessage, useThemeVars } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import { ArrowBack, Refresh, Add } from '@vicons/ionicons5'
 
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import { useGeneStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import api from '@/utils/api'
@@ -148,6 +148,12 @@ let chartInstance = null
 const simulationRef = ref(null)
 let resizeObserver = null
 let resizeTimer = null
+let clickTimer = null
+let mouseDataRequestId = 0
+
+watch(() => props.mouseId, (newId) => {
+  currentMouseID.value = newId
+})
 
 // 监听props.mouseId变化
 watch(currentMouseID, (newId) => {
@@ -163,8 +169,10 @@ watch(liveOnly, async () => {
 })
 
 const fetchMouseData = async () => {
+  const requestId = ++mouseDataRequestId
   try {
     const response = await api.get(`/mice/${currentMouseID.value}`)
+    if (requestId !== mouseDataRequestId) return
     mouseData.value = response.data
     // 渲染图表在 DOM 更新后进行
     await nextTick()
@@ -177,7 +185,6 @@ const fetchMouseData = async () => {
 
 // ========== 状态记录相关 ==========
 const deletingRecordId = ref(null)
-  let clickTimer = null
   const setDeletingRecord = (record) => {
   if (deletingRecordId.value === record.id) {
     deleteRecord(record)
@@ -193,7 +200,6 @@ const deleteRecord = async (record) => {
     const response = await api.delete(`/status_records/${record.id}`)
     const index = mouseData.value.status_records.findIndex(r => r.id === record.id)
     if (index !== -1) mouseData.value.status_records.splice(index, 1)
-    console.log('记录删除成功')
   } catch (error) {
     console.error('删除记录时出错:', error)
   } finally {
@@ -768,8 +774,17 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  mouseDataRequestId += 1
   if (chartInstance) chartInstance.destroy()
   if (resizeObserver) resizeObserver.disconnect()
+  if (resizeTimer) {
+    clearTimeout(resizeTimer)
+    resizeTimer = null
+  }
+  if (clickTimer) {
+    clearTimeout(clickTimer)
+    clickTimer = null
+  }
   if (simulationRef.value) {
     try { simulationRef.value.stop() } catch (e) {}
     simulationRef.value = null

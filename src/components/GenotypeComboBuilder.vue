@@ -68,7 +68,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { NButton, NSpace, NIcon, NEmpty } from 'naive-ui'
+
 import { AddOutline, CloseOutline, LeafOutline, TrashOutline } from '@vicons/ionicons5'
 import GenotypePicker from '@/components/GenotypePicker.vue'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
@@ -115,8 +115,8 @@ function updateRow(idx, v) {
 }
 
 function addLocus() {
-  if (isWildtype.value) emitNext([])
-  emitNext([...props.modelValue, { locus: '', allele1: null, allele2: null }])
+  const base = isWildtype.value ? [] : [...props.modelValue]
+  emitNext([...base, { locus: '', allele1: null, allele2: null }])
 }
 
 function removeRow(idx) {

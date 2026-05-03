@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request, send_file
-from flask_cors import CORS
 from datetime import datetime, date
-from models import db, Mouse, Cage, WeightRecord, StatusRecord, Pedigree, GeneLocus, Allele, Genotype, Location, ExperimentType, FieldDefinition, Experiment, ExperimentClass, ExperimentValue, PredefinedGroup
+from models import db, Mouse, Cage, WeightRecord, StatusRecord, Pedigree, GeneLocus, Allele, Genotype, Location, ExperimentType, FieldDefinition, Experiment, ExperimentClass, ExperimentValue, PredefinedGroup, BreedingPlan
 import os
 import sys
 from pathlib import Path
@@ -10,6 +9,9 @@ from io import BytesIO
 from sqlalchemy import text, inspect, or_, and_
 from sqlalchemy.orm import joinedload
 import re
+import secrets
+from uuid import uuid4
+from werkzeug.utils import secure_filename
 
 try:
     from migration_script import DatabaseMigrator
@@ -65,7 +67,8 @@ last_heartbeat = time.time()
 
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
-CORS(app)  # 允许跨域请求
+app.config['APP_ACCESS_TOKEN'] = secrets.token_urlsafe(32)
+app.config['REQUIRE_WEBVIEW_TOKEN'] = False
 
 
 # 配置数据库 - 修改部分开始
@@ -137,6 +140,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['ALLOWED_EXTENSIONS'] = {'xlsx', 'xls'}
 app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 
 # 确保上传目录存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -163,6 +167,19 @@ def _ensure_columns(table_name, columns_spec):
                 logger.error(f"为 {table_name} 添加列 {col_name} 失败: {ex}")
 
 
+def _ensure_tables():
+    """Create tables added after older database files were generated."""
+    try:
+        inspector = inspect(db.engine)
+        existing_tables = set(inspector.get_table_names())
+        if BreedingPlan.__tablename__ not in existing_tables:
+            BreedingPlan.__table__.create(db.engine)
+            logger.info(f"已创建表 {BreedingPlan.__tablename__}")
+    except Exception as ex:
+        logger.error(f"补建数据库表失败: {ex}")
+        raise
+
+
 # 确保数据库初始化完成
 with app.app_context():
     try:
@@ -171,6 +188,7 @@ with app.app_context():
         # 测试数据库连接
         db.session.execute(text('SELECT 1'))
         print("数据库连接测试成功")
+        _ensure_tables()
 
         # 兼容旧库：为已存在的表补齐基因编辑小鼠繁配模块字段
         _ensure_columns('mouse', [
@@ -217,6 +235,15 @@ def allowed_file(filename):
         filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
+def resolve_db_path(db_key):
+    if db_key not in db_list:
+        return None
+    candidate = (base_dir / db_key).resolve()
+    if candidate.parent != base_dir.resolve() or candidate.suffix.lower() != '.db':
+        return None
+    return candidate
+
+
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
@@ -241,7 +268,13 @@ def heartbeat():
 
 
 @app.before_request
-def block_non_read_requests():
+def protect_local_api():
+    if app.config.get('REQUIRE_WEBVIEW_TOKEN') and (request.path == '/heartbeat' or request.path.startswith('/api/')):
+        expected_token = app.config.get('APP_ACCESS_TOKEN')
+        provided_token = request.headers.get('X-MurisPro-Token', '')
+        if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+            return jsonify({'error': 'pywebview access token required'}), 403
+
     if app.config.get('READ_ONLY_MODE', False):
         if request.method not in ['GET', 'HEAD']:
             return jsonify({
@@ -255,13 +288,18 @@ def block_non_read_requests():
 def get_all_mice():
     try:
         mice = Mouse.query.all()
+        pedigree_map = {}
+        for p in Pedigree.query.all():
+            pedigree_map.setdefault(p.mouse_id, {'father': [], 'mother': []})
+            if p.parent_type in pedigree_map[p.mouse_id]:
+                pedigree_map[p.mouse_id][p.parent_type].append(p.parent_id)
         # 计算日龄和周龄
         mice_data = []
         for m in mice:
-            parents = Pedigree.query.filter_by(mouse_id=m.tid).all()
-            if parents and len(parents) > 0:
-                father = [p.parent_id for p in parents if p.parent_type == 'father']
-                mother = [p.parent_id for p in parents if p.parent_type == 'mother']
+            parents = pedigree_map.get(m.tid)
+            if parents:
+                father = parents.get('father') or None
+                mother = parents.get('mother') or None
             else:
                 father = None
                 mother = None
@@ -386,7 +424,7 @@ def add_mouse():
         }), 201
     except Exception as e:
         logger.error(f"添加小鼠失败: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': '添加小鼠失败，请检查输入数据'}), 400
 
 @app.route('/api/mice/<int:mouse_tid>', methods=['PUT'])
 def update_mouse(mouse_tid):
@@ -455,7 +493,7 @@ def update_mouse(mouse_tid):
     except Exception as e:
         db.session.rollback()
         logger.error(f"更新小鼠失败: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': '更新小鼠失败，请检查输入数据'}), 400
 
 @app.route('/api/mice/<int:mouse_tid>', methods=['DELETE'])
 def delete_mouse(mouse_tid):
@@ -474,7 +512,7 @@ def delete_mouse(mouse_tid):
     except Exception as e:
         db.session.rollback()
         logger.error(f"删除小鼠失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '删除小鼠失败，请查看日志'}), 500
 
 @app.route('/api/mice', methods=['DELETE'])
 def delete_batch_mice():
@@ -496,7 +534,7 @@ def delete_batch_mice():
     except Exception as e:
         db.session.rollback()
         logger.error(f"删除小鼠失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '批量删除小鼠失败，请查看日志'}), 500
 
 @app.route('/api/mice/<int:mouse_tid>', methods=['POST'])
 def add_mice_from_template(mouse_tid):
@@ -538,7 +576,7 @@ def add_mice_from_template(mouse_tid):
     except Exception as e:
         db.session.rollback()
         logger.error(f"批量添加小鼠失败: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': '批量添加小鼠失败，请检查输入数据'}), 400
 
 # 批量修改实验小鼠
 @app.route('/api/mice/experiments', methods=['PUT'])
@@ -553,8 +591,7 @@ def batch_experiments_change():
                 m = Mouse.query.get_or_404(mtid)
                 if not m:
                     continue
-                if m.tests_done:
-                    m.tests_done.delete()
+                ExperimentClass.query.filter_by(mouse_id=m.tid).delete()
                 for test_id in test_ids:
                     enter_experiment = ExperimentClass(
                         mouse_id = m.tid,
@@ -572,7 +609,7 @@ def batch_experiments_change():
     except Exception as e:
         db.session.rollback()
         logger.error(f"批量修改小鼠任务状态失败: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': '批量修改小鼠任务状态失败，请检查输入数据'}), 400
 
 
 
@@ -648,7 +685,7 @@ def get_all_cages():
         return jsonify(cage_data)
     except Exception as e:
         logger.error(f"获取笼位失败: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': '获取笼位失败，请查看日志'}), 500
 
 @app.route('/api/cages/-1', methods=['GET'])
 def get_undetermined_mice():
@@ -668,7 +705,7 @@ def get_undetermined_mice():
         return jsonify(undetermined_mice)
     except Exception as e:
         logger.error(f"获取无笼位小鼠失败: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': '获取无笼位小鼠失败，请查看日志'}), 500
 
 @app.route('/api/cages', methods=['POST'])
 def add_cage():
@@ -693,7 +730,8 @@ def add_cage():
         return jsonify({'id': cage.id}), 201
     except Exception as e:
         logger.error(f"添加笼位失败: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        db.session.rollback()
+        return jsonify({'error': '添加笼位失败，请检查输入数据'}), 400
 
 @app.route('/api/cage', methods=['PUT'])
 def move_mouse():
@@ -708,7 +746,8 @@ def move_mouse():
         return jsonify({'message': f'Mouse {data["mouse_id"]} moved to cage {data["cage_id"]}'})
     except Exception as e:
         logger.error(f"调整小鼠笼位失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        db.session.rollback()
+        return jsonify({'error': '调整小鼠笼位失败，请查看日志'}), 500
 
 # 删除笼位API
 @app.route('/api/cages/<int:cage_id>', methods=['DELETE'])
@@ -725,14 +764,12 @@ def delete_cage(cage_id):
     except Exception as e:
         logger.error(f"删除笼位失败: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '删除笼位失败，请查看日志'}), 500
 
 # 更新笼位API
 @app.route('/api/cages/<int:cage_id>', methods=['PUT'])
 def update_cage(cage_id):
     cage = Cage.query.get_or_404(cage_id)
-    if not cage:
-        return jsonify({'error': 'Cage not found'}), 404
     data = request.json
     try:
         cage.cage_id = data.get('cage_id')
@@ -759,7 +796,7 @@ def update_cage(cage_id):
     except Exception as e:
         logger.error(f"更新笼位失败: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '更新笼位失败，请查看日志'}), 500
 
 #============================================================
 # 基因编辑小鼠繁配模块
@@ -791,7 +828,7 @@ def update_breeding_status(cage_id):
     except Exception as e:
         db.session.rollback()
         logger.exception(f"更新笼位繁殖状态失败: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '更新笼位繁殖状态失败，请查看日志'}), 500
 
 
 @app.route('/api/mice/litter', methods=['POST'])
@@ -842,7 +879,7 @@ def register_litter():
     except Exception as e:
         db.session.rollback()
         logger.exception(f"批量登记新生仔失败: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '批量登记新生仔失败，请查看日志'}), 500
 
 
 @app.route('/api/mice/batch-genotype', methods=['PUT'])
@@ -903,7 +940,7 @@ def batch_genotype():
     except Exception as e:
         db.session.rollback()
         logger.exception(f"批量鉴定失败: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '批量鉴定失败，请查看日志'}), 500
 
 
 # 更新笼位排序
@@ -922,7 +959,7 @@ def update_cage_order():
     except Exception as e:
         logger.error(f"调整笼位排序失败: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '调整笼位排序失败，请查看日志'}), 500
 
 
 
@@ -987,7 +1024,7 @@ def get_mice_info(mouse_tid):
         return jsonify(content)
     except Exception as e:
         logger.error(f"获取小鼠详细信息失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '获取小鼠详细信息失败，请查看日志'}), 500
 
 #删除小鼠状态记录
 @app.route('/api/status_records/<int:record_id>', methods=['DELETE'])
@@ -1001,7 +1038,7 @@ def delete_status_record(record_id):
         return jsonify({'message': 'Status record deleted successfully'})
     except Exception as e:
         logger.error(f"删除小鼠状态失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '删除小鼠状态失败，请查看日志'}), 500
 
 #添加小鼠状态记录
 @app.route('/api/status_records', methods=['POST'])
@@ -1028,7 +1065,7 @@ def add_status_record():
         }), 201
     except Exception as e:
         logger.error(f"添加小鼠状态失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '添加小鼠状态失败，请查看日志'}), 500
 
 
 
@@ -1074,7 +1111,7 @@ def add_weight_records():
     except Exception as e:
         db.session.rollback()
         logger.error(f"体重录入失败: {str(e)}")
-        return jsonify({'error': 'Failed to add weight records', 'details': str(e)}), 500
+        return jsonify({'error': '体重录入失败，请查看日志'}), 500
 
 @app.route('/api/weight', methods=['GET'])
 def get_weight_records():
@@ -1354,10 +1391,10 @@ def update_allele(allele_id):
             gene.is_wildtype = data['is_wildtype']
         db.session.commit()
         return jsonify(gene.to_dict())
-    except:
+    except Exception as e:
         logger.error(f"更新基因位点失败: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': '获取数据失败'}), 404
+        return jsonify({'error': '更新基因位点失败'}), 500
 
 @app.route('/api/gene/<int:id>', methods=['DELETE'])
 def delete_gene(id):
@@ -1368,10 +1405,10 @@ def delete_gene(id):
         db.session.delete(gene)
         db.session.commit()
         return '', 204
-    except:
+    except Exception as e:
         logger.error(f"删除基因位点失败: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': '获取数据失败'}), 404
+        return jsonify({'error': '删除基因位点失败'}), 500
     
 @app.route('/api/gene_allele/<int:id>', methods=['DELETE'])
 def delete_allele(id):
@@ -1384,10 +1421,10 @@ def delete_allele(id):
         db.session.delete(allele)
         db.session.commit()
         return '', 204
-    except:
+    except Exception as e:
         logger.error(f"删除等位基因失败: {str(e)}")
         db.session.rollback()
-        return 404
+        return jsonify({'error': '删除等位基因失败'}), 500
 
 # 位置管理API
 @app.route('/api/locations', methods=['GET'])
@@ -1397,7 +1434,7 @@ def get_locations():
         return jsonify([l.to_dict() for l in locations]), 200
     except Exception as e:
         logger.error(f"获取区域失败: {str(e)}")
-        return jsonify({'error': f'获取位置失败: {str(e)}'}), 404
+        return jsonify({'error': '获取位置失败，请查看日志'}), 500
 
 @app.route('/api/locations', methods=['POST'])
 def add_location():
@@ -1423,7 +1460,7 @@ def add_location():
     except Exception as e:
         db.session.rollback()
         logger.error(f"添加区域失败: {str(e)}")
-        return jsonify({'error': f'添加位置失败: {str(e)}'}), 500
+        return jsonify({'error': '添加位置失败，请查看日志'}), 500
 
 @app.route('/api/locations/<int:id>', methods=['PUT'])
 def update_location(id):
@@ -1443,7 +1480,8 @@ def update_location(id):
         return jsonify(location.to_dict())
     except Exception as e:
         logger.error(f"更新区域失败: {str(e)}")
-        return jsonify({'error': f'更新位置失败: {str(e)}'}), 500
+        db.session.rollback()
+        return jsonify({'error': '更新位置失败，请查看日志'}), 500
 
 @app.route('/api/locations/<int:id>', methods=['DELETE'])
 def delete_location(id):
@@ -1462,7 +1500,7 @@ def delete_location(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"添加区域失败: {str(e)}")
-        return jsonify({'error': f'添加位置失败: {str(e)}'}), 500
+        return jsonify({'error': '删除位置失败，请查看日志'}), 500
 
 # 数据导出API
 @app.route('/api/export/<export_type>', methods=['GET'])
@@ -1519,17 +1557,14 @@ def export_data(export_type):
     else:
         return jsonify({'error': '无效的导出类型'}), 400
 
-    # 应用日期过滤
-    if start_date:
-        start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
-        if not end_date:
-            end_dt = datetime.max.date()
-    if end_date:
-        end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
-        if not start_date:
-            start_dt = datetime.min.date()
+    start_dt = datetime.min.date()
+    end_dt = datetime.max.date()
     if start_date or end_date:
         try:
+            if start_date:
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
+            if end_date:
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
             if export_type == 'mice':
                 query = query.filter(Mouse.birth_date.between(start_dt, end_dt))
             elif export_type == 'weights':
@@ -1538,31 +1573,32 @@ def export_data(export_type):
                 query = query.filter(StatusRecord.record_date.between(start_dt, end_dt))
         except ValueError:
             return jsonify({'error': '无效的日期格式'}), 400
-    
-    data = [row.to_dict() for row in query.all()]
+
+    rows = query.all()
     if export_type == 'mice':
-        for index in range(len(data)):
-            tid = data[index]['cage_id']
-            if not tid:
-                data[index]['cage_id'] = ""
-                data[index]['location'] = ""
-            else:
-                cage = Cage.query.get_or_404(tid)
-                data[index]['cage_id'] = cage.cage_id
-                data[index]['location'] = cage.section
-        for index in range(len(data)):
-            genotype_str = ""
-            mouse = Mouse.query.get_or_404(data[index]['tid'])
-            if mouse:
-                genotype_str = mouse.get_genotype_str()
-            data[index]['genotype_description'] = data[index]['genotype']
-            data[index]['genotype'] = genotype_str
+        cage_ids = {m.cage_id for m in rows if m.cage_id}
+        cages = {c.id: c for c in Cage.query.filter(Cage.id.in_(cage_ids)).all()} if cage_ids else {}
+        data = []
+        for mouse in rows:
+            item = mouse.to_dict()
+            cage = cages.get(mouse.cage_id)
+            item['location'] = cage.section if cage else ""
+            item['cage_id'] = cage.cage_id if cage else ""
+            item['genotype_description'] = item['genotype']
+            item['genotype'] = mouse.get_genotype_str()
+            data.append(item)
         df = pd.DataFrame(data)
         if data:
             base_columns = ['id', 'sex', 'genotype_description', 'live_status', 'birth_date', 'death_date', 'location', 'cage_id', 'strain']
             info_columns = ["tid", "genotype", "tests_done", "tests_planned"]
             df = df[base_columns + info_columns]
+    elif export_type in {'weights', 'records'}:
+        mouse_ids = {row.mouse_id for row in rows}
+        mice = {m.tid: m for m in Mouse.query.filter(Mouse.tid.in_(mouse_ids)).all()} if mouse_ids else {}
+        data = [row.to_dict(mice.get(row.mouse_id)) for row in rows]
+        df = pd.DataFrame(data)
     else:
+        data = [row.to_dict() for row in rows]
         df = pd.DataFrame(data)
     
     return create_export_file(df, export_format, filename)
@@ -1595,11 +1631,13 @@ def import_data():
     if file.filename == '':
         return jsonify({'error': '没有选择文件'}), 400
     
-    if not allowed_file(file.filename):
+    filename = secure_filename(file.filename)
+    if not allowed_file(filename):
         return jsonify({'error': '不支持的文件类型'}), 400
     
     # 保存上传的文件
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    suffix = filename.rsplit('.', 1)[1].lower()
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], f'{uuid4().hex}.{suffix}')
     file.save(filepath)
 
     # 获取导入参数
@@ -1610,7 +1648,8 @@ def import_data():
     try:
         df = pd.read_excel(filepath)
     except Exception as e:
-        return jsonify({'error': f'解析Excel文件失败: {str(e)}'}), 400
+        logger.error(f"解析Excel文件失败: {str(e)}")
+        return jsonify({'error': '解析Excel文件失败，请检查文件格式'}), 400
     
     # 根据导入类型处理数据
     result = {
@@ -1755,7 +1794,10 @@ def import_mice_data(df, result, conflict_resolution):
                 mouse.strain = str(row['strain']).strip()
             if 'record' in df.columns and pd.notna(row['record']):
                 if conflict_resolution == 'overwrite':
-                    StatusRecord.query.filter(StatusRecord.mouse_id == mouse.tid & StatusRecord.record_livingdays == -1).delete()
+                    StatusRecord.query.filter(
+                        StatusRecord.mouse_id == mouse.tid,
+                        StatusRecord.record_livingdays == -1
+                    ).delete(synchronize_session=False)
                 record = StatusRecord(
                     mouse_id=mouse.tid,
                     record_date=datetime.now().date(),
@@ -2019,7 +2061,7 @@ def update_sections_order():
     except Exception as e:
         db.session.rollback()
         logger.error(f"调整区域顺序失败: {str(e)}")
-        return jsonify({'error': f'更新失败: {str(e)}'}), 500
+        return jsonify({'error': '更新区域顺序失败，请查看日志'}), 500
 
 
 # 获取体重记录（带筛选和分页）
@@ -2177,7 +2219,8 @@ def get_experiment_types():
         experiment_types = ExperimentType.query.all()
         return jsonify([et.to_dict() for et in experiment_types])
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"获取实验类型失败: {str(e)}")
+        return jsonify({'error': '获取实验类型失败，请查看日志'}), 500
 
 @app.route('/api/experiment-types', methods=['POST'])
 def create_experiment_type():
@@ -2216,7 +2259,7 @@ def create_experiment_type():
     except Exception as e:
         db.session.rollback()
         logger.error(f"创建实验失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '创建实验失败，请查看日志'}), 500
 
 @app.route('/api/experiment-types/<int:id>', methods=['PUT'])
 def update_experiment_type(id):
@@ -2280,7 +2323,7 @@ def update_experiment_type(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"更新实验失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '更新实验失败，请查看日志'}), 500
 
 @app.route('/api/experiment-types/<int:id>', methods=['DELETE'])
 def delete_experiment_type(id):
@@ -2303,7 +2346,7 @@ def delete_experiment_type(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"删除实验失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '删除实验失败，请查看日志'}), 500
 
 # 预设实验类型
 @app.route('/api/experiment-types/presets', methods=['GET'])
@@ -2362,7 +2405,8 @@ def get_experiment(experiment_id):
         expr_info = ExperimentType.query.get_or_404(experiment_id)
         return jsonify(expr_info.to_dict())
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"获取实验信息失败: {str(e)}")
+        return jsonify({'error': '获取实验信息失败，请查看日志'}), 500
     
 @app.route('/api/experiment/<int:experiment_id>/data', methods=['GET'])
 def get_experiment_data(experiment_id):
@@ -2418,7 +2462,7 @@ def get_experiment_data(experiment_id):
         return jsonify(results)
     except Exception as e:
         logger.error(f"获取实验数据失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '获取实验数据失败，请查看日志'}), 500
 
 @app.route('/api/experiments', methods=['POST'])
 def input_experiment_records():
@@ -2504,7 +2548,7 @@ def input_experiment_records():
     except Exception as e:
         db.session.rollback()
         logger.error(f"录入实验数据失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '录入实验数据失败，请查看日志'}), 500
 
 # 部分更新实验记录
 @app.route('/api/experiments/<int:experiment_id>', methods=['PATCH'])
@@ -2588,7 +2632,7 @@ def update_experiment(experiment_id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"更新实验数据失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '更新实验数据失败，请查看日志'}), 500
 
 # 删除实验记录
 @app.route('/api/experiments/<int:experiment_id>', methods=['DELETE'])
@@ -2609,7 +2653,7 @@ def delete_experiment(experiment_id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"删除实验数据失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '删除实验数据失败，请查看日志'}), 500
 
 
 def get_experiment_data_by_type(experiment_ids):
@@ -2804,7 +2848,7 @@ def get_experiment_grouped_mice(experiment_id):
             return jsonify({'error': True})
     except Exception as e:
         logger.error(f"获取预设分组数据失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '获取预设分组数据失败，请查看日志'}), 500
 
 @app.route('/api/experiments/<int:experiment_id>/mice', methods=['GET'])
 def get_experiment_mice(experiment_id):
@@ -2816,7 +2860,7 @@ def get_experiment_mice(experiment_id):
         return jsonify([m.to_dict() for m in mice]), 200
     except Exception as e:
         logger.error(f"获取实验小鼠数据失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '获取实验小鼠数据失败，请查看日志'}), 500
         
 
 
@@ -2985,12 +3029,13 @@ def delete_database(db_key):
         return jsonify({'error': '数据库不存在'}), 404
     if db_key == default_db:
         return jsonify({'error': '无法删除当前使用的数据库'}), 400
+    target = resolve_db_path(db_key)
     del db_list[db_key]
     config['db']['db_list'] = db_list
     with open(config_path, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=4)
-    if os.path.exists(os.path.join(base_dir, db_key)):
-        os.remove(os.path.join(base_dir, db_key))
+    if target is not None and target.exists():
+        os.remove(target)
     return jsonify({'message': '数据库删除成功'}), 200
 
 @app.route('/api/database/<string:db_key>', methods=['POST'])
@@ -3049,12 +3094,12 @@ def get_database_info():
 def export_database(key):
     """导出数据库文件"""
     try:
-        db_path = os.path.join(base_dir, key)
-        if not os.path.exists(db_path):
+        export_path = resolve_db_path(key)
+        if export_path is None or not export_path.exists():
             return jsonify({'error': '数据库文件不存在'}), 404
         
         return send_file(
-            db_path,
+            export_path,
             as_attachment=True,
             download_name=f'mice_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.db',
             mimetype='application/x-sqlite3'
@@ -3115,13 +3160,14 @@ def import_database():
         if version_change:
             # 保存上传的文件
             import shutil
-            file.save(timestamp_name+timestamp_name)
+            uploaded_db_path = base_dir / f'uploaded_{timestamp_name}'
+            file.save(str(uploaded_db_path))
             new_db_path = base_dir / timestamp_name
             shutil.copy2(db_path, new_db_path)
             new_db_url = f"sqlite:///{new_db_path}"
             app.config['SQLALCHEMY_DATABASE_URI'] = new_db_url
         else:
-            file.save(timestamp_name)
+            file.save(str(base_dir / timestamp_name))
         database = {
             'projectName': db_item['projectName'],
             'startAt': db_item['startAt'],
@@ -3133,7 +3179,7 @@ def import_database():
         config['db']['default_db'] = timestamp_name
         
         if version_change:
-            OLD_DB_URL = f"sqlite:///{base_dir / (timestamp_name + timestamp_name)}"
+            OLD_DB_URL = f"sqlite:///{uploaded_db_path}"
             NEW_DB_URL = f"sqlite:///{base_dir / timestamp_name}"
 
             if DatabaseMigrator is None:
@@ -3151,7 +3197,7 @@ def import_database():
         })
     except Exception as e:
         logging.error(f"导入数据库失败: {str(e)}")
-        return jsonify({'error': '导入数据库失败', 'details': str(e)}), 500
+        return jsonify({'error': '导入数据库失败，请查看日志'}), 500
 
 @app.route('/api/genotypes', methods=['GET'])
 def get_all_genotypes():
@@ -3164,7 +3210,7 @@ def get_all_genotypes():
         return jsonify(genotypes)
     except Exception as e:
         logger.error(f"获取基因型组合失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '获取基因型组合失败，请查看日志'}), 500
 
 @app.route('/api/groups/temp', methods=['GET'])
 def get_temp_groups():
@@ -3260,7 +3306,8 @@ def get_temp_groups():
     except json.JSONDecodeError:
         return jsonify({'error': '分组参数JSON格式错误'}), 400
     except Exception as e:
-        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+        logger.error(f"临时分组失败: {str(e)}")
+        return jsonify({'error': '临时分组失败，请查看日志'}), 500
     
 @app.route('/api/groups/predefined/<int:groups_id>/mice', methods=['GET'])
 def get_predefined_mice(groups_id):
@@ -3299,7 +3346,7 @@ def get_predefined_mice(groups_id):
         return jsonify(group_result), 200
     except Exception as e:
         logger.error(f"获取预设分组数据失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': '获取预设分组数据失败，请查看日志'}), 500
 
 def analyse_rule(rule):
     if rule['Rtype'] == 'genotype':
@@ -3337,8 +3384,8 @@ def analyse_rule(rule):
         if value:
             return [r.tid for r in Mouse.query.filter(Mouse.strain == value).all()]
     elif rule['Rtype'] == 'cage':
-        cages = rule.get('cages')
-        if value:
+        cages = rule.get('cages') or []
+        if cages:
             return [r.tid for r in Mouse.query.filter(Mouse.cage_id.in_(cages)).all()]
     elif rule['Rtype'] == 'live_status':
         value = rule.get('value')
@@ -3429,7 +3476,7 @@ def modify_predefined_groups(gIndex):
     except Exception as e:
         db.session.rollback()
         logger.error(f"修改预设分组失败: {str(e)}")
-        return jsonify({'error': f'修改预设分组失败: {str(e)}'}), 500
+        return jsonify({'error': '修改预设分组失败，请查看日志'}), 500
 
 @app.route('/api/groups/predefined', methods=['POST'])
 def add_predefined_groups():
@@ -3460,7 +3507,7 @@ def add_predefined_groups():
     except Exception as e:
         db.session.rollback()
         logger.error(f"预设分组失败: {str(e)}")
-        return jsonify({'error': f'预设分组失败: {str(e)}'}), 500
+        return jsonify({'error': '预设分组失败，请查看日志'}), 500
 
 @app.route('/api/groups/predefined/review', methods=['POST'])
 def review_predefined_groups():
@@ -3484,7 +3531,7 @@ def review_predefined_groups():
             return jsonify(), 403
     except Exception as e:
         logger.error(f"解析预设分组失败: {str(e)}")
-        return jsonify({'error': f'解析预设分组失败: {str(e)}'}), 404
+        return jsonify({'error': '解析预设分组失败，请查看日志'}), 500
 
 @app.route('/api/groups/predefined', methods=['GET'])
 def get_predefined_groups():
@@ -3493,7 +3540,7 @@ def get_predefined_groups():
         return jsonify([group.to_dict() for group in groups]), 200
     except Exception as e:
         logger.error(f"获取预设分组失败: {str(e)}")
-        return jsonify({'error': f'获取预设分组失败: {str(e)}'}), 404
+        return jsonify({'error': '获取预设分组失败，请查看日志'}), 500
 
 @app.route('/api/groups/predefined/<int:g_id>', methods=['DELETE'])
 def delete_predefined_groups(g_id):
@@ -3504,7 +3551,139 @@ def delete_predefined_groups(g_id):
         return jsonify(), 200
     except Exception as e:
         logger.error(f"删除预设分组失败: {str(e)}")
-        return jsonify({'error': f'删除预设分组失败: {str(e)}'}), 404
+        return jsonify({'error': '删除预设分组失败，请查看日志'}), 500
+
+
+def _parse_optional_date(value, field_name):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').date()
+    except ValueError:
+        raise ValueError(f'{field_name} 格式应为 YYYY-MM-DD')
+
+
+def _normalize_breeding_plan_payload(data, partial=False):
+    if data is None:
+        raise ValueError('请求体不能为空')
+
+    normalized = {}
+    if not partial or 'name' in data:
+        name = (data.get('name') or '').strip()
+        if not name:
+            raise ValueError('计划名称不能为空')
+        normalized['name'] = name
+
+    if not partial or 'strategy' in data:
+        strategy = data.get('strategy') or 'custom'
+        if strategy not in {'global_ko', 'cko', 'custom'}:
+            raise ValueError('繁配策略无效')
+        normalized['strategy'] = strategy
+
+    if not partial or 'targets' in data:
+        targets = data.get('targets') or []
+        if not isinstance(targets, list) or not targets:
+            raise ValueError('目标基因型不能为空')
+        for target in targets:
+            if not isinstance(target, dict) or not target.get('locus'):
+                raise ValueError('目标基因型格式无效')
+        normalized['targets'] = targets
+
+    if not partial or 'targetCount' in data:
+        try:
+            target_count = int(data.get('targetCount') or 1)
+        except (TypeError, ValueError):
+            raise ValueError('目标数量应为整数')
+        if target_count < 1:
+            raise ValueError('目标数量应大于 0')
+        normalized['target_count'] = target_count
+
+    if not partial or 'sex' in data:
+        sex = data.get('sex') or 'any'
+        if sex not in {'any', 'M', 'F'}:
+            raise ValueError('目标性别无效')
+        normalized['sex'] = sex
+
+    if not partial or 'strain' in data:
+        strain = (data.get('strain') or '').strip()
+        normalized['strain'] = strain or None
+
+    if not partial or 'deadline' in data:
+        normalized['deadline'] = _parse_optional_date(data.get('deadline'), '截止日期')
+
+    if not partial or 'note' in data:
+        normalized['note'] = data.get('note') or ''
+
+    if 'archived' in data:
+        normalized['archived'] = bool(data.get('archived'))
+
+    return normalized
+
+
+@app.route('/api/breeding-plans', methods=['GET'])
+def get_breeding_plans():
+    try:
+        plans = BreedingPlan.query.order_by(BreedingPlan.created_at.desc(), BreedingPlan.id.desc()).all()
+        return jsonify([plan.to_dict() for plan in plans]), 200
+    except Exception as e:
+        logger.error(f"获取繁配计划失败: {str(e)}")
+        return jsonify({'error': '获取繁配计划失败，请查看日志'}), 500
+
+
+@app.route('/api/breeding-plans', methods=['POST'])
+def create_breeding_plan():
+    try:
+        data = request.get_json() or {}
+        normalized = _normalize_breeding_plan_payload(data)
+        plan_id = data.get('id') or 'bp_' + uuid4().hex[:16]
+        if BreedingPlan.query.get(plan_id):
+            return jsonify({'error': '已存在相同 ID 的繁配计划'}), 400
+
+        plan = BreedingPlan(
+            id=plan_id,
+            created_at=_parse_optional_date(data.get('createdAt'), '创建日期') or date.today(),
+            **normalized
+        )
+        db.session.add(plan)
+        db.session.commit()
+        return jsonify(plan.to_dict()), 201
+    except ValueError as e:
+        return jsonify({'error': e.args[0] if e.args else '繁配计划参数无效'}), 400
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"创建繁配计划失败: {str(e)}")
+        return jsonify({'error': '创建繁配计划失败，请查看日志'}), 500
+
+
+@app.route('/api/breeding-plans/<string:plan_id>', methods=['PUT'])
+def update_breeding_plan(plan_id):
+    try:
+        data = request.get_json() or {}
+        plan = BreedingPlan.query.get_or_404(plan_id)
+        normalized = _normalize_breeding_plan_payload(data, partial=True)
+        for key, value in normalized.items():
+            setattr(plan, key, value)
+        db.session.commit()
+        return jsonify(plan.to_dict()), 200
+    except ValueError as e:
+        return jsonify({'error': e.args[0] if e.args else '繁配计划参数无效'}), 400
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"更新繁配计划失败: {str(e)}")
+        return jsonify({'error': '更新繁配计划失败，请查看日志'}), 500
+
+
+@app.route('/api/breeding-plans/<string:plan_id>', methods=['DELETE'])
+def delete_breeding_plan(plan_id):
+    try:
+        plan = BreedingPlan.query.get_or_404(plan_id)
+        db.session.delete(plan)
+        db.session.commit()
+        return jsonify(), 204
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"删除繁配计划失败: {str(e)}")
+        return jsonify({'error': '删除繁配计划失败，请查看日志'}), 500
 
 @app.route('/api/setting', methods=['GET'])
 def display_setting():

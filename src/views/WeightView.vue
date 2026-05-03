@@ -76,7 +76,7 @@
             <n-form-item label="选中小鼠信息">
               <div class="mouse-info">
               <p>ID: {{ selectedMouse.id }}</p>
-              <p>基因型: {{ selectedMouse.genotype }}</p>
+              <p class="mouse-info-line">基因型: <GenotypeLabel :symbol="selectedMouse.genotype" /></p>
               <p>性别: {{ selectedMouse.sex === 'M' ? '雄性' : '雌性' }}</p>
               <p>生日: {{ formatDate(selectedMouse.birth_date) }}</p>
               </div>
@@ -116,12 +116,12 @@
 
 <script setup>
 import { h, ref, computed, onMounted } from 'vue'
-import { NButton, NSpace, NIcon, useDialog, useMessage } from 'naive-ui'
+import { NButton, NIcon, useDialog, useMessage } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import { Refresh, Search, Save, Add, CloseCircle, ScaleOutline, CreateOutline, TrashOutline, AddCircleOutline } from '@vicons/ionicons5'
 import api from '@/utils/api'
-import { formatDate } from '@/utils/format'
-
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
+import { formatDate, renderGenotypeSymbol } from '@/utils/format'
+import GenotypeLabel from '@/components/GenotypeLabel.vue'
 
 // 状态管理
 const weightRecords = ref([])
@@ -180,7 +180,7 @@ const weightColumns = computed(() => [
 {
   title: '基因型',
   key: 'genotype',
-  render: (row) => row.mouse_info?.genotype || '-'
+  render: (row) => renderGenotypeSymbol(row.mouse_info?.genotype)
 },
 {
   title: '生日',

@@ -6,6 +6,8 @@
  * - qualifyMice(mice, plan): 按计划筛选候选（活体 + 已鉴定 + 基因型命中 + 性别）
  */
 
+import { pairKey } from '@/utils/allele'
+
 /**
  * 根据 pedigree 计算每只小鼠的世代索引。
  * 规则：
@@ -58,15 +60,6 @@ export function computeGenerations(mice) {
     if (!gen.has(m.tid)) gen.set(m.tid, 0)
   }
   return gen
-}
-
-/**
- * 规范化 allele 对为 "min-max" key
- */
-function pairKey(a, b) {
-  if (a == null || b == null) return null
-  const [lo, hi] = [a, b].sort((x, y) => x - y)
-  return `${lo}-${hi}`
 }
 
 /**

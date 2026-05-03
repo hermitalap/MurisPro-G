@@ -112,7 +112,7 @@
 </template>
 
 <script setup>
-import { h, ref, reactive, computed, onMounted, watch, nextTick, useTemplateRef } from 'vue';
+import { h, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, useTemplateRef } from 'vue';
 import { useRoute, onBeforeRouteUpdate } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
@@ -123,10 +123,9 @@ import regression from 'regression';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import IdGroupingManager from '@/components/IdGroupingManager.vue'
-import { NIcon, NGrid, NGi, useDialog, useMessage } from 'naive-ui'
+import { useDialog, useMessage } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import { People, BarChart, Create, Download, Refresh, Save, BarChartOutline, GridOutline } from '@vicons/ionicons5'
-
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 const geneStore = useGeneStore()
 const {mice} = storeToRefs(geneStore)
@@ -134,7 +133,7 @@ const {colors} = geneStore
 
 const experimentStore = useExperimentStore()
 const {experiments} = storeToRefs(experimentStore)
-const {fetchPredefinedGroups} = experimentStore
+const {fetchPredefinedGroups, fetchExperiments} = experimentStore
 const dialog = useDialog()
 const message = useMessage()
 
@@ -160,6 +159,18 @@ onBeforeRouteUpdate(async (to, from) => {
     }
 });
 let currentRequestToken = null;
+let initRequestId = 0;
+const chartInstances = []
+
+function renderGroupHeader(value, count) {
+    const wrapper = document.createElement('span');
+    wrapper.append(document.createTextNode(String(value ?? '未分组')));
+    const meta = document.createElement('span');
+    meta.style.color = 'var(--n-text-color-3)';
+    meta.textContent = ` (${count} 条记录)`;
+    wrapper.append(meta);
+    return wrapper;
+}
 
 // 路由和实验信息
 const route = useRoute();
@@ -409,25 +420,29 @@ const recordColumnDefs = computed(() => {
 });
 
 const fetchGroups = async () => {
+const requestToken = currentRequestToken;
 try {
-    const response = await api.get(`/experiments/${experimentId.value}/grouped_mice`, {cancelToken: currentRequestToken.token});
+    const response = await api.get(`/experiments/${experimentId.value}/grouped_mice`, {cancelToken: requestToken?.token});
+    if (requestToken !== currentRequestToken) return;
     if (response.data.error) {
         message.info("请在设置页面为本实验设置预设分组")
         return
     }
     allGroups.value = response.data;
     await fetchData()
+    if (requestToken !== currentRequestToken) return;
     // 初始化 Tabulator
     initTabulator();
     await generateChart()
 } catch (error) {
+    if (axios.isCancel(error)) return;
     console.error('获取小鼠错误:', error);
     message.error('获取小鼠错误: ' + error.message);
 }
 }
 
 const handleGroupUpdate = (updatedGroup) => {
-    Object.assign(allGroups, updatedGroup)
+    allGroups.value = updatedGroup
 }
 
 const saveGroup = async () => {
@@ -447,6 +462,23 @@ onMounted(() => {
 init();
 });
 
+onUnmounted(() => {
+    initRequestId += 1;
+    if (currentRequestToken) {
+        currentRequestToken.cancel('组件已卸载');
+        currentRequestToken = null;
+    }
+    destroyCharts();
+    if (tabulatorInstance.value) {
+        tabulatorInstance.value.destroy();
+        tabulatorInstance.value = null;
+    }
+    if (recordTabulatorInstance.value) {
+        recordTabulatorInstance.value.destroy();
+        recordTabulatorInstance.value = null;
+    }
+});
+
 // 监听器
 watch(experimentData, (newData) => {
 if (tabulatorInstance.value) {
@@ -456,13 +488,27 @@ if (tabulatorInstance.value) {
 
 // 方法
 async function init() {
+const requestId = ++initRequestId;
+if (currentRequestToken) {
+    currentRequestToken.cancel('取消上一个请求');
+}
 currentRequestToken = axios.CancelToken.source();
 try {
-    const experiment = experiments.value.find(ex => ex.id === Number(experimentId.value))
+    let experiment = experiments.value.find(ex => ex.id === Number(experimentId.value))
+    if (!experiment) {
+        await fetchExperiments()
+        if (requestId !== initRequestId) return
+        experiment = experiments.value.find(ex => ex.id === Number(experimentId.value))
+    }
+    if (!experiment) {
+        message.error('实验类型不存在或尚未加载');
+        return;
+    }
     experimentName.value = experiment.name;
-    fieldDefinitions.value = experiment.fields;
+    fieldDefinitions.value = Array.isArray(experiment.fields) ? experiment.fields : [];
 
     await fetchCandidate();
+    if (requestId !== initRequestId) return
     await fetchGroups();
 } catch (error) {
     if (!axios.isCancel(error)) {
@@ -470,6 +516,18 @@ try {
         message.error('初始化失败: ' + error.message);
     }
 }
+}
+
+function destroyCharts() {
+    while (chartInstances.length) {
+        const chart = chartInstances.pop();
+        try { chart.destroy(); } catch (error) { /* ignore chart cleanup errors */ }
+    }
+}
+
+function trackChart(chart) {
+    chartInstances.push(chart);
+    return chart;
 }
 
 function initTabulator() {
@@ -491,9 +549,7 @@ tabulatorInstance.value = new Tabulator(tabulatorRef.value, {
     selectableRange: true,
     clipboard: "copy",
     groupBy: 'group',
-    groupHeader: (value, count) => {
-        return `${value} <span style='color:var(--n-text-color-3);'>(${count} 条记录)</span>`;
-    }
+    groupHeader: renderGroupHeader
 });
 }
 
@@ -524,9 +580,7 @@ recordTabulatorInstance.value = new Tabulator(recordTabulatorRef.value, {
     rowHeader:{resizable: false, frozen: true, width:40, hozAlign:"center", formatter: "rownum", cssClass:"range-header-col", editor:false},
 
     groupBy: 'group',
-    groupHeader: (value, count) => {
-        return `${value} <span style='color:var(--n-text-color-3);'>(${count} 条记录)</span>`;
-    }
+    groupHeader: renderGroupHeader
 });
 }
 
@@ -596,21 +650,27 @@ async function exportData () {
 }
 
 async function fetchData() {
+const requestToken = currentRequestToken;
 try {
-    const response = await api.get(`/experiment/${experimentId.value}/data`, {cancelToken: currentRequestToken.token});
-    experimentData.value = response.data;
+    const response = await api.get(`/experiment/${experimentId.value}/data`, {cancelToken: requestToken?.token});
+    if (requestToken !== currentRequestToken) return;
+    experimentData.value = Array.isArray(response.data) ? response.data : [];
     hasData.value = experimentData.value.length > 0;
 } catch (error) {
+    if (axios.isCancel(error)) return;
     console.error('获取数据:', error);
     message.error('获取数据: ' + error.message);
 }
 }
 
 async function fetchCandidate() {
+const requestToken = currentRequestToken;
 try{
-    const miceExperiment = await api.get(`/experiments/${experimentId.value}/mice`)
-    candidateMice.value = miceExperiment.data
+    const miceExperiment = await api.get(`/experiments/${experimentId.value}/mice`, {cancelToken: requestToken?.token})
+    if (requestToken !== currentRequestToken) return;
+    candidateMice.value = Array.isArray(miceExperiment.data) ? miceExperiment.data : []
 } catch (error) {
+    if (axios.isCancel(error)) return;
     console.error('获取数据:', error);
     message.error('获取数据: ' + error.message);
 }
@@ -627,7 +687,8 @@ async function generateChart() {
     const chartContainer = chartContainerEl.value;
     if (!chartContainer) return;
 
-    chartContainer.innerHTML = '';
+    destroyCharts();
+    chartContainer.replaceChildren();
 
     // 获取字段定义
     const xFields = fieldDefinitions.value.filter(f => f.visualize_type === 'x');
@@ -881,7 +942,7 @@ function createXYChart(canvas, xField, yField, groupedData) {
     }
 
     // 创建图表
-    new Chart(ctx, {
+    trackChart(new Chart(ctx, {
         type: 'scatter',
         data: {
         datasets: datasets
@@ -935,7 +996,7 @@ function createXYChart(canvas, xField, yField, groupedData) {
             }
         }
         }
-    });
+    }));
 }
 
 // 创建箱线图+散点图函数
@@ -1031,7 +1092,7 @@ function createBoxPlotWithPoints(canvas, columnField, groupedData) {
     const yMax = globalMax + padding;
     
     // 创建组合图表
-    new Chart(ctx, {
+    trackChart(new Chart(ctx, {
         data: {
         labels: groupNames,
         datasets: scatterDatasets  // 使用多个散点图数据集
@@ -1155,7 +1216,7 @@ function createBoxPlotWithPoints(canvas, columnField, groupedData) {
             });
         }
         }]
-    });
+    }));
 }
 
 // 计算中位数的辅助函数
@@ -1278,7 +1339,7 @@ function createDistributionChart(canvas, xField, groupedData) {
         });
     };
     // 创建图表
-    new Chart(ctx, {
+    trackChart(new Chart(ctx, {
         type: 'line',
         data: {
         datasets: datasets
@@ -1313,26 +1374,29 @@ function createDistributionChart(canvas, xField, groupedData) {
             }
         }
         }
-    });
+    }));
 }
 
 function initRecordData() {
     const rowData = [];
 
     allGroups.value.rules.forEach(group => {
-        group.mouseId.forEach(mTid => {
-        const row = {
-            group: group.name,
-            mouse_id: mice.value.find(m => m.tid === mTid).id,
-            mouse_tid: mTid,
-            notes: ''
-        };
-        
-        fieldDefinitions.value.forEach(field => {
-            row[`field_${field.id}`] = null;
-        });
-        
-        rowData.push(row);
+        const mouseIds = Array.isArray(group.mouseId) ? group.mouseId : [];
+        mouseIds.forEach(mTid => {
+            const mouse = mice.value.find(m => m.tid === mTid)
+            if (!mouse) return
+            const row = {
+                group: group.name,
+                mouse_id: mouse.id,
+                mouse_tid: mTid,
+                notes: ''
+            };
+
+            fieldDefinitions.value.forEach(field => {
+                row[`field_${field.id}`] = null;
+            });
+
+            rowData.push(row);
         });
     });
     recordRowData.value = rowData;

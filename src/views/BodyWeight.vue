@@ -170,11 +170,12 @@
 
 <script setup>
 import { h, ref, computed, defineComponent, nextTick, onMounted, onUnmounted, watch, useTemplateRef } from 'vue'
-import { NInputNumber, NIcon, NDescriptions, NDescriptionsItem, useMessage } from 'naive-ui'
+import { NInputNumber, useMessage } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import { Add, Close, TrendingUp, Save, AddOutline } from '@vicons/ionicons5'
 
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api'
+import { renderGenotypeSymbol } from '@/utils/format'
 import Chart from 'chart.js/auto'
 import regression from 'regression'
 import { useGeneStore, useExperimentStore } from '@/stores'
@@ -257,7 +258,7 @@ const weightInputColumns = [
   {
     title: '基因型',
     key: 'genotype',
-    render: (row) => h('span', { innerHTML: row.genotype || '' })
+    render: (row) => renderGenotypeSymbol(row.genotype || '')
   },
   { title: '性别', key: 'sex' },
   {

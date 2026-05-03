@@ -217,7 +217,7 @@
         </div>
         <n-space>
           <n-button @click="$emit('update:show', false)">取消</n-button>
-          <n-button type="primary" :disabled="!canSubmit" @click="onSubmit">
+          <n-button type="primary" :disabled="!canSubmit" :loading="submitting" @click="onSubmit">
             {{ isEdit ? '保存修改' : '创建计划' }}
           </n-button>
         </n-space>
@@ -228,11 +228,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import {
-  NModal, NForm, NFormItem, NInput, NInputNumber, NDatePicker,
-  NRadioGroup, NRadioButton, NButton, NSpace,
-  NIcon, NTag, NAlert, NCollapse, NCollapseItem
-} from 'naive-ui'
+import { useMessage } from 'naive-ui'
 import {
   AddOutline, CloseOutline, EyeOutline, BulbOutline, FlashOutline,
   SkullOutline, LayersOutline, BuildOutline,
@@ -258,8 +254,10 @@ const emit = defineEmits(['update:show', 'saved'])
 
 const geneStore = useGeneStore()
 const planStore = useBreedingPlanStore()
+const message = useMessage()
 
 const isEdit = computed(() => !!props.plan?.id)
+const submitting = ref(false)
 
 const form = reactive({
   name: '',
@@ -424,7 +422,7 @@ const recommendations = computed(() => {
 
 const canSubmit = computed(() => !hasError.value)
 
-function onSubmit() {
+async function onSubmit() {
   if (!canSubmit.value) return
   const payload = {
     name: form.name.trim(),
@@ -440,11 +438,19 @@ function onSubmit() {
       allele2: t.allele2
     }))
   }
-  const saved = isEdit.value
-    ? planStore.updatePlan(props.plan.id, payload)
-    : planStore.createPlan(payload)
-  emit('saved', saved)
-  emit('update:show', false)
+  submitting.value = true
+  try {
+    const saved = isEdit.value
+      ? await planStore.updatePlan(props.plan.id, payload)
+      : await planStore.createPlan(payload)
+    emit('saved', saved)
+    emit('update:show', false)
+  } catch (error) {
+    console.error('保存繁配计划失败:', error)
+    message.error(error.response?.data?.error || '保存繁配计划失败')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 

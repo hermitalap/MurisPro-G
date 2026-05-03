@@ -156,15 +156,12 @@
 
 <script setup>
 import { h, ref, computed, nextTick, useTemplateRef } from 'vue';
-import {
-  NTag, NIcon, NCard, NFlex, NSelect, NButton, NCheckbox,
-  NStatistic, NDataTable, NPagination, NEmpty,
-  useMessage
-} from 'naive-ui'
+import { useMessage } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import { TrendingUp, Add, Close, AddOutline } from '@vicons/ionicons5'
 
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import api from '@/utils/api';
+import { renderGenotypeSymbol } from '@/utils/format'
 import Chart from 'chart.js/auto';
 import { useGeneStore, useExperimentStore } from '@/stores'
 import { storeToRefs } from 'pinia'
@@ -206,7 +203,7 @@ const survivalColumns = computed(() => [
   {
     title: '基因型',
     key: 'genotype',
-    render: (row) => h('span', { innerHTML: row.genotype || '' })
+    render: (row) => renderGenotypeSymbol(row.genotype || '')
   },
   {
     title: '生存天数',

@@ -15,30 +15,23 @@ export {
   useBreedingPlanStore
 }
 
-// // 工具函数
-// export const resetAllStores = () => {
-//   // 重置所有 store 的状态
-//   console.log('重置所有 store')
-// }
+export async function initializeStores() {
+  // 初始化所有 store 的预加载数据
+  const stores = [
+    useGeneStore,
+    useCageStore,
+    useExperimentStore,
+    useSettingStore,
+    useBreedingPlanStore
+  ]
 
-export class StoreUtils {
-  static async initializeStores() {
-    // 初始化所有 store 的预加载数据
-    const stores = [
-      useGeneStore,
-      useCageStore,
-      useExperimentStore, 
-      useSettingStore
-    ]
+  const results = await Promise.allSettled(
+    stores.map((Store) => Store().loadInitialData())
+  )
 
-    const results = await Promise.allSettled(
-      stores.map((Store) => Store().loadInitialData())
-    )
-
-    results.forEach((result, index) => {
-      if (result.status === 'rejected') {
-        console.error('初始化 store 失败:', stores[index].name, result.reason)
-      }
-    })
-  }
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.error('初始化 store 失败:', stores[index].name, result.reason)
+    }
+  })
 }

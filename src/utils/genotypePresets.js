@@ -11,6 +11,8 @@
  *  - buildBreedingRecommendation(plan, genotypes): 给出策略建议
  */
 
+import { pairKey } from '@/utils/allele'
+
 // ---------- 等位基因分类 ----------
 
 export const ALLELE_KIND = {
@@ -23,7 +25,7 @@ export const ALLELE_KIND = {
 
 const RE_NULL = /^(ko|null|neo|lacz|del|ki|-)$/i
 const RE_FLOX = /(^f$|^fl$|flox)/i
-const RE_CRE = /(^cre$|cre[-_]?\w*|ert2?|dre|flpo?|flp)/i
+const RE_CRE = /(^cre$|cre[-_]?\w*|ert2?|dre)/i
 
 export function classifyAllele(allele) {
   if (!allele) return ALLELE_KIND.OTHER
@@ -35,9 +37,19 @@ export function classifyAllele(allele) {
   return ALLELE_KIND.OTHER
 }
 
+function classifyAlleleForLocus(locus, allele) {
+  const kind = classifyAllele(allele)
+  if (kind !== ALLELE_KIND.OTHER) return kind
+  const locusSymbol = (locus?.symbol || '').toLowerCase()
+  if (locusSymbol.includes('cre') && !allele?.is_wildtype && allele?.symbol) {
+    return ALLELE_KIND.CRE
+  }
+  return kind
+}
+
 /** 从位点 alleles 快速找到某类 allele（返回第一个） */
 export function findAlleleOfKind(locus, kind) {
-  return (locus?.alleles || []).find(a => classifyAllele(a) === kind)
+  return (locus?.alleles || []).find(a => classifyAlleleForLocus(locus, a) === kind)
 }
 
 // ---------- 位点类型识别 ----------
@@ -52,7 +64,7 @@ export function findAlleleOfKind(locus, kind) {
  */
 export function detectLocusKind(locus) {
   if (!locus || !Array.isArray(locus.alleles)) return 'custom'
-  const kinds = new Set(locus.alleles.map(classifyAllele))
+  const kinds = new Set(locus.alleles.map(a => classifyAlleleForLocus(locus, a)))
   if (kinds.has(ALLELE_KIND.CRE)) return 'cre_driver'
   if (kinds.has(ALLELE_KIND.FLOX)) return 'cko_flox'
   if (kinds.has(ALLELE_KIND.NULL) && kinds.has(ALLELE_KIND.WT)) return 'global_ko'
@@ -136,12 +148,6 @@ export function generatePresets(locus) {
     }
   }
   return presets
-}
-
-function pairKey(a, b) {
-  if (a == null || b == null) return null
-  const [lo, hi] = [a, b].sort((x, y) => x - y)
-  return `${lo}-${hi}`
 }
 
 // ---------- 杂交预测 ----------

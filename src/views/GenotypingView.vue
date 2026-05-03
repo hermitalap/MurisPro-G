@@ -251,18 +251,14 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, h } from 'vue'
-import {
-  NSpace, NSelect, NInput, NButton, NCard, NTag, NPopover, NFlex, NEmpty,
-  NDrawer, NDrawerContent, NTabs, NTabPane, NDescriptions, NDescriptionsItem,
-  NIcon, NBadge, NTooltip, useDialog, useMessage
-} from 'naive-ui'
+import { useDialog, useMessage } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import {
   Heart, Ribbon, Flask, Add, Close, RefreshCircle, LogIn, Refresh, HappySharp,
   SearchOutline, MaleFemaleOutline, HeartOutline, HappyOutline, MaleOutline, FemaleOutline, FlaskOutline
 } from '@vicons/ionicons5'
 
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 import { useCageStore, useGeneStore, useBreedingStore } from '@/stores'
 import LitterRegistrationModal from '@/components/LitterRegistrationModal.vue'
 import BatchGenotypeModal from '@/components/BatchGenotypeModal.vue'

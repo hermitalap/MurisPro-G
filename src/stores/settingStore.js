@@ -2,6 +2,21 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/utils/api'
 
+const DEFAULT_MOUSE_COLUMNS = {
+    id: true,
+    genotype: true,
+    strain: true,
+    sex: true,
+    birth_date: true,
+    days_old: true,
+    weeks_old: true,
+    live_status: true,
+    death_date: false,
+    tests_planned: false,
+    tests_done: false,
+    cage: true
+}
+
 export const useSettingStore = defineStore('setting', () => {
 
     const loadInitialData = async () => {
@@ -11,21 +26,7 @@ export const useSettingStore = defineStore('setting', () => {
     const databaseNotChanged = ref(true)
     const trueCurrentDatabase = ref('')
 
-    const showColumns = ref({
-        id: true,
-        genotype: true,
-        strain: true,
-        sex: true,
-        birth_date: true,
-        days_old: true,
-        weeks_old: true,
-        live_status: true,
-
-        death_date: false,
-        tests_planned: false,
-        tests_done: false,
-        cage: true
-    })
+    const showColumns = ref({ ...DEFAULT_MOUSE_COLUMNS })
 
     const mouseColumns = [
         { key: 'id', label: '小鼠ID'},
@@ -47,20 +48,7 @@ export const useSettingStore = defineStore('setting', () => {
 
     const resetToDefault = (setting) => {
         if (setting === 'mouse') {
-            showColumns.value = {
-                id: true,
-                genotype: true,
-                strain: true,
-                sex: true,
-                birth_date: true,
-                days_old: true,
-                weeks_old: true,
-                live_status: true,
-                death_date: false,
-                tests_planned: false,
-                tests_done: false,
-                cage: true
-            }
+            showColumns.value = { ...DEFAULT_MOUSE_COLUMNS }
         }
     }
 
@@ -70,7 +58,6 @@ export const useSettingStore = defineStore('setting', () => {
                 if (response.data['success']) {
                     showColumns.value = response.data['show_columns']
                 }
-                console.log('加载显示设置:', showColumns.value)
             } catch (error) {
                 console.error('获取显示设置失败:', error)
         }
@@ -79,9 +66,6 @@ export const useSettingStore = defineStore('setting', () => {
     const changeSettings = async (type) => {
         try {
                 await api.post(`/setting/${type}`, showColumns.value)
-                if (type === 'mouse') {
-                    console.log('保存显示设置:', showColumns.value)
-                }
             } catch (error) {
                 console.error('保存显示设置失败:', error)
         }

@@ -146,6 +146,7 @@ import GenotypePicker from '@/components/GenotypePicker.vue'
 import { useBreedingStore, useGeneStore, useBreedingPlanStore } from '@/stores'
 import { predictOffspringGenotypes } from '@/utils/mendelianPredictor'
 import { matchesTargets } from '@/utils/pedigree'
+import { pairKey } from '@/utils/allele'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -254,12 +255,6 @@ function cullNonTarget() {
     row.cull = !matchesAll
   }
   rows.value = [...rows.value]
-}
-
-function pairKey(a, b) {
-  if (a == null || b == null) return null
-  const [lo, hi] = [a, b].sort((x, y) => x - y)
-  return `${lo}-${hi}`
 }
 
 // ===== 相关计划 / 命中 =====

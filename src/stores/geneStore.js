@@ -171,7 +171,12 @@ export const useGeneStore = defineStore('genotype', () => {
         const matchedLocus = genotypes.value.find(g => g.symbol === locus);
         // 更新等位基因建议
         alleleSuggestions.value[index] = matchedLocus ? [matchedLocus.alleles, matchedLocus.alleles] : [[], []];
-        if (matchedLocus.alleles.length == 1) {
+        if (!matchedLocus) {
+            selectedGenes.value[index].allele1 = null
+            selectedGenes.value[index].allele2 = null
+            return
+        }
+        if (matchedLocus.alleles.length === 1) {
             selectedGenes.value[index].allele1 = matchedLocus.alleles[0].id
             selectedGenes.value[index].allele2 = matchedLocus.alleles[0].id
         } else {

@@ -140,6 +140,7 @@ def run_flask(port):
     """运行Flask应用"""
     try:
         logger.info(f"启动Flask服务器，端口: {port}")
+        app.config['REQUIRE_WEBVIEW_TOKEN'] = True
         from werkzeug.serving import make_server
         server = make_server('localhost', port, app)
         server.serve_forever()
@@ -352,9 +353,11 @@ if __name__ == '__main__':
             return
 
         # 创建主窗口
+        access_token = app.config.get('APP_ACCESS_TOKEN')
+        app_url = f"http://localhost:{port}/?muris_token={access_token}"
         main_window = webview.create_window(
-            "MurisPro - 鼠管家", 
-            f"http://localhost:{port}",
+            "MurisPro - 鼠管家",
+            app_url,
             width=1200, 
             height=800,
             resizable=True,
@@ -379,6 +382,10 @@ if __name__ == '__main__':
                 time.sleep(0.2)
             main_window.show()
         main_window.expose(notify_frontend_ready)
+
+        def get_access_token():
+            return app.config.get('APP_ACCESS_TOKEN')
+        main_window.expose(get_access_token)
 
     # 在单独的线程中执行初始化
     init_thread = threading.Thread(target=initialize_app, daemon=True)
@@ -413,7 +420,8 @@ if __name__ == '__main__':
             sys.exit(0)
         import webbrowser
         time.sleep(2)
-        webbrowser.open(f"http://localhost:{port}")
+        access_token = app.config.get('APP_ACCESS_TOKEN')
+        webbrowser.open(f"http://localhost:{port}/?muris_token={access_token}")
         print("应用已在浏览器中打开")
         while True:
             time.sleep(10)

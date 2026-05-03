@@ -107,12 +107,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed, h } from 'vue'
-import {
-  NIcon,
-  darkTheme,
-  zhCN,
-  dateZhCN
-} from 'naive-ui'
+import { darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import {
   AnalyticsOutline,
   CloudDoneOutline,
@@ -136,6 +131,7 @@ import {
 import { useExperimentStore } from '@/stores'
 import { useRoute, useRouter } from 'vue-router'
 import { renderIcon } from '@/utils/icon'
+import { getMurisProToken } from '@/utils/api'
 
 const experimentStore = useExperimentStore()
 const route = useRoute()
@@ -145,6 +141,7 @@ const sidebarCollapsed = ref(false)
 const themeMode = ref('light')
 const isMobile = ref(false)
 const mobileDrawerVisible = ref(false)
+let heartbeatTimer = null
 
 const naiveTheme = computed(() => (themeMode.value === 'dark' ? darkTheme : null))
 
@@ -264,10 +261,17 @@ onMounted(() => {
   }
 
   if (!window.pywebview || !window.pywebview.api) {
-    setInterval(() => {
+    heartbeatTimer = setInterval(async () => {
+      const headers = { 'Content-Type': 'application/json' }
+      try {
+        const token = await getMurisProToken()
+        if (token) headers['X-MurisPro-Token'] = token
+      } catch (error) {
+        return
+      }
       fetch('/heartbeat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         priority: 'low',
         keepalive: true
       }).catch(() => {})
@@ -277,6 +281,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateIsMobile)
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
 })
 
 watch(() => route.path, () => {

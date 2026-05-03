@@ -31,7 +31,7 @@ export const useExperimentStore = defineStore('experiment', () => {
     const fetchExperimentPresets = async () => {
         try {
             const response = await api.get('/experiment-types/presets')
-            experimentPresets.value = response.data
+            experimentPresets.value = response.data && !Array.isArray(response.data) ? response.data : {}
             } catch (error) {
             console.error('获取实验预设失败:', error)
         }

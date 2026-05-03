@@ -22,7 +22,7 @@ class Mouse(db.Model):
     # 关系
     cage = db.relationship('Cage', backref=db.backref('mice', lazy=True))
     genotypes = db.relationship('Genotype', backref='mouse', lazy='dynamic', cascade='all, delete-orphan')
-    tests_done = db.relationship('ExperimentClass', backref='mouse', lazy='dynamic', cascade='all, delete-orphan')
+    tests_done = db.relationship('ExperimentClass', backref='experiment_mouse', lazy='dynamic', cascade='all, delete-orphan')
     
     def get_genotypes(self):
         genes = []
@@ -111,8 +111,8 @@ class WeightRecord(db.Model):
     record_date = db.Column(db.Date, nullable=False)
     record_livingdays = db.Column(db.Integer, nullable=False)
 
-    def to_dict(self):
-        mouse = Mouse.query.get_or_404(self.mouse_id)
+    def to_dict(self, mouse=None):
+        mouse = mouse or Mouse.query.get_or_404(self.mouse_id)
         return {
             'weight_id': self.id,
             'mouse_tid': self.mouse_id,
@@ -124,20 +124,22 @@ class WeightRecord(db.Model):
         }
 
 class StatusRecord(db.Model):
+    __tablename__ = 'status_record'
+
     id = db.Column(db.Integer, primary_key=True)
     mouse_id = db.Column(db.Integer, db.ForeignKey('mouse.tid'), nullable=False)
     status = db.Column(db.String(50), nullable=False)
     record_date = db.Column(db.Date, nullable=False)
     record_livingdays = db.Column(db.Integer, nullable=False)
 
-    def to_dict(self):
-        mouse = Mouse.query.get_or_404(self.mouse_id)
+    def to_dict(self, mouse=None):
+        mouse = mouse or Mouse.query.get_or_404(self.mouse_id)
         return {
             'record_id': self.id,
             'mouse_tid': self.mouse_id,
             'id': mouse.id,
             'birth_date': mouse.birth_date.isoformat() if mouse.birth_date else None,
-            'record_date': self.record_date,
+            'record_date': self.record_date.isoformat() if self.record_date else None,
             'record': self.status,
             'record_livingdays': self.record_livingdays
         }
@@ -371,16 +373,18 @@ class ExperimentValue(db.Model):
     
 #实验分组表
 class ExperimentClass(db.Model):
+    __tablename__ = 'experiment_class'
+
     id = db.Column(db.Integer, primary_key=True)
     mouse_id = db.Column(db.Integer, db.ForeignKey('mouse.tid', ondelete='CASCADE'), nullable=False)
     experiment_id = db.Column(db.Integer, db.ForeignKey('experiment_type.id'), nullable=False)
     
     def to_dict(self):
         return {
-            'class_id': self.class_id,
+            'class_id': self.id,
             'mouse_id': self.mouse_id,
             'experiment_id': self.experiment_id,
-            'mouse_info': self.mouse.to_dict() if self.mouse else None
+            'mouse_info': self.experiment_mouse.to_dict() if self.experiment_mouse else None
         }
     
 class PredefinedGroup(db.Model):
@@ -403,4 +407,35 @@ class PredefinedGroup(db.Model):
             'experiment_id': self.experiment_id,
             'Gtype': self.Gtype,
             'rules': self.rules or []
+        }
+
+
+class BreedingPlan(db.Model):
+    __tablename__ = 'breeding_plan'
+
+    id = db.Column(db.String(40), primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    strategy = db.Column(db.String(20), nullable=False, default='custom')
+    targets = db.Column(db.JSON, nullable=False, default=list)
+    target_count = db.Column(db.Integer, nullable=False, default=1)
+    sex = db.Column(db.String(3), nullable=False, default='any')
+    strain = db.Column(db.String(50))
+    deadline = db.Column(db.Date)
+    note = db.Column(db.Text, default='')
+    archived = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.Date, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'strategy': self.strategy,
+            'targets': self.targets or [],
+            'targetCount': self.target_count,
+            'sex': self.sex,
+            'strain': self.strain,
+            'deadline': self.deadline.isoformat() if self.deadline else None,
+            'note': self.note or '',
+            'archived': self.archived,
+            'createdAt': self.created_at.isoformat() if self.created_at else None
         }

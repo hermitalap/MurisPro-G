@@ -138,10 +138,7 @@
 
 <script setup>
 import { computed, h, reactive, ref, watch } from 'vue'
-import {
-  NModal, NInput, NInputNumber, NSelect, NDatePicker, NRadioGroup, NRadioButton,
-  NFormItem, NSpace, NButton, NDataTable, NPopconfirm, useMessage
-} from 'naive-ui'
+import { NInput, useMessage } from 'naive-ui'
 import { useBreedingStore, useGeneStore } from '@/stores'
 import { buildEarTagIds, nextEarTagNumber, buildToeClipId, toeClipPrefix } from '@/utils/idGenerator'
 

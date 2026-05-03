@@ -69,7 +69,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { NSelect, NTag, NButton, NIcon } from 'naive-ui'
+
 import { OptionsOutline } from '@vicons/ionicons5'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
 import { generatePresets, detectLocusKind } from '@/utils/genotypePresets'

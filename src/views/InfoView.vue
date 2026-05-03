@@ -54,10 +54,8 @@
 
 <script setup>
 import { h, ref } from 'vue'
-import { NIcon } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import { QrCode, PlayCircleOutline, BookOutline, CodeSlashOutline } from '@vicons/ionicons5'
-
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 
 // 控制二维码弹窗显示
 const showQrModal = ref(false)

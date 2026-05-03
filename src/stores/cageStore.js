@@ -6,7 +6,7 @@ export const useCageStore = defineStore('cage', () => {
 
     const loadInitialData = async () => {
         await fetchLocations()
-        section_key.value = true
+        shouldSetDefaultSection.value = true
         await fetchCages()
     }
 
@@ -25,7 +25,7 @@ export const useCageStore = defineStore('cage', () => {
     // 笼位相关方法
     const cages = ref([])
     const activeSection = ref('')
-    const section_key = ref(false)
+    const shouldSetDefaultSection = ref(false)
     // 计算属性 - 过滤笼位
     const filteredCages = computed(() => {
         if (!activeSection.value) return cages.value
@@ -35,24 +35,19 @@ export const useCageStore = defineStore('cage', () => {
     // 获取所有笼位数据
     async function fetchCages() {
     try {
-        console.log('开始获取笼位数据...')
-        
         const response = await api.get('/cages')
         cages.value = response.data
         
         // 设置默认选中的section为第一个
-        if (section_key.value) {
+        if (shouldSetDefaultSection.value) {
             if (locations.value.length > 0) {
                 activeSection.value = locations.value[0].identifier
-                section_key.value = false
-                console.log('设置默认section为:', activeSection.value)
+                shouldSetDefaultSection.value = false
             } else {
                 activeSection.value = ''
-                section_key.value = false
-                console.log('无区域')
+                shouldSetDefaultSection.value = false
             }
         }
-        console.log('笼位数据获取完成')
     } catch (error) {
         console.error('获取笼位信息失败:', error)
     }
@@ -63,16 +58,25 @@ export const useCageStore = defineStore('cage', () => {
         return cages.value.filter(cage => cage.section === section)
     }
 
+    const updateCage = (id, patch) => {
+        const idx = cages.value.findIndex(cage => cage.id === id)
+        if (idx !== -1) {
+            cages.value[idx] = { ...cages.value[idx], ...patch }
+            cages.value = [...cages.value]
+        }
+    }
+
     return {
         locations,
         cages,
         filteredCages,
         activeSection,
-        section_key,
+        shouldSetDefaultSection,
 
         fetchLocations,
         fetchCages,
         calculateCages,
+        updateCage,
         loadInitialData
     }
 })

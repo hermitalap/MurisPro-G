@@ -7,13 +7,7 @@
  * 使用场景：在"批量鉴定"弹窗中，为每只未鉴定仔鼠的基因型下拉提供"本窝可能组合"高亮。
  */
 
-/**
- * 规范化一对等位基因（不区分顺序），返回 "minId-maxId" 字符串作为 key
- */
-function pairKey(a1, a2) {
-  const [lo, hi] = [a1, a2].sort((x, y) => x - y)
-  return `${lo}-${hi}`
-}
+import { pairKey } from '@/utils/allele'
 
 /**
  * 对单一位点预测后代可能的等位基因对

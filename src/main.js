@@ -2,14 +2,14 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
-import naive from 'naive-ui'
-import { StoreUtils } from './stores'
+import { initializeStores } from './stores'
 import './views/styles/main.css'
 
+const isDev = process.env.NODE_ENV !== 'production'
 const app = createApp(App)
 const pinia = createPinia()
 
-app.use(pinia).use(router).use(naive)
+app.use(pinia).use(router)
 
 // 在应用启动时检查是否在pywebview环境中
 const startApp = async () => {
@@ -17,9 +17,9 @@ const startApp = async () => {
         // 先挂载应用，让页面骨架和路由视图尽早出现；数据初始化放到后台异步完成。
         app.mount('#app');
 
-        StoreUtils.initializeStores()
+        initializeStores()
             .then(() => {
-                console.log('内容初始化完成');
+                if (isDev) console.log('内容初始化完成');
             })
             .catch((error) => {
                 console.error('内容初始化失败:', error);
@@ -36,7 +36,7 @@ const startApp = async () => {
                 attempts++;
                 
                 if (window.pywebview && window.pywebview.api) {
-                    console.log(`pywebview API就绪 (尝试次数: ${attempts})`);
+                    if (isDev) console.log(`pywebview API就绪 (尝试次数: ${attempts})`);
                     window.pywebview.api.notify_frontend_ready();
                     resolve();
                 } else if (attempts < maxAttempts) {

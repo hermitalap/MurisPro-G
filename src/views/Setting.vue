@@ -453,7 +453,7 @@
 
                                         <!-- 基因型规则 -->
                                         <div v-if="rule.Rtype === 'genotype'" class="form-group-row" style="width: 100%;">
-                                            <div v-for="(gene, geneIndex) in rule.genes">
+                                            <div v-for="(gene, geneIndex) in rule.genes" :key="gene.id || gene.selectedGeneName || geneIndex">
                                                 <!-- 基因型选择 -->
                                                 <div class="gene-form-group">
                                                     <div class="form-header">
@@ -1038,7 +1038,7 @@
 
 <script setup>
 import { h, ref, reactive, onMounted, watch, computed, nextTick, useTemplateRef } from 'vue'
-import { NButton, NSpace, NTag, NInput, NSelect, NCheckbox, NIcon, useDialog, useMessage } from 'naive-ui'
+import { NButton, NInput, NCheckbox, NIcon, useDialog, useMessage } from 'naive-ui'
 import { Add, Close, Trash, TrashBin, Archive, BookmarkSharp, Save, Refresh, Warning, CloudUploadOutline, ArchiveOutline, EyeOutline, EyeOffOutline, CheckmarkCircleOutline, WarningOutline, AlertCircleOutline } from '@vicons/ionicons5'
 
 const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
@@ -1061,7 +1061,7 @@ const experimentSectionEl = useTemplateRef('experimentSectionEl')
 const { genotypes, selectedGenes, alleleSuggestions, mice } = storeToRefs(geneStore)
 const { loadGenotypes, colors, onFormLocusChange, onFormAlleleChange, deleteGene, addGene, deleteGenes } = geneStore
 
-const {locations, section_key} = storeToRefs(cageStore)
+const {locations, shouldSetDefaultSection} = storeToRefs(cageStore)
 const {calculateCages, fetchCages} = cageStore
 
 const {experiments, experimentPresets, predefinedGroups} = storeToRefs(experimentStore)
@@ -1946,7 +1946,7 @@ const addLocation = async () => {
         locations.value.push(response.data)
         newLocation.identifier = ''
         newLocation.description = ''
-        section_key.value = true
+        shouldSetDefaultSection.value = true
         await fetchCages()
     } catch (error) {
         console.error('添加位置失败:', error)
@@ -1968,7 +1968,7 @@ const saveLocation = async () => {
     }
     message.success("区域编辑成功")
     editLocationDialogVisible.value = false
-    section_key.value = true
+    shouldSetDefaultSection.value = true
     await fetchCages()
     } catch (error) {
         console.error('更新位置失败:', error)
@@ -1986,7 +1986,7 @@ const deleteLocation = async (id) => {
             try {
                 await api.delete(`/locations/${id}`)
                 locations.value = locations.value.filter(l => l.id !== id)
-                section_key.value = true
+                shouldSetDefaultSection.value = true
                 await fetchCages()
             } catch (error) {
                 console.error('删除位置失败:', error)
@@ -2872,13 +2872,8 @@ const saveGroup = async () => {
     const method = editingGroup.id ? 'put' : 'post'
 
     try {
-        if (editingGroup.Gtype === 'id') {
-            await axios[method](url, editingGroup)
-            message.success('预设ID分组保存成功')
-        } else {
-            await axios[method](url, editingGroup)
-            message.success('预设规则分组保存成功')
-        }
+        await api[method](url, editingGroup)
+        message.success(editingGroup.Gtype === 'id' ? '预设ID分组保存成功' : '预设规则分组保存成功')
         cancelEditGroup()
         fetchPredefinedGroups()
     } catch (error) {

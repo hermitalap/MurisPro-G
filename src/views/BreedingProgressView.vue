@@ -81,92 +81,96 @@
             class="plan-card"
             :class="{ 'is-done': progressMap[plan.id]?.done, 'is-archived': plan.archived }"
           >
-            <div class="card-main">
-              <!-- 左列：标题（渐变）+ 进度环（居中） -->
-              <div class="card-left">
-                <n-gradient-text
-                  :gradient="{ from: '#2080f0', to: '#18a058', deg: 135 }"
-                  class="card-title"
-                >{{ plan.name }}</n-gradient-text>
-                <n-progress
-                  type="circle"
-                  :percentage="progressMap[plan.id]?.percent || 0"
-                  :color="progressColor(plan)"
-                  :rail-color="railColor"
-                  :stroke-width="9"
-                  style="width: 130px; margin-top: 16px;"
-                >
-                  <div class="ring-inner">
-                    <div class="ring-big">{{ progressMap[plan.id]?.qualified.length || 0 }}</div>
-                    <div class="ring-sub">/ {{ plan.targetCount }}</div>
-                  </div>
-                </n-progress>
-              </div>
-
-              <!-- 右列：标签 + 目标基因型 + 世代分布 -->
-              <div class="card-right">
-                <n-flex :size="6" style="flex-wrap: wrap;">
-                  <n-tag :bordered="false" :type="strategyTagType(plan.strategy)">
-                    {{ strategyLabel(plan.strategy) }}
-                  </n-tag>
-                  <n-tag :bordered="false" v-if="plan.sex && plan.sex !== 'any'">
-                    {{ plan.sex === 'M' ? '♂ 雄' : '♀ 雌' }}
-                  </n-tag>
-                  <n-tag :bordered="false" type="warning" v-if="plan.deadline && !progressMap[plan.id]?.done">
-                    {{ deadlineInfo(plan.deadline) }}
-                  </n-tag>
-                </n-flex>
-                <div class="target-line">
-                  <n-icon :size="15" class="icon-gene"><GitBranchOutline /></n-icon>
-                  <span class="target-symbol">
-                    <GenotypeLabel :symbol="targetSymbol(plan)" />
-                  </span>
+            <div class="plan-card-head">
+              <div class="plan-title-stack">
+                <div class="title-row">
+                  <div class="card-title">{{ plan.name }}</div>
                 </div>
-                <div class="gen-stack">
-                  <div class="gen-label">世代分布</div>
-                  <div class="gen-pills">
-                    <template v-if="genPills(plan).length">
-                      <div
-                        v-for="p in genPills(plan)"
-                        :key="p.gen"
-                        class="gen-pill"
-                        :style="{ background: genColor(p.gen) }"
-                        :title="`F${p.gen}: ${p.count} 只`"
-                      >
-                        <span class="gen-k">F{{ p.gen }}</span>
-                        <span class="gen-v">{{ p.count }}</span>
-                      </div>
-                    </template>
-                    <span v-else class="gen-empty">暂无候选</span>
+                <div class="title-meta-row">
+                  <n-flex :size="6" class="plan-tags">
+                    <n-tag size="small" :bordered="false" :type="strategyTagType(plan.strategy)">
+                      {{ strategyLabel(plan.strategy) }}
+                    </n-tag>
+                    <n-tag size="small" :bordered="false" v-if="plan.sex && plan.sex !== 'any'">
+                      {{ plan.sex === 'M' ? '♂ 雄' : '♀ 雌' }}
+                    </n-tag>
+                    <n-tag size="small" :bordered="false" type="warning" v-if="plan.deadline && !progressMap[plan.id]?.done">
+                      {{ deadlineInfo(plan.deadline) }}
+                    </n-tag>
+                  </n-flex>
+                  <div class="meta-divider" />
+                  <div class="title-meta-item">
+                    <div class="meta-label">
+                      <n-icon :size="14" class="icon-gene"><GitBranchOutline /></n-icon>
+                      <span>目标基因型</span>
+                    </div>
+                    <div class="target-symbol">
+                      <GenotypeLabel :symbol="targetSymbol(plan)" />
+                    </div>
+                  </div>
+                  <div class="meta-divider" />
+                  <div class="title-meta-item">
+                    <div class="meta-label">世代分布</div>
+                    <div class="gen-pills">
+                      <template v-if="genPills(plan).length">
+                        <n-tag
+                          v-for="p in genPills(plan)"
+                          :key="p.gen"
+                          size="small"
+                          :bordered="false"
+                          type="info"
+                          class="gen-pill"
+                          :title="`F${p.gen}: ${p.count} 只`"
+                        >
+                          F{{ p.gen }} {{ p.count }}
+                        </n-tag>
+                      </template>
+                      <span v-else class="gen-empty">暂无候选</span>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <!-- 菜单 -->
               <n-dropdown
                 trigger="click"
                 :options="rowMenu(plan)"
                 @select="k => onRowMenu(k, plan)"
               >
-                <n-button quaternary circle @click.stop style="flex-shrink: 0; align-self: flex-start;">
+                <n-button quaternary circle @click.stop class="plan-menu-button">
                   <template #icon><n-icon><EllipsisVertical /></n-icon></template>
                 </n-button>
               </n-dropdown>
             </div>
 
-            <!-- 底部状态栏 -->
-            <div class="card-footer">
-              <div class="footer-item">
-                <n-icon :size="13"><HomeOutline /></n-icon>
-                <span>{{ progressMap[plan.id]?.cages.length || 0 }} 个贡献笼</span>
-              </div>
-              <div class="footer-item" v-if="(progressMap[plan.id]?.pending.length || 0) > 0">
-                <n-icon :size="13"><FlaskOutline /></n-icon>
-                <span>{{ progressMap[plan.id].pending.length }} 只待鉴定</span>
-              </div>
-              <div class="footer-item">
-                <n-icon :size="13"><TimeOutline /></n-icon>
-                <span>{{ plan.createdAt }}</span>
+            <div class="card-main">
+              <div class="metric-grid">
+                <div class="metric-item metric-primary">
+                  <div class="metric-title">候选</div>
+                  <div class="metric-value">
+                    {{ progressMap[plan.id]?.qualified.length || 0 }}<span>/{{ plan.targetCount }}</span>
+                  </div>
+                  <div class="metric-sub">{{ progressMap[plan.id]?.percent || 0 }}%</div>
+                </div>
+                <div class="metric-item">
+                  <div class="metric-title">{{ progressMap[plan.id]?.done ? '状态' : '还差' }}</div>
+                  <div class="metric-value">
+                    {{ Math.max(0, plan.targetCount - (progressMap[plan.id]?.qualified.length || 0)) }}<span>/{{ plan.targetCount }}</span>
+                  </div>
+                  <div class="metric-sub">{{ progressMap[plan.id]?.done ? '已达标' : '待补足' }}</div>
+                </div>
+                <div class="metric-item">
+                  <div class="metric-title">贡献笼</div>
+                  <div class="metric-value">
+                    {{ progressMap[plan.id]?.cages.length || 0 }}<span>个</span>
+                  </div>
+                  <div class="metric-sub">繁殖来源</div>
+                </div>
+                <div class="metric-item">
+                  <div class="metric-title">待鉴定</div>
+                  <div class="metric-value">
+                    {{ progressMap[plan.id]?.pending.length || 0 }}<span>只</span>
+                  </div>
+                  <div class="metric-sub">{{ plan.createdAt }}</div>
+                </div>
               </div>
             </div>
           </n-card>
@@ -323,7 +327,7 @@
                 <template #icon><n-icon><CreateOutline /></n-icon></template>
                 编辑
               </n-button>
-              <n-button size="small" @click="planStore.duplicatePlan(detailPlan.id)">
+              <n-button size="small" @click="onDuplicate(detailPlan)">
                 <template #icon><n-icon><CopyOutline /></n-icon></template>
                 复制
               </n-button>
@@ -360,12 +364,7 @@
 <script setup>
 import { ref, computed, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  NButton, NIcon, NTag, NSpace, NCard, NEmpty, NFlex, NProgress,
-  NDrawer, NDrawerContent, NDescriptions, NDescriptionsItem,
-  NDivider, NDataTable, NDropdown, NPopconfirm, NRadioGroup, NRadioButton,
-  NGradientText, useMessage
-} from 'naive-ui'
+import { NButton, NTag, useMessage } from 'naive-ui'
 import {
   AddOutline, RefreshOutline, EllipsisVertical, GitBranchOutline, HomeOutline,
   FlaskOutline, TimeOutline, DocumentTextOutline, LayersOutline, CheckmarkDoneOutline,
@@ -488,21 +487,27 @@ function rowMenu(plan) {
     { label: '删除', key: 'delete' }
   ]
 }
-function onRowMenu(k, plan) {
+async function onDuplicate(plan) {
+  try {
+    await planStore.duplicatePlan(plan.id)
+    message.success('已复制计划')
+  } catch (error) {
+    console.error('复制繁配计划失败:', error)
+    message.error(error.response?.data?.error || '复制繁配计划失败')
+  }
+}
+
+async function onRowMenu(k, plan) {
   if (k === 'detail') openDetail(plan)
   else if (k === 'edit') openEdit(plan)
   else if (k === 'duplicate') {
-    planStore.duplicatePlan(plan.id)
-    message.success('已复制计划')
+    await onDuplicate(plan)
   } else if (k === 'archive') {
-    planStore.archivePlan(plan.id, !plan.archived)
-    message.success(plan.archived ? '已取消归档' : '已归档')
+    await onArchive(plan)
   } else if (k === 'delete') {
     // 简易 confirm
     if (window.confirm(`删除计划「${plan.name}」？不可恢复`)) {
-      planStore.removePlan(plan.id)
-      message.success('已删除')
-      if (detailPlan.value?.id === plan.id) drawerVisible.value = false
+      await onDelete(plan)
     }
   }
 }
@@ -599,21 +604,41 @@ function goGenotypingAndSelect(cage) {
 }
 
 // ===== 归档 / 删除 =====
-function onArchive(plan) {
-  planStore.archivePlan(plan.id, !plan.archived)
-  message.success(plan.archived ? '已取消归档' : '已归档')
+async function onArchive(plan) {
+  const nextArchived = !plan.archived
+  try {
+    await planStore.archivePlan(plan.id, nextArchived)
+    if (detailPlan.value?.id === plan.id) {
+      detailPlan.value = planStore.plans.find(p => p.id === plan.id) || null
+    }
+    message.success(nextArchived ? '已归档' : '已取消归档')
+  } catch (error) {
+    console.error('更新繁配计划归档状态失败:', error)
+    message.error(error.response?.data?.error || '更新繁配计划归档状态失败')
+  }
 }
-function onDelete(plan) {
-  planStore.removePlan(plan.id)
-  drawerVisible.value = false
-  message.success('已删除')
+async function onDelete(plan) {
+  try {
+    await planStore.removePlan(plan.id)
+    drawerVisible.value = false
+    if (detailPlan.value?.id === plan.id) detailPlan.value = null
+    message.success('已删除')
+  } catch (error) {
+    console.error('删除繁配计划失败:', error)
+    message.error(error.response?.data?.error || '删除繁配计划失败')
+  }
 }
 
 // ===== 刷新 =====
 async function refreshData() {
   refreshing.value = true
   try {
-    await Promise.all([geneStore.loadMice(), cageStore.fetchCages(), geneStore.loadGenotypes()])
+    await Promise.all([
+      geneStore.loadMice(),
+      cageStore.fetchCages(),
+      geneStore.loadGenotypes(),
+      planStore.loadInitialData()
+    ])
   } finally {
     refreshing.value = false
   }
@@ -698,6 +723,9 @@ onMounted(async () => {
 .plan-card {
   position: relative;
 }
+.plan-card :deep(.n-card__content) {
+  padding: 18px 22px 16px;
+}
 .plan-card.is-done {
   border-color: #18a058;
   box-shadow: 0 0 0 1px #18a058 inset;
@@ -706,105 +734,147 @@ onMounted(async () => {
   opacity: 0.75;
 }
 
-/* 卡片主体：左列 + 右列 + 菜单 */
-.card-main {
+.plan-card-head {
   display: flex;
   align-items: flex-start;
-  gap: 24px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.card-left {
+.plan-title-stack {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.title-row {
+  display: flex;
   align-items: center;
-  flex-shrink: 0;
-  width: 200px;
-  padding-right: 24px;
-  border-right: 1px solid var(--n-border-color);
-  text-align: center;
+  min-width: 0;
+}
+
+.title-meta-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--n-color) 91%, var(--n-color-embedded));
+}
+
+.title-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plan-tags {
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.plan-menu-button {
+  flex: 0 0 auto;
+}
+
+/* 卡片主体：数字指标分栏 */
+.card-main {
+  display: block;
 }
 
 .card-title {
   font-weight: 700;
   font-size: 18px;
-  line-height: 1.3;
+  line-height: 1.35;
+  color: #2080f0;
+  white-space: normal;
+  word-break: break-word;
 }
 
-.card-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-
-.target-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--n-color-embedded, rgba(0, 0, 0, 0.03));
-  border-radius: 8px;
-  font-size: 15px;
-}
 .icon-gene { color: var(--n-text-color-3); flex-shrink: 0; }
-.target-symbol { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.ring-inner {
-  text-align: center;
-  line-height: 1.2;
-}
-.ring-big {
-  font-size: 26px;
-  font-weight: 700;
-}
-.ring-sub {
-  font-size: 13px;
+.meta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--n-text-color-3);
+  font-size: 12px;
+  flex: 0 0 auto;
 }
 
-.gen-stack {
+.meta-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--n-border-color);
+}
+
+.target-symbol {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.metric-item {
+  min-height: 86px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--n-color) 88%, var(--n-color-embedded));
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: center;
+  gap: 4px;
 }
-.gen-label {
-  font-size: 13px;
+
+.metric-title {
+  font-size: 12px;
   color: var(--n-text-color-3);
 }
+
+.metric-value {
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 800;
+  color: var(--n-text-color-1);
+}
+
+.metric-value span {
+  margin-left: 3px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--n-text-color-3);
+}
+
+.metric-sub {
+  font-size: 12px;
+  color: var(--n-text-color-3);
+}
+
+.metric-primary {
+  background: color-mix(in srgb, #2080f0 13%, var(--n-color));
+}
+
 .gen-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
-.gen-pill {
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-  display: inline-flex;
-  gap: 5px;
-}
-.gen-k { font-weight: 600; }
-.gen-v { opacity: 0.9; }
 .gen-empty { font-size: 13px; color: var(--n-text-color-3); }
-
-.card-footer {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--n-border-color);
-  display: flex;
-  gap: 14px;
-  justify-content: flex-end;
-  color: var(--n-text-color-3);
-  font-size: 13px;
-  flex-wrap: wrap;
-}
-.footer-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
 
 /* 详情抽屉 */
 .detail-hero {
@@ -877,4 +947,18 @@ onMounted(async () => {
   gap: 6px;
 }
 .pending-sub { color: var(--n-text-color-3); margin-left: 4px; }
+
+@media (max-width: 900px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .title-meta-row {
+    align-items: flex-start;
+  }
+
+  .target-symbol {
+    white-space: normal;
+  }
+}
 </style>

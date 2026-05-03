@@ -64,18 +64,20 @@
         <h3>分组管理</h3>
         <div class="groups-container">
           <div 
-            v-for="(group, groupIndex) in editingGroup.rules" 
-            :key="groupIndex"
+            v-for="(group, groupIndex) in editingRules"
+            :key="group.id || group.name || groupIndex"
             class="group-item"
             @dragover="onDragOver"
+            @dragleave.prevent="onDragLeave"
             @drop="onDrop($event, groupIndex)"
           >
             <div class="group-header">
               <div class="group-name">
                 <n-input
                   class="group-name-input"
-                  v-model:value="group.name"
+                  :value="group.name"
                   placeholder="分组名称"
+                  @update:value="updateGroupName(groupIndex, $event)"
                 />
                 <div class="color-picker">
                   <div 
@@ -84,7 +86,7 @@
                     class="color-option"
                     :class="{ selected: group.color === color }"
                     :style="{ backgroundColor: color }"
-                    @click="group.color = color"
+                    @click="updateGroupColor(groupIndex, color)"
                   >
                     <n-icon v-if="group.color === color"><CheckmarkOutline /></n-icon>
                   </div>
@@ -93,7 +95,7 @@
               <div class="group-actions">
                 <n-button
                   @click="removeGroup(groupIndex)"
-                  :disabled="editingGroup.rules.length <= 1"
+                  :disabled="editingRules.length <= 1"
                   type="error"
                   quaternary
                   :render-icon="renderIcon(Trash)"
@@ -117,7 +119,7 @@
                   />
                 </div>
               </div>
-              <div v-if="group.mouseId.length === 0" class="empty-group">
+              <div v-if="!group.mouseId?.length" class="empty-group">
                 暂无小鼠，请从左侧拖拽或选择添加
               </div>
             </div>
@@ -126,7 +128,7 @@
         
         <div class="grouping-actions">
           <n-button quaternary @click="addGroup" :render-icon="renderIcon(Add)">添加新分组</n-button>
-          <n-button v-if="editingGroup.rules.length > 0" quaternary @click="resetGroup" :render-icon="renderIcon(Refresh)">重置分组</n-button>
+          <n-button v-if="editingRules.length > 0" quaternary @click="resetGroup" :render-icon="renderIcon(Refresh)">重置分组</n-button>
           <n-button type="success" @click="saving" :disabled="isSaving" :render-icon="renderIcon(Save)">{{ isSaving? "保存中...": "保存ID分组" }}</n-button>
         </div>
       </div>
@@ -137,10 +139,10 @@
 <script setup>
 import { h, ref, computed } from 'vue'
 import GenotypeLabel from '@/components/GenotypeLabel.vue'
-import { NIcon, useMessage } from 'naive-ui'
+import { useMessage } from 'naive-ui'
+import { renderIcon } from '@/utils/icon'
 import { Trash, RemoveCircle, Add, Refresh, Save, CheckmarkOutline } from '@vicons/ionicons5'
 
-const renderIcon = (IconComp) => () => h(NIcon, null, { default: () => h(IconComp) })
 const message = useMessage()
 
 // 定义props
@@ -159,7 +161,7 @@ const props = defineProps({
   },
   isSaving: {
     type: Boolean,
-    default: () => false
+    default: false
   }
 })
 
@@ -170,6 +172,17 @@ const emit = defineEmits(['update:editingGroup', 'update:isSaving', 'save-group'
 const searchTerm = ref('')
 const selectedMouseIds = ref(new Set())
 const isRepeated = ref(false)
+
+const editingRules = computed(() => Array.isArray(props.editingGroup?.rules) ? props.editingGroup.rules : [])
+
+const cloneRules = () => editingRules.value.map(group => ({
+  ...group,
+  mouseId: Array.isArray(group.mouseId) ? [...group.mouseId] : []
+}))
+
+const emitRules = (rules) => {
+  emit('update:editingGroup', { ...props.editingGroup, rules })
+}
 
 // 计算属性
 const filteredMice = computed(() => {
@@ -187,7 +200,7 @@ const filteredMice = computed(() => {
       mouse.id || '',
       mouse.strain || '',
       mouse.sex || '',
-      mouse.genotype.symbol || ''
+      mouse.genotype?.symbol || mouse.genotype || ''
     ]
     return searchableFields.some(field => 
       field.toLowerCase().includes(term)
@@ -198,12 +211,14 @@ const filteredMice = computed(() => {
 const selectedMiceCount = computed(() => selectedMouseIds.value.size)
 
 const isRepeatedAble = computed(() => {
-  return props.editingGroup.rules.some(group => group.mouseId?.length>0)
+  return editingRules.value.some(group => group.mouseId?.length > 0)
 })
 
 const groupedMice = computed(() => {
-  return props.editingGroup.rules.map(group => {
-    return group.mouseId.map(mId => props.candidateMice.find(m => m.tid === mId))
+  return editingRules.value.map(group => {
+    return (group.mouseId || [])
+      .map(mId => props.candidateMice.find(m => m.tid === mId))
+      .filter(Boolean)
   })
 })
 
@@ -212,7 +227,7 @@ const isMouseInAnyGroup = (mouseId) => {
   if (isRepeated.value) {
     return false
   } else {
-    return props.editingGroup.rules.some(group => group.mouseId.includes(mouseId))
+    return editingRules.value.some(group => (group.mouseId || []).includes(mouseId))
   }
 }
 
@@ -221,35 +236,51 @@ const isMouseSelected = (mouseId) => {
 }
 
 const toggleMouseSelection = (mouseId) => {
-  if (selectedMouseIds.value.has(mouseId)) {
-    selectedMouseIds.value.delete(mouseId)
+  const next = new Set(selectedMouseIds.value)
+  if (next.has(mouseId)) {
+    next.delete(mouseId)
   } else {
-    selectedMouseIds.value.add(mouseId)
+    next.add(mouseId)
   }
+  selectedMouseIds.value = next
 }
 
 const selectAllMice = () => {
+  const next = new Set(selectedMouseIds.value)
   filteredMice.value.forEach(mouse => {
-    selectedMouseIds.value.add(mouse.tid)
+    next.add(mouse.tid)
   })
+  selectedMouseIds.value = next
 }
 
 const deselectAllMice = () => {
-  selectedMouseIds.value.clear()
+  selectedMouseIds.value = new Set()
 }
 
 const removeMouseFromGroup = (mouseId, groupIndex) => {
-  const mouseIndex = props.editingGroup.rules[groupIndex].mouseId.indexOf(mouseId)
+  const rules = cloneRules()
+  const mouseIndex = rules[groupIndex].mouseId.indexOf(mouseId)
   if (mouseIndex > -1) {
-    props.editingGroup.rules[groupIndex].mouseId.splice(mouseIndex, 1)
-    // 触发更新
-    emit('update:editingGroup', { ...props.editingGroup })
+    rules[groupIndex].mouseId.splice(mouseIndex, 1)
+    emitRules(rules)
   }
+}
+
+const updateGroupName = (groupIndex, name) => {
+  const rules = cloneRules()
+  rules[groupIndex].name = name
+  emitRules(rules)
+}
+
+const updateGroupColor = (groupIndex, color) => {
+  const rules = cloneRules()
+  rules[groupIndex].color = color
+  emitRules(rules)
 }
 
 const onDragStart = (event, mId) => {
   if (!selectedMouseIds.value.has(mId)) {
-    selectedMouseIds.value.add(mId);
+    selectedMouseIds.value = new Set([...selectedMouseIds.value, mId]);
   }
   const selectedMIs = Array.from(selectedMouseIds.value);
   event.dataTransfer.setData('application/json', JSON.stringify(selectedMIs));
@@ -263,6 +294,10 @@ const onDragOver = (event) => {
   event.currentTarget.classList.add('drag-over');
 }
 
+const onDragLeave = (event) => {
+  event.currentTarget.classList.remove('drag-over')
+}
+
 const onDrop = (event, groupIndex) => {
   event.preventDefault()
   event.currentTarget.classList.remove('drag-over');
@@ -273,35 +308,37 @@ const onDrop = (event, groupIndex) => {
       console.error('无效的拖拽数据');
       return;
     }
+    const rules = cloneRules()
     mouseIds.forEach(mouseId => {
       if (!isMouseInAnyGroup(mouseId)) {
-        if (!props.editingGroup.rules[groupIndex].mouseId.includes(mouseId)) {
-          props.editingGroup.rules[groupIndex].mouseId.push(mouseId);
+        if (!rules[groupIndex].mouseId.includes(mouseId)) {
+          rules[groupIndex].mouseId.push(mouseId);
         }
       }
     });
-    selectedMouseIds.value.clear();
-    // 触发更新
-    emit('update:editingGroup', { ...props.editingGroup })
+    emitRules(rules)
+    selectedMouseIds.value = new Set();
   } catch (error) {
     console.error('拖拽放置失败:', error);
   }
 }
 
 const addGroup = () => {
-  const usedColors = new Set(props.editingGroup.rules.map(g => g.color))
+  const rules = cloneRules()
+  const usedColors = new Set(rules.map(g => g.color))
   const availableColor = props.colors.find(color => !usedColors.has(color)) || props.colors[0]
-  props.editingGroup.rules.push({name: `新分组${props.editingGroup.rules.length + 1}`, color: availableColor, mouseId: []})
-  emit('update:editingGroup', { ...props.editingGroup })
+  rules.push({name: `新分组${rules.length + 1}`, color: availableColor, mouseId: []})
+  emitRules(rules)
 }
 
 const removeGroup = (index) => {
-  props.editingGroup.rules.splice(index, 1)
-  emit('update:editingGroup', { ...props.editingGroup })
+  const rules = cloneRules()
+  rules.splice(index, 1)
+  emitRules(rules)
 }
 
 const saving = () => {
-  if (props.editingGroup.rules.some(group => !group.name)) {
+  if (editingRules.value.some(group => !group.name)) {
     message.warning('请填写分组名称')
     return
   }
@@ -310,10 +347,8 @@ const saving = () => {
 
 const resetGroup = () => {
   emit('update:isSaving', false)
-  props.editingGroup.rules.forEach(group => {
-    group.mouseId = []
-  })
-  emit('update:editingGroup', { ...props.editingGroup })
+  const rules = cloneRules().map(group => ({ ...group, mouseId: [] }))
+  emitRules(rules)
 }
 </script>
 

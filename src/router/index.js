@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+// 首页和小鼠列表是常用首屏路径，保留静态 import 以减少首次进入时的异步加载等待。
 import HomeView from '../views/DashBoard.vue'
-import MiceView from '../views/MiceView.vue';
+import MiceView from '../views/MiceView.vue'
 
 
 const routes = [
@@ -14,11 +15,6 @@ const routes = [
     path: '/mice',
     name: 'mice',
     component: MiceView
-  },
-  // 添加404处理
-  { 
-    path: '/:pathMatch(.*)*', 
-    component: () => import('../views/NotFound.vue') 
   },
   {
   path: '/mouse/:id',
@@ -60,6 +56,11 @@ const routes = [
   path: '/breeding/genotyping',
   name: 'Genotyping',
   component: () => import('../views/GenotypingView.vue')
+},
+  // 添加404处理
+  {
+    path: '/:pathMatch(.*)*',
+    component: () => import('../views/NotFound.vue')
 }
 ]
 

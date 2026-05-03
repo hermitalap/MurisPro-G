@@ -432,7 +432,7 @@ import { normalizeDateValue } from '@/utils/format'
 import MouseDetailModal from './MouseDetailView.vue'
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { NIcon, NDropdown, NAutoComplete, useDialog, useLoadingBar, useMessage } from 'naive-ui'
+import { useDialog, useLoadingBar, useMessage } from 'naive-ui'
 import {
   AddOutline,
   ArrowDownOutline,
@@ -934,6 +934,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopProgressiveCageRender({ finishLoadingBar: true })
+  if (timeoutId) {
+    clearTimeout(timeoutId)
+    timeoutId = null
+  }
   closeContextMenu()
   closeSectionContextMenu()
 })
@@ -1363,7 +1367,6 @@ function confirmSwap() {
   updateCageOrder(sourceCage.value.id, targetCage.value.id)
   
   message.success(`笼位 ${sourceCage.value.cage_id} 和 ${targetCage.value.cage_id} 位置已互换`)
-  clearTimeout(timeoutId)
   // 重置状态
   resetSwapState()
 }
@@ -1376,6 +1379,10 @@ function cancelSwap() {
 
 // 重置互换状态
 function resetSwapState() {
+  if (timeoutId) {
+    clearTimeout(timeoutId)
+    timeoutId = null
+  }
   swapStatus.value = null
   sourceCage.value = null
   targetCage.value = null
@@ -1453,7 +1460,7 @@ const exportToPDF = async () => {
 // 渲染PDF内容到隐藏区域
 const renderPDFContent = (cages, sectionName) => {
   const pdfRenderArea = pdfRenderAreaEl.value;
-  pdfRenderArea.innerHTML = '';
+  pdfRenderArea.replaceChildren();
   
   // 按每页20个笼位分页
   const cagesPerPage = 12;
@@ -1467,7 +1474,12 @@ const renderPDFContent = (cages, sectionName) => {
     // 添加页眉
     const header = document.createElement('div');
     header.className = 'pdf-header';
-    header.innerHTML = `<h2>${today_formatted} -- ${sectionName}</h2><p>第${page + 1}页，共${pageCount}页</p>`;
+    const headerTitle = document.createElement('h2');
+    headerTitle.textContent = `${today_formatted} -- ${sectionName}`;
+    const headerPage = document.createElement('p');
+    headerPage.textContent = `第${page + 1}页，共${pageCount}页`;
+    header.appendChild(headerTitle);
+    header.appendChild(headerPage);
     pageDiv.appendChild(header);
     
     // 创建笼位网格
@@ -1517,7 +1529,7 @@ const renderPDFContent = (cages, sectionName) => {
           
           const mouseGenotype = document.createElement('div');
           mouseGenotype.className = 'pdf-mouse-genotype';
-          mouseGenotype.innerHTML = mouse.genotype;
+          mouseGenotype.textContent = String(mouse.genotype || '').replace(/<\/?sup>/g, '');
           
           mouseInfo.appendChild(mouseId);
           mouseInfo.appendChild(mouseGenotype);
@@ -1608,7 +1620,7 @@ const generatePDFAsArrayBuffer = async () => {
 
     });
   } finally {
-    pdfRenderArea.innerHTML = '';
+    pdfRenderArea.replaceChildren();
   }
 };
 

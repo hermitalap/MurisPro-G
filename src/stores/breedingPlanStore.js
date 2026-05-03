@@ -2,15 +2,15 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useGeneStore } from './geneStore'
 import { useCageStore } from './cageStore'
+import api from '@/utils/api'
 import {
   computeGenerations,
   qualifyMice,
-  matchesTargets,
   bucketByGeneration
 } from '@/utils/pedigree'
 
 /**
- * 繁配计划管理（客户端持久化到 localStorage）
+ * 繁配计划管理（后端数据库持久化）
  *
  * Plan schema:
  * {
@@ -30,7 +30,7 @@ import {
 
 const LS_KEY = 'murispro.breedingPlans.v1'
 
-function loadFromLS() {
+function loadLegacyPlansFromLS() {
   try {
     const raw = localStorage.getItem(LS_KEY)
     if (!raw) return []
@@ -41,23 +41,20 @@ function loadFromLS() {
   }
 }
 
-function saveToLS(plans) {
+function clearLegacyPlansFromLS() {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(plans))
-  } catch (e) {
-    console.error('保存繁配计划失败:', e)
+    localStorage.removeItem(LS_KEY)
+  } catch {
+    // 忽略浏览器隐私模式等导致的清理失败
   }
-}
-
-function makeId() {
-  return 'bp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 }
 
 export const useBreedingPlanStore = defineStore('breedingPlan', () => {
   const geneStore = useGeneStore()
   const cageStore = useCageStore()
 
-  const plans = ref(loadFromLS())
+  const plans = ref([])
+  const loading = ref(false)
 
   /** 世代 Map —— 会随 geneStore.mice 变化重算 */
   const generations = computed(() => computeGenerations(geneStore.mice))
@@ -98,58 +95,80 @@ export const useBreedingPlanStore = defineStore('breedingPlan', () => {
   const activePlans = computed(() => plans.value.filter(p => !p.archived))
   const archivedPlans = computed(() => plans.value.filter(p => p.archived))
 
+  async function migrateLegacyPlans() {
+    const legacyPlans = loadLegacyPlansFromLS()
+    if (!legacyPlans.length) return
+
+    const knownIds = new Set(plans.value.map(p => p.id))
+    const pending = legacyPlans.filter(p => p?.id && !knownIds.has(p.id))
+    for (const plan of pending) {
+      const response = await api.post('/breeding-plans', plan)
+      plans.value = [response.data, ...plans.value]
+      knownIds.add(response.data.id)
+    }
+    clearLegacyPlansFromLS()
+  }
+
+  async function loadInitialData() {
+    loading.value = true
+    try {
+      const response = await api.get('/breeding-plans')
+      plans.value = response.data
+      await migrateLegacyPlans()
+    } catch (error) {
+      console.error('加载繁配计划失败:', error)
+    } finally {
+      loading.value = false
+    }
+  }
+
   // ===== CRUD =====
 
-  function createPlan(payload) {
-    const plan = {
-      id: makeId(),
-      name: (payload.name || '').trim() || '未命名计划',
-      strategy: payload.strategy || 'custom',
-      targets: payload.targets || [],
-      targetCount: Number(payload.targetCount) || 1,
-      sex: payload.sex || 'any',
-      strain: payload.strain || null,
-      deadline: payload.deadline || null,
-      note: payload.note || '',
-      archived: false,
-      createdAt: new Date().toISOString().slice(0, 10)
-    }
+  async function createPlan(payload) {
+    const response = await api.post('/breeding-plans', payload)
+    const plan = response.data
     plans.value = [plan, ...plans.value]
-    saveToLS(plans.value)
     return plan
   }
 
-  function updatePlan(id, patch) {
+  async function updatePlan(id, patch) {
     const idx = plans.value.findIndex(p => p.id === id)
-    if (idx === -1) return null
-    plans.value[idx] = { ...plans.value[idx], ...patch }
+    const response = await api.put(`/breeding-plans/${id}`, patch)
+    const plan = response.data
+    if (idx === -1) {
+      plans.value = [plan, ...plans.value]
+      return plan
+    }
+    plans.value[idx] = plan
     // 保证引用更新以触发 computed
     plans.value = [...plans.value]
-    saveToLS(plans.value)
-    return plans.value[idx]
+    return plan
   }
 
-  function removePlan(id) {
+  async function removePlan(id) {
+    await api.delete(`/breeding-plans/${id}`)
     plans.value = plans.value.filter(p => p.id !== id)
-    saveToLS(plans.value)
   }
 
-  function archivePlan(id, archived = true) {
-    updatePlan(id, { archived })
+  async function archivePlan(id, archived = true) {
+    return updatePlan(id, { archived })
   }
 
-  function duplicatePlan(id) {
+  async function duplicatePlan(id) {
     const src = plans.value.find(p => p.id === id)
     if (!src) return
-    return createPlan({ ...src, name: src.name + ' (副本)' })
+    const { id: _id, createdAt: _createdAt, ...payload } = src
+    return createPlan({ ...payload, name: src.name + ' (副本)' })
   }
 
   return {
     plans,
+    loading,
     activePlans,
     archivedPlans,
     generations,
     computeProgress,
+    loadInitialData,
     createPlan,
     updatePlan,
     removePlan,

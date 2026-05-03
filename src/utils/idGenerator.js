@@ -14,7 +14,8 @@
 export function nextEarTagNumber(prefix, existingIds = []) {
   if (!prefix) return 1
   const upper = prefix.toUpperCase()
-  const re = new RegExp(`^${upper}(\\d+)$`)
+  const escaped = upper.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(`^${escaped}(\\d+)$`)
   let max = 0
   for (const id of existingIds) {
     if (!id) continue

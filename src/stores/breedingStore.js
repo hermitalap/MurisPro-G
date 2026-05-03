@@ -63,12 +63,11 @@ export const useBreedingStore = defineStore('breeding', () => {
     if (date) body.date = date
     const resp = await api.put(`/cages/${cageId}/breeding-status`, body)
     // 本地同步更新
-    const cage = cageStore.cages.find(c => c.id === cageId)
-    if (cage) {
-      cage.breeding_status = resp.data.breeding_status
-      cage.breeding_status_date = resp.data.breeding_status_date
-      cage.mice_birth_date = resp.data.mice_birth_date
-    }
+    cageStore.updateCage(cageId, {
+      breeding_status: resp.data.breeding_status,
+      breeding_status_date: resp.data.breeding_status_date,
+      mice_birth_date: resp.data.mice_birth_date
+    })
     return resp.data
   }
 
